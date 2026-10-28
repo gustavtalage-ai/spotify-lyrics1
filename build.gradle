@@ -13,7 +13,7 @@ maven { url = "https://maven.maxhenkel.de/repository/public" }
 	// for more information about repositories.
 
 
-dependencies { `compileOnly "de.maxhenkel.voicechat:voicechat-api:2.6.0"`
+dependencies { compileOnly "de.maxhenkel.voicechat:voicechat-api:2.6.0"
 
 	// To change the versions see the gradle.properties file
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"

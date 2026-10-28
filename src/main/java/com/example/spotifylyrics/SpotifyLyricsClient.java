@@ -8,6 +8,7 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.text.ClickEvent;
@@ -26,6 +27,8 @@ public class SpotifyLyricsClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         SpotifyApi.startPolling();
+        Soundboard.prepareFolder();
+        ClientTickEvents.END_CLIENT_TICK.register(Soundboard::tick);
         HudElementRegistry.addLast(Identifier.of("spotifylyrics", "lyrics"), LyricsHud::render);
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> registerCommands(dispatcher));
     }
@@ -37,6 +40,10 @@ public class SpotifyLyricsClient implements ClientModInitializer {
     }
 
     private static void registerCommands(CommandDispatcher<FabricClientCommandSource> d) {
+        d.register(ClientCommandManager.literal("soundboard").executes(c -> {
+            Soundboard.openRequested = true; // der Tick oeffnet das Menue, sobald der Chat zu ist
+            return Command.SINGLE_SUCCESS;
+        }));
         d.register(ClientCommandManager.literal("lyrics")
             .then(ClientCommandManager.literal("clientid")
                 .then(ClientCommandManager.argument("id", StringArgumentType.word()).executes(c -> {

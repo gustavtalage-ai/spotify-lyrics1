@@ -3,17 +3,21 @@
   "id": "spotifylyrics",
   "version": "${version}",
   "name": "Spotify Lyrics",
-  "description": "Zeigt die Lyrics des aktuell laufenden Spotify-Liedes oben im Bild an.",
+  "description": "Zeigt die Lyrics des aktuell laufenden Spotify-Liedes oben im Bild an und hat ein Soundboard ueber Simple Voice Chat.",
   "authors": [],
   "license": "MIT",
   "environment": "client",
   "entrypoints": {
-    "client": ["com.example.spotifylyrics.SpotifyLyricsClient"]
+    "client": ["com.example.spotifylyrics.SpotifyLyricsClient"],
+    "voicechat": ["com.example.spotifylyrics.SoundboardPlugin"]
   },
   "depends": {
     "fabricloader": ">=0.16.10",
     "minecraft": "~1.21.11",
     "java": ">=21",
     "fabric-api": "*"
+  },
+  "suggests": {
+    "voicechat": "*"
   }
 }

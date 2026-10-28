@@ -61,8 +61,7 @@ public class LyricsHud {
 
         ctx.fill(x, y, x + w, y + h, BACKGROUND);
         if (hit) { // lila Kasten, 2 Pixel dick
-            ctx.drawBorder(x, y, w, h, PURPLE);
-            ctx.drawBorder(x + 1, y + 1, w - 2, h - 2, PURPLE);
+           
         }
 
         int ty = y + 5;

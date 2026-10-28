@@ -5,6 +5,7 @@ import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
+import net.minecraft.client.gui.widget.SliderWidget;
 import net.minecraft.text.Text;
 
 import java.nio.file.Files;
@@ -13,77 +14,143 @@ import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.Locale;
 
-/** Das Soundboard-Menue (Taste K oder /soundboard). */
+/** Das Soundboard-Menü (Taste K oder /soundboard): links Play, rechts Lautstärke pro Sound. */
 public class SoundboardScreen extends Screen {
-    private int page;
-    private int pages = 1;
+    private static final int ROW_H = 22;
+    private static final int HEADER_H = 28;
+    private static final int FOOTER_H = 34;
+    private static final int SLIDER_W = 96;
 
-    public SoundboardScreen(int page) {
+    private static final int ACCENT = 0xFFAA00FF;
+    private static final int PANEL = 0xFF12141A;
+    private static final int HEADER = 0xFF1B1E27;
+    private static final int GREEN = 0xFF4ADE80;
+
+    private int scroll;                 // Index der ersten sichtbaren Zeile
+    private List<Path> files = List.of();
+    private int shown;                  // Anzahl sichtbarer Zeilen
+    private int px0, px1, py0, py1, rowY0;
+
+    public SoundboardScreen(int scroll) {
         super(Text.literal("Soundboard"));
-        this.page = page;
+        this.scroll = scroll;
     }
 
     @Override
     protected void init() {
-        List<Path> files = Soundboard.list();
-        int listTop = 36;
-        int listBottom = this.height - 100;
-        int perPage = Math.max(1, (listBottom - listTop) / 24);
-        pages = Math.max(1, (files.size() + perPage - 1) / perPage);
-        page = Math.max(0, Math.min(page, pages - 1));
+        files = Soundboard.list();
+        int maxRows = Math.max(3, (this.height - 24 - HEADER_H - FOOTER_H - 8) / ROW_H);
+        shown = Math.max(2, Math.min(files.size(), maxRows));
+        int maxScroll = Math.max(0, files.size() - shown);
+        scroll = Math.max(0, Math.min(scroll, maxScroll));
 
-        int w = 200;
-        int x = this.width / 2 - w / 2;
-        int y = listTop;
-        for (int i = page * perPage; i < Math.min(files.size(), (page + 1) * perPage); i++) {
-            Path f = files.get(i);
-            addDrawableChild(ButtonWidget.builder(Text.literal(shortName(f)), b -> Soundboard.play(f))
-                .dimensions(x, y, w, 20).build());
-            y += 24;
+        int panelW = Math.min(330, this.width - 20);
+        int panelH = HEADER_H + shown * ROW_H + FOOTER_H + 4;
+        px0 = (this.width - panelW) / 2;
+        px1 = px0 + panelW;
+        py0 = (this.height - panelH) / 2;
+        py1 = py0 + panelH;
+        rowY0 = py0 + HEADER_H + 2;
+
+        // Zeilen: Play-Knopf links, Regler rechts
+        for (int v = 0; v < shown && scroll + v < files.size(); v++) {
+            Path f = files.get(scroll + v);
+            int ry = rowY0 + v * ROW_H;
+            addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> Soundboard.play(f))
+                .dimensions(px0 + 6, ry + 1, 20, 20).build());
+            addDrawableChild(new VolumeSlider(px1 - 10 - SLIDER_W, ry + 1, SLIDER_W, 20, f));
         }
 
-        int half = 98;
-        int right = x + w - half;
-        // Lautstaerke
-        addDrawableChild(ButtonWidget.builder(Text.literal("Leiser"), b ->
-            Soundboard.volume = Math.max(0.1f, Math.round((Soundboard.volume - 0.1f) * 10f) / 10f))
-            .dimensions(x, this.height - 82, half, 20).build());
-        addDrawableChild(ButtonWidget.builder(Text.literal("Lauter"), b ->
-            Soundboard.volume = Math.min(2.0f, Math.round((Soundboard.volume + 0.1f) * 10f) / 10f))
-            .dimensions(right, this.height - 82, half, 20).build());
-        // Seiten
-        if (pages > 1) {
-            final int prev = (page + pages - 1) % pages;
-            final int next = (page + 1) % pages;
-            addDrawableChild(ButtonWidget.builder(Text.literal("< Zurueck"), b ->
-                MinecraftClient.getInstance().setScreen(new SoundboardScreen(prev)))
-                .dimensions(x, this.height - 58, half, 20).build());
-            addDrawableChild(ButtonWidget.builder(Text.literal("Weiter >"), b ->
-                MinecraftClient.getInstance().setScreen(new SoundboardScreen(next)))
-                .dimensions(right, this.height - 58, half, 20).build());
-        }
-        // Stopp / Ordner
+        // Kopfzeile: Selbst hören
+        boolean self = Soundboard.isListenSelf();
+        addDrawableChild(ButtonWidget.builder(Text.literal("Selbst hören: " + (self ? "Ein" : "Aus")), b -> {
+            Soundboard.setListenSelf(!Soundboard.isListenSelf());
+            MinecraftClient.getInstance().setScreen(new SoundboardScreen(scroll));
+        }).dimensions(px1 - 6 - 110, py0 + 4, 110, 20).build());
+
+        // Fußzeile: Stopp, Ordner öffnen
+        int half = (px1 - px0 - 18) / 2;
         addDrawableChild(ButtonWidget.builder(Text.literal("Stopp"), b -> Soundboard.stop())
-            .dimensions(x, this.height - 34, half, 20).build());
-        addDrawableChild(ButtonWidget.builder(Text.literal("Ordner oeffnen"), b -> Soundboard.openFolder())
-            .dimensions(right, this.height - 34, half, 20).build());
+            .dimensions(px0 + 6, py1 - 28, half, 20).build());
+        addDrawableChild(ButtonWidget.builder(Text.literal("Ordner öffnen"), b -> Soundboard.openFolder())
+            .dimensions(px0 + 12 + half, py1 - 28, half, 20).build());
     }
 
-    // Absichtlich ohne @Override: Stimmt die Signatur, wird sie genutzt; sonst fehlen nur die Texte, nicht die Buttons.
+    // Absichtlich ohne @Override: Passt die Signatur, ersetzt das den Standard-Hintergrund durch das dunkle Design.
+    // Passt sie nicht, bleibt der normale Hintergrund und alles funktioniert trotzdem.
+    public void renderBackground(DrawContext ctx, int mouseX, int mouseY, float delta) {
+        ctx.fill(0, 0, this.width, this.height, 0xB0000000);
+        ctx.fill(px0 - 1, py0 - 1, px1 + 1, py1 + 1, ACCENT);
+        ctx.fill(px0, py0, px1, py1, PANEL);
+        ctx.fill(px0, py0, px1, py0 + HEADER_H, HEADER);
+        ctx.fill(px0, py0 + HEADER_H, px1, py0 + HEADER_H + 1, ACCENT);
+
+        for (int v = 0; v < shown && scroll + v < files.size(); v++) {
+            int ry = rowY0 + v * ROW_H;
+            boolean playing = files.get(scroll + v).equals(Soundboard.nowPlaying);
+            int bg = playing ? 0x6022C55E : (v % 2 == 0 ? 0x30FFFFFF : 0x18FFFFFF);
+            ctx.fill(px0 + 3, ry, px1 - 3, ry + ROW_H - 1, bg);
+        }
+
+        // Scrollbalken, nur wenn nicht alles auf einmal passt
+        if (files.size() > shown) {
+            int trackTop = rowY0;
+            int trackH = shown * ROW_H - 1;
+            int thumbH = Math.max(12, trackH * shown / files.size());
+            int maxScroll = files.size() - shown;
+            int thumbY = trackTop + (trackH - thumbH) * scroll / maxScroll;
+            ctx.fill(px1 - 6, trackTop, px1 - 3, trackTop + trackH, 0x40FFFFFF);
+            ctx.fill(px1 - 6, thumbY, px1 - 3, thumbY + thumbH, ACCENT);
+        }
+    }
+
+    // Absichtlich ohne @Override: Stimmt die Signatur, werden die Texte und Symbole gezeichnet.
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
         super.render(ctx, mouseX, mouseY, delta);
         TextRenderer tr = MinecraftClient.getInstance().textRenderer;
-        centered(ctx, tr, "Soundboard (laeuft ueber Simple Voice Chat)", 12, 0xFFFFFFFF);
-        if (Soundboard.list().isEmpty()) {
-            centered(ctx, tr, "Keine MP3-Dateien im Ordner.", 60, 0xFFFFAA00);
-            centered(ctx, tr, "Auf 'Ordner oeffnen' klicken und MP3s hineinlegen.", 74, 0xFFB0B0B0);
+
+        ctx.drawTextWithShadow(tr, "Soundboard", px0 + 10, py0 + 6, 0xFFFFFFFF);
+        ctx.drawTextWithShadow(tr, "läuft über Simple Voice Chat", px0 + 10, py0 + 17, 0xFF8A8F9C);
+
+        if (files.isEmpty()) {
+            centered(ctx, tr, "Keine MP3-Dateien im Ordner.", rowY0 + 6, 0xFFFFAA00);
+            centered(ctx, tr, "Auf 'Ordner öffnen' klicken und MP3s hineinlegen.", rowY0 + 20, 0xFFB0B0B0);
+            return;
         }
-        String info = "Lautstaerke " + Math.round(Soundboard.volume * 100) + " %   -   Seite " + (page + 1) + "/" + pages
-            + (Soundboard.isPlaying() ? "   -   spielt" : "");
-        centered(ctx, tr, info, this.height - 96, 0xFFB0B0B0);
+
+        int nameX = px0 + 32;
+        int nameMax = (px1 - 10 - SLIDER_W - 6) - nameX;
+        for (int v = 0; v < shown && scroll + v < files.size(); v++) {
+            Path f = files.get(scroll + v);
+            int ry = rowY0 + v * ROW_H;
+            boolean playing = f.equals(Soundboard.nowPlaying);
+            ctx.drawTextWithShadow(tr, tr.trimToWidth(shortName(f), nameMax), nameX, ry + 7, playing ? 0xFFFFFFFF : 0xFFD6D9E0);
+            playTriangle(ctx, px0 + 6, ry + 1, playing ? 0xFFFFFFFF : GREEN);
+        }
     }
 
-    // Absichtlich ohne @Override (Name hat sich zwischen Versionen geaendert): MP3s per Drag-and-drop ins Fenster ziehen.
+    /** Zeichnet ein Play-Dreieck (zeigt nach rechts) in einen 20x20-Knopf. */
+    private static void playTriangle(DrawContext ctx, int bx, int by, int color) {
+        int cy = by + 10;
+        for (int c = 0; c < 6; c++) {
+            int h = 11 - 2 * c;
+            int top = cy - h / 2;
+            ctx.fill(bx + 7 + c, top, bx + 8 + c, top + h, color);
+        }
+    }
+
+    // Absichtlich ohne @Override (Signatur hat sich zwischen Versionen geändert): Mausrad scrollt die Liste.
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        if (files.size() > shown && verticalAmount != 0) {
+            int next = scroll + (verticalAmount > 0 ? -1 : 1);
+            next = Math.max(0, Math.min(next, files.size() - shown));
+            if (next != scroll) MinecraftClient.getInstance().setScreen(new SoundboardScreen(next));
+            return true;
+        }
+        return false;
+    }
+
+    // Absichtlich ohne @Override (Name hat sich zwischen Versionen geändert): MP3s per Drag-and-drop ins Fenster ziehen.
     public void filesDragged(List<Path> paths) {
         try {
             Path dir = Soundboard.folder();
@@ -96,16 +163,37 @@ public class SoundboardScreen extends Screen {
         } catch (Exception e) {
             SpotifyLyricsClient.LOGGER.warn("Drag-and-drop fehlgeschlagen", e);
         }
-        MinecraftClient.getInstance().setScreen(new SoundboardScreen(page));
+        MinecraftClient.getInstance().setScreen(new SoundboardScreen(scroll));
     }
 
     private static String shortName(Path f) {
         String n = f.getFileName().toString();
         if (n.toLowerCase(Locale.ROOT).endsWith(".mp3")) n = n.substring(0, n.length() - 4);
-        return n.length() > 30 ? n.substring(0, 29) + "..." : n;
+        return n;
     }
 
     private void centered(DrawContext ctx, TextRenderer tr, String s, int y, int color) {
         ctx.drawTextWithShadow(tr, s, (this.width - tr.getWidth(s)) / 2, y, color);
+    }
+
+    /** Lautstärkeregler für einen Sound: 0 bis 200 %, in 5-%-Schritten, wird gespeichert. */
+    private static class VolumeSlider extends SliderWidget {
+        private final Path file;
+
+        VolumeSlider(int x, int y, int w, int h, Path file) {
+            super(x, y, w, h, Text.literal(""), Soundboard.getVolume(file) / 2.0);
+            this.file = file;
+            updateMessage();
+        }
+
+        @Override
+        protected void updateMessage() {
+            setMessage(Text.literal(Math.round(Soundboard.snap(this.value * 2.0) * 100) + " %"));
+        }
+
+        @Override
+        protected void applyValue() {
+            Soundboard.setVolume(file, Soundboard.snap(this.value * 2.0));
+        }
     }
 }

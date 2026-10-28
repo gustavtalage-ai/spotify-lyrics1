@@ -16,6 +16,10 @@ public class Config {
     public String keyword = "musik";
     /** Feinabstimmung: positiv = Lyrics kommen früher. */
     public int offsetMs = 0;
+    /** Soundboard: Lautstärke pro Sound (Dateiname -> Faktor, 1.0 = 100 %). */
+    public java.util.Map<String, Float> soundVolumes = new java.util.HashMap<>();
+    /** Soundboard: Sound auch selbst hören. */
+    public boolean listenSelf = true;
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("spotifylyrics.json");

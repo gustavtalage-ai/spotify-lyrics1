@@ -5,20 +5,28 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.text.Text;
 import org.lwjgl.glfw.GLFW;
 
+import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.SourceDataLine;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 /**
- * Kern des Soundboards. Enthaelt absichtlich KEINE Klassen von Simple Voice Chat,
+ * Kern des Soundboards. Enthält absichtlich KEINE Klassen von Simple Voice Chat,
  * damit die Mod auch ohne Voice-Chat-Mod startet. Die Anbindung steckt in SoundboardPlugin.
  */
 public final class Soundboard {
@@ -36,18 +44,29 @@ public final class Soundboard {
         Pcm load(Path file) throws Exception;
     }
 
-    /** Wird von SoundboardPlugin gesetzt, sobald Simple Voice Chat die Mod laedt. */
+    /** Wird von SoundboardPlugin gesetzt, sobald Simple Voice Chat die Mod lädt. */
     public static volatile Loader loader;
+    /** Lautstärke des Sounds, der gerade läuft (wird pro Sound aus der Config geholt). */
     public static volatile float volume = 1.0f;
-    /** Wird von /soundboard gesetzt; der Tick oeffnet dann das Menue. */
+    /** Welche Datei gerade spielt (für die Hervorhebung im Menü). */
+    public static volatile Path nowPlaying;
+    /** Wird von /soundboard gesetzt; der Tick öffnet dann das Menü. */
     public static volatile boolean openRequested = false;
 
     private static final Object LOCK = new Object();
     private static short[] current;
     private static int pos;
-    private static volatile int frameSize = 960; // 20 ms bei 48 kHz, wird vom Voice Chat bestaetigt
+    private static volatile int frameSize = 960; // 20 ms bei 48 kHz, wird vom Voice Chat bestätigt
+    private static volatile int localToken = 0;  // macht laufende lokale Wiedergabe ungültig
     private static final Map<String, short[]> CACHE = new ConcurrentHashMap<>();
     private static boolean keyWasDown;
+
+    private static final ScheduledExecutorService SAVER = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread t = new Thread(r, "soundboard-save");
+        t.setDaemon(true);
+        return t;
+    });
+    private static ScheduledFuture<?> pendingSave;
 
     private Soundboard() {}
 
@@ -97,8 +116,44 @@ public final class Soundboard {
             else pb = new ProcessBuilder("xdg-open", dir.toString());
             pb.start();
         } catch (Exception e) {
-            SpotifyLyricsClient.chat(Text.literal("Ordner konnte nicht geoeffnet werden. Er liegt hier: " + folder().toAbsolutePath()));
+            SpotifyLyricsClient.chat(Text.literal("Ordner konnte nicht geöffnet werden. Er liegt hier: " + folder().toAbsolutePath()));
         }
+    }
+
+    // ---------- Lautstärke pro Sound ----------
+
+    /** Auf 5-%-Schritte runden, 0 bis 200 %. */
+    public static float snap(double v) {
+        return Math.max(0f, Math.min(2f, Math.round(v * 20.0) / 20f));
+    }
+
+    public static float getVolume(Path file) {
+        Map<String, Float> m = Config.INSTANCE.soundVolumes;
+        Float v = m == null ? null : m.get(file.getFileName().toString());
+        return v == null ? 1.0f : v;
+    }
+
+    public static void setVolume(Path file, float v) {
+        if (Config.INSTANCE.soundVolumes == null) Config.INSTANCE.soundVolumes = new HashMap<>();
+        Config.INSTANCE.soundVolumes.put(file.getFileName().toString(), v);
+        if (file.equals(nowPlaying)) volume = v; // wirkt sofort beim laufenden Sound
+        scheduleSave();
+    }
+
+    public static boolean isListenSelf() {
+        return Config.INSTANCE.listenSelf;
+    }
+
+    public static void setListenSelf(boolean on) {
+        Config.INSTANCE.listenSelf = on;
+        if (!on) localToken++; // laufende lokale Wiedergabe beenden
+        scheduleSave();
+    }
+
+    /** Speichert verzögert, damit beim Ziehen am Regler nicht dauernd geschrieben wird. */
+    private static synchronized void scheduleSave() {
+        if (pendingSave != null) pendingSave.cancel(false);
+        pendingSave = SAVER.schedule(() -> Config.INSTANCE.save(), 500, TimeUnit.MILLISECONDS);
     }
 
     // ---------- Abspielen ----------
@@ -109,6 +164,9 @@ public final class Soundboard {
             SpotifyLyricsClient.chat(Text.literal("Soundboard: Simple Voice Chat wurde nicht gefunden (Mod im mods-Ordner?)."));
             return;
         }
+        nowPlaying = file;
+        volume = getVolume(file);
+        final int token = ++localToken;
         Thread t = new Thread(() -> {
             try {
                 String key = file + ":" + Files.size(file);
@@ -117,13 +175,16 @@ public final class Soundboard {
                     pcm = toMono48k(l.load(file));
                     if (pcm.length <= SAMPLE_RATE * 30) CACHE.put(key, pcm); // kurze Sounds merken
                 }
+                if (token != localToken) return; // inzwischen wurde etwas anderes gestartet oder gestoppt
                 synchronized (LOCK) {
                     current = pcm;
                     pos = 0;
                 }
+                if (Config.INSTANCE.listenSelf) startLocal(pcm, token);
             } catch (Throwable e) {
                 SpotifyLyricsClient.LOGGER.warn("Sound konnte nicht geladen werden: " + file, e);
                 SpotifyLyricsClient.chat(Text.literal("Soundboard: Konnte " + file.getFileName() + " nicht laden."));
+                if (file.equals(nowPlaying)) nowPlaying = null;
             }
         }, "soundboard-load");
         t.setDaemon(true);
@@ -131,6 +192,8 @@ public final class Soundboard {
     }
 
     public static void stop() {
+        localToken++;
+        nowPlaying = null;
         synchronized (LOCK) {
             current = null;
         }
@@ -142,11 +205,44 @@ public final class Soundboard {
         }
     }
 
+    /** Spielt den Sound zusätzlich bei dir selbst ab (reines Java, unabhängig vom Voice Chat). */
+    private static void startLocal(short[] pcm, int token) {
+        Thread t = new Thread(() -> {
+            SourceDataLine line = null;
+            try {
+                AudioFormat fmt = new AudioFormat(SAMPLE_RATE, 16, 1, true, false);
+                line = AudioSystem.getSourceDataLine(fmt);
+                line.open(fmt, 19200);
+                line.start();
+                byte[] buf = new byte[1920];
+                int p = 0;
+                while (p < pcm.length && token == localToken) {
+                    int n = Math.min(960, pcm.length - p);
+                    float v = volume;
+                    for (int i = 0; i < n; i++) {
+                        int s = Math.max(-32768, Math.min(32767, Math.round(pcm[p + i] * v)));
+                        buf[2 * i] = (byte) s;
+                        buf[2 * i + 1] = (byte) (s >> 8);
+                    }
+                    line.write(buf, 0, n * 2);
+                    p += n;
+                }
+                if (token == localToken) line.drain(); else line.flush();
+            } catch (Throwable e) {
+                SpotifyLyricsClient.LOGGER.debug("Lokale Wiedergabe nicht möglich", e);
+            } finally {
+                if (line != null) line.close();
+            }
+        }, "soundboard-local");
+        t.setDaemon(true);
+        t.start();
+    }
+
     public static void noteFrameSize(int n) {
         if (n > 0) frameSize = n;
     }
 
-    /** Wird vom Voice-Chat-Thread fuer jedes 20-ms-Stueck gerufen. Gibt null zurueck, wenn nichts laeuft. */
+    /** Wird vom Voice-Chat-Thread für jedes 20-ms-Stück gerufen. Gibt null zurück, wenn nichts läuft. */
     public static short[] nextFrame() {
         synchronized (LOCK) {
             if (current == null) return null;
@@ -159,7 +255,10 @@ public final class Soundboard {
                 out[i] = (short) Math.max(-32768, Math.min(32767, s));
             }
             pos += copy;
-            if (pos >= current.length) current = null;
+            if (pos >= current.length) {
+                current = null;
+                nowPlaying = null;
+            }
             return out;
         }
     }

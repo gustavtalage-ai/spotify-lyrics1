@@ -63,6 +63,7 @@ public final class Soundboard {
     private static short[] current;
     private static int pos;
     private static volatile int frameSize = 960; // 20 ms bei 48 kHz, wird vom Voice Chat bestätigt
+    private static volatile int localGen = 0;     // wechselt, wenn "Selbst hören" umgeschaltet wird
     private static volatile int localToken = 0;  // macht laufende lokale Wiedergabe ungültig
     private static final Map<String, short[]> CACHE = new ConcurrentHashMap<>();
     private static boolean keyWasDown;
@@ -218,7 +219,16 @@ public final class Soundboard {
 
     public static void setListenSelf(boolean on) {
         Config.INSTANCE.listenSelf = on;
-        if (!on) localToken++; // laufende lokale Wiedergabe beenden
+        localGen++; // laufende lokale Wiedergabe beenden
+        if (on && isActive()) {
+            // Sound läuft schon: ab der aktuellen Stelle bei dir mithören
+            short[] pcm;
+            synchronized (LOCK) {
+                pcm = current;
+            }
+            long ms = positionMs();
+            if (pcm != null && ms >= 0) startLocal(pcm, localToken, (int) (ms * SAMPLE_RATE / 1000L), localGen);
+        }
         scheduleSave();
     }
 
@@ -257,7 +267,7 @@ public final class Soundboard {
                 }
                 durationMs = pcm.length * 1000L / SAMPLE_RATE;
                 startNanos = System.nanoTime();
-                if (Config.INSTANCE.listenSelf) startLocal(pcm, token);
+                if (Config.INSTANCE.listenSelf) startLocal(pcm, token, 0, localGen);
                 try {
                     SoundLyrics.request(file, durationMs, token, pcm);
                 } catch (Throwable e) {
@@ -345,7 +355,7 @@ public final class Soundboard {
     }
 
     /** Spielt den Sound zusätzlich bei dir selbst ab (reines Java, unabhängig vom Voice Chat). */
-    private static void startLocal(short[] pcm, int token) {
+    private static void startLocal(short[] pcm, int token, int startSample, int gen) {
         Thread t = new Thread(() -> {
             SourceDataLine line = null;
             try {
@@ -354,8 +364,8 @@ public final class Soundboard {
                 if (line == null) return; // inzwischen wurde etwas anderes gestartet
                 line.start();
                 byte[] buf = new byte[1920];
-                int p = 0;
-                while (p < pcm.length && token == localToken) {
+                int p = Math.max(0, Math.min(pcm.length, startSample));
+                while (p < pcm.length && token == localToken && gen == localGen) {
                     int n = Math.min(960, pcm.length - p);
                     float v = volume;
                     for (int i = 0; i < n; i++) {
@@ -366,7 +376,7 @@ public final class Soundboard {
                     line.write(buf, 0, n * 2);
                     p += n;
                 }
-                if (token == localToken) line.drain(); else line.flush();
+                if (token == localToken && gen == localGen) line.drain(); else line.flush();
             } catch (Throwable e) {
                 SpotifyLyricsClient.LOGGER.warn("Lokale Wiedergabe nicht möglich", e);
                 if (token == localToken) {

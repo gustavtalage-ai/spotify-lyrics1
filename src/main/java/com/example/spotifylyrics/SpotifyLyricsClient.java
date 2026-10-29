@@ -34,6 +34,8 @@ public class SpotifyLyricsClient implements ClientModInitializer {
         HudElementRegistry.addLast(Identifier.of("spotifylyrics", "lyrics"), LyricsHud::render);
         HudElementRegistry.addLast(Identifier.of("spotifylyrics", "soundicon"), SoundIcon::render);
         ClientTickEvents.END_CLIENT_TICK.register(Lightshow::tick);
+        ClientTickEvents.END_CLIENT_TICK.register(PlaceHelper::tick);
+        ClientTickEvents.END_CLIENT_TICK.register(InventoryFilter::tick);
         // Server/Welt verlassen oder Spiel beenden: Spotify pausieren
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> SpotifyControl.pauseAndWait());
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> SpotifyControl.pauseAndWait());

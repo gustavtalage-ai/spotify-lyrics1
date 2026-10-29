@@ -42,6 +42,7 @@ public class SoundboardScreen extends Screen {
     private static long songChangedAt = 0;
     private static String searchedText = "";
     private int tabW = 83;
+    private boolean playerConnected = true;
 
     private int scroll;                 // Index der ersten sichtbaren Zeile
     private List<Path> files = List.of();
@@ -173,12 +174,18 @@ public class SoundboardScreen extends Screen {
     private void initPlayer() {
         int w = px1 - px0 - 16, y0 = spotY();
         int bw = (w - 8) / 3;
-        addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> SpotifyControl.previous())
-            .dimensions(px0 + 8, y0 + 38, bw, 22).build());
-        addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> SpotifyControl.toggle())
-            .dimensions(px0 + 12 + bw, y0 + 38, bw, 22).build());
-        addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> SpotifyControl.next())
-            .dimensions(px0 + 16 + 2 * bw, y0 + 38, bw, 22).build());
+        playerConnected = !Config.INSTANCE.refreshToken.isBlank();
+        if (!playerConnected) {
+            addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> SpotifyControl.login())
+                .dimensions(px0 + 8, y0 + 38, w, 22).build());
+        } else {
+            addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> SpotifyControl.previous())
+                .dimensions(px0 + 8, y0 + 38, bw, 22).build());
+            addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> SpotifyControl.toggle())
+                .dimensions(px0 + 12 + bw, y0 + 38, bw, 22).build());
+            addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> SpotifyControl.next())
+                .dimensions(px0 + 16 + 2 * bw, y0 + 38, bw, 22).build());
+        }
 
         TextFieldWidget f = new TextFieldWidget(this.textRenderer, px0 + 8, y0 + 64, w, 18, Text.literal("Song suchen"));
         f.setMaxLength(60);
@@ -218,6 +225,11 @@ public class SoundboardScreen extends Screen {
             SpotifyControl.search(songText.trim());
         }
 
+        // Nach dem Login Menü neu aufbauen (Verbinden-Knopf -> Steuerung)
+        if (playerConnected != !Config.INSTANCE.refreshToken.isBlank()) {
+            MinecraftClient.getInstance().setScreen(new SoundboardScreen(0));
+            return;
+        }
         String msg = SpotifyControl.message;
         // Aktueller Song mit Fortschrittsbalken
         Ui.round2(ctx, x0, y0, x0 + w, y0 + 34, 0xFF1A1D26);
@@ -235,14 +247,20 @@ public class SoundboardScreen extends Screen {
             ctx.fill(x0 + 10, y0 + 28, x0 + 10 + bar, y0 + 30, 0xFF1ED760);
         } else {
             ctx.drawTextWithShadow(tr, "Es läuft nichts", x0 + 10, y0 + 7, 0xFFFFFFFF);
-            if (msg.isEmpty()) ctx.drawTextWithShadow(tr, tr.trimToWidth("Nicht verbunden? Im Spiel: /lyrics login", w - 20), x0 + 10, y0 + 19, 0xFF9AA0AE);
+            if (msg.isEmpty()) ctx.drawTextWithShadow(tr, tr.trimToWidth("Spotify ist noch nicht verbunden.", w - 20), x0 + 10, y0 + 19, 0xFF9AA0AE);
             else ctx.drawTextWithShadow(tr, tr.trimToWidth(msg, w - 20), x0 + 10, y0 + 19, 0xFFFFAA00);
         }
 
         // Steuerung
         int bw = (w - 8) / 3;
         String[] labels = {"<< Zurück", (st != null && st.playing()) ? "Pause" : "Abspielen", "Weiter >>"};
-        for (int i = 0; i < 3; i++) {
+        if (!playerConnected) {
+            boolean hc = Ui.in(mouseX, mouseY, x0, y0 + 38, x0 + w, y0 + 60);
+            Ui.round2(ctx, x0, y0 + 38, x0 + w, y0 + 60, hc ? 0xFF1FB455 : 0xFF1ED760);
+            String lt = "Mit Spotify verbinden";
+            ctx.drawTextWithShadow(tr, lt, x0 + (w - tr.getWidth(lt)) / 2, y0 + 45, 0xFF06140B);
+        }
+        for (int i = 0; i < 3 && playerConnected; i++) {
             int bx = x0 + i * (bw + 4);
             boolean h = Ui.in(mouseX, mouseY, bx, y0 + 38, bx + bw, y0 + 60);
             Ui.round2(ctx, bx, y0 + 38, bx + bw, y0 + 60, i == 1 ? (h ? 0xFF1FB455 : 0xFF1ED760) : (h ? 0xFF2A3040 : 0xFF1F232E));

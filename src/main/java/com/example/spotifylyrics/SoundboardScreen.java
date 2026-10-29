@@ -76,9 +76,12 @@ public class SoundboardScreen extends Screen {
         } else if (tab == 2) {
             shown = 0;
             panelH = HEADER_H + TAB_H + 8 + CARD_ROWS * (CARD_H + 4) + FOOTER_H + 2;
-        } else {
+        } else if (tab == 3) {
             shown = 0;
             panelH = HEADER_H + TAB_H + 8 + 110 + DEV_SLOTS * 22 + FOOTER_H + 2;
+        } else {
+            shown = 0;
+            panelH = HEADER_H + TAB_H + 8 + 124 + FOOTER_H + 2;
         }
         px0 = (this.width - panelW) / 2;
         px1 = px0 + panelW;
@@ -86,10 +89,10 @@ public class SoundboardScreen extends Screen {
         py1 = py0 + panelH;
         rowY0 = py0 + HEADER_H + TAB_H + SEARCH_H + 2;
         half = (px1 - px0 - 24) / 2;
-        tabW = Math.max(40, (px1 - px0 - 16 - 3 * 4) / 4);
+        tabW = Math.max(40, (px1 - px0 - 16 - 4 * 4) / 5);
 
         // Untertabs (die Knöpfe erledigen das Klicken, gezeichnet werden sie in render())
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 5; i++) {
             final int target = i;
             addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> {
                 if (tab != target) {
@@ -99,7 +102,7 @@ public class SoundboardScreen extends Screen {
             }).dimensions(tabX(i), tabY(), tabW, 18).build());
         }
 
-        if (tab <= 1) initSounds(); else if (tab == 2) initVoice(); else initPlayer();
+        if (tab <= 1) initSounds(); else if (tab == 2) initVoice(); else if (tab == 3) initPlayer(); else initTools();
     }
 
     private int tabX(int i) {
@@ -365,6 +368,74 @@ public class SoundboardScreen extends Screen {
         ctx.drawTextWithShadow(tr, tr.trimToWidth(mode, half - 8), x2 + Math.max(4, (half - tr.getWidth(mode)) / 2), fy + 6, 0xFFD6D9E0);
     }
 
+    private void reopenTools() {
+        MinecraftClient.getInstance().setScreen(new SoundboardScreen(0));
+    }
+
+    private void initTools() {
+        Config cfg = Config.INSTANCE;
+        int x0 = px0 + 8, w = px1 - px0 - 16, y0 = spotY() + 12;
+        int hw = (w - 4) / 2;
+        addDrawableChild(ButtonWidget.builder(Text.literal("Platzhilfe: " + (cfg.placeHelper ? "AN" : "AUS")), b -> {
+            cfg.placeHelper = !cfg.placeHelper;
+            cfg.save();
+            reopenTools();
+        }).dimensions(x0, y0, hw, 20).build());
+        addDrawableChild(ButtonWidget.builder(Text.literal("Startpunkt setzen"), b -> {
+            cfg.placeHelper = true;
+            cfg.save();
+            PlaceHelper.pendingStart = true;
+            MinecraftClient.getInstance().setScreen(null);
+        }).dimensions(x0 + hw + 4, y0, hw, 20).build());
+
+        int y1 = y0 + 24;
+        addDrawableChild(ButtonWidget.builder(Text.literal("-"), b -> {
+            cfg.placeSpacing = Math.max(1, cfg.placeSpacing - 1);
+            cfg.save();
+            reopenTools();
+        }).dimensions(x0, y1, 24, 20).build());
+        ButtonWidget lab = ButtonWidget.builder(Text.literal("Abstand: " + cfg.placeSpacing + " (jeder " + cfg.placeSpacing + ". Block)"), b -> { })
+            .dimensions(x0 + 28, y1, w - 56, 20).build();
+        lab.active = false;
+        addDrawableChild(lab);
+        addDrawableChild(ButtonWidget.builder(Text.literal("+"), b -> {
+            cfg.placeSpacing = Math.min(32, cfg.placeSpacing + 1);
+            cfg.save();
+            reopenTools();
+        }).dimensions(x0 + w - 24, y1, 24, 20).build());
+
+        int y2 = y1 + 24;
+        String dn = cfg.placeDir < 0 || cfg.placeDir >= PlaceHelper.DIR_NAMES.length ? "Blickrichtung" : PlaceHelper.DIR_NAMES[cfg.placeDir];
+        addDrawableChild(ButtonWidget.builder(Text.literal("Richtung: " + dn), b -> {
+            cfg.placeDir = cfg.placeDir + 1 >= PlaceHelper.DIR_NAMES.length ? -1 : cfg.placeDir + 1;
+            cfg.save();
+            reopenTools();
+        }).dimensions(x0, y2, hw, 20).build());
+        addDrawableChild(ButtonWidget.builder(Text.literal("Markierung löschen"), b -> {
+            PlaceHelper.clear();
+            reopenTools();
+        }).dimensions(x0 + hw + 4, y2, hw, 20).build());
+
+        int y3 = y2 + 40;
+        addDrawableChild(ButtonWidget.builder(Text.literal("Item-Filter einrichten"), b ->
+            MinecraftClient.getInstance().setScreen(new FilterScreen())
+        ).dimensions(x0, y3, hw, 20).build());
+        addDrawableChild(ButtonWidget.builder(Text.literal("Filter: " + (cfg.filterOn ? "AN" : "AUS") + " (" + cfg.filterRules.size() + " Regeln)"), b -> {
+            cfg.filterOn = !cfg.filterOn;
+            cfg.save();
+            reopenTools();
+        }).dimensions(x0 + hw + 4, y3, hw, 20).build());
+    }
+
+    private void renderTools(DrawContext ctx, TextRenderer tr) {
+        int x0 = px0 + 10, y0 = spotY();
+        ctx.drawTextWithShadow(tr, "Platzhilfe", x0, y0 + 1, 0xFFC77DFF);
+        ctx.drawTextWithShadow(tr, tr.trimToWidth(PlaceHelper.describe(), px1 - px0 - 100), px0 + 80, y0 + 1, 0xFF7E8494);
+        ctx.drawTextWithShadow(tr, "Inventar", x0, y0 + 88, 0xFFC77DFF);
+        ctx.drawTextWithShadow(tr, "Zielblock anschauen, Startpunkt setzen:", px0 + 10, py1 - FOOTER_H + 8, 0xFF9AA0AE);
+        ctx.drawTextWithShadow(tr, "grün = Start, blau = jeder n-te Block.", px0 + 10, py1 - FOOTER_H + 20, 0xFF9AA0AE);
+    }
+
     private static String mmss(long ms) {
         long s = Math.max(0, ms) / 1000;
         return (s / 60) + ":" + (s % 60 < 10 ? "0" : "") + (s % 60);
@@ -465,13 +536,15 @@ public class SoundboardScreen extends Screen {
             ctx.drawTextWithShadow(tr, catTotal + what, px0 + 22, py0 + 19, 0xFF7E8494);
         } else if (tab == 2) {
             ctx.drawTextWithShadow(tr, "Verändert dein Mikrofon", px0 + 22, py0 + 19, 0xFF7E8494);
-        } else {
+        } else if (tab == 3) {
             ctx.drawTextWithShadow(tr, "Songs suchen und abspielen", px0 + 22, py0 + 19, 0xFF7E8494);
+        } else {
+            ctx.drawTextWithShadow(tr, "Platzhilfe und Item-Filter", px0 + 22, py0 + 19, 0xFF7E8494);
         }
 
         // Untertabs
-        String[] tabNames = {"Effekte", "Musik", "Voice Changer", "Spotify"};
-        for (int i = 0; i < 4; i++) {
+        String[] tabNames = {"Effekte", "Musik", "Voice", "Spotify", "Tools"};
+        for (int i = 0; i < 5; i++) {
             int tx = tabX(i), ty = tabY();
             boolean sel = tab == i;
             boolean hov = Ui.in(mouseX, mouseY, tx, ty, tx + tabW, ty + 18);
@@ -481,7 +554,7 @@ public class SoundboardScreen extends Screen {
             ctx.drawTextWithShadow(tr, tabNames[i], tx + (tabW - tw) / 2, ty + 5, sel ? 0xFFFFFFFF : 0xFF9AA0AE);
         }
 
-        if (tab <= 1) renderSounds(ctx, tr, mouseX, mouseY); else if (tab == 2) renderVoice(ctx, tr, mouseX, mouseY); else renderPlayer(ctx, tr, mouseX, mouseY);
+        if (tab <= 1) renderSounds(ctx, tr, mouseX, mouseY); else if (tab == 2) renderVoice(ctx, tr, mouseX, mouseY); else if (tab == 3) renderPlayer(ctx, tr, mouseX, mouseY); else renderTools(ctx, tr);
     }
 
     private void renderVoice(DrawContext ctx, TextRenderer tr, int mouseX, int mouseY) {

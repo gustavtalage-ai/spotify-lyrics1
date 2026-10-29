@@ -5,7 +5,7 @@ import net.minecraft.particle.DustParticleEffect;
 
 import java.util.Random;
 
-/** Lichtshow: bunte Leuchtpunkte am Himmel rund um dich herum, im Takt der Musik. Der Bildschirm bleibt frei. */
+/** Lichtshow: Scheinwerfer-Strahlen, die rund um dich in den Himmel leuchten, im Takt der Musik. Der Bildschirm bleibt frei. */
 public class Lightshow {
     public static final String[] MODES = {"Regenbogen", "Lila", "Blau", "Feuer"};
 
@@ -57,7 +57,7 @@ public class Lightshow {
         return color(Config.INSTANCE.lightMode, t, side);
     }
 
-    /** Jeden Client-Tick: setzt Leuchtpunkte in den Himmel um den Spieler. */
+    /** Jeden Client-Tick: setzt Leuchtpunkte entlang von Scheinwerfer-Strahlen in den Himmel. */
     public static void tick(MinecraftClient mc) {
         try {
             Config cfg = Config.INSTANCE;
@@ -89,17 +89,33 @@ public class Lightshow {
 
             double px = mc.player.getX(), py = mc.player.getY(), pz = mc.player.getZ();
             float t = now / 1000f;
-            int count = 8 + (int) (shown * 28);
-            float size = 1.6f + shown * 2.4f;
-            for (int i = 0; i < count; i++) {
-                double ang = RND.nextDouble() * Math.PI * 2;
-                double elev = Math.toRadians(10 + RND.nextDouble() * 65);
-                double r = 14 + RND.nextDouble() * 16;
-                double x = px + Math.cos(ang) * Math.cos(elev) * r;
-                double y = py + 1.6 + Math.sin(elev) * r;
-                double z = pz + Math.sin(ang) * Math.cos(elev) * r;
-                int rgb = color(cfg.lightMode, t, (float) (ang / (Math.PI * 2) * 4.0));
-                mc.particleManager.addParticle(new DustParticleEffect(rgb, size), x, y, z, 0, 0.01, 0);
+            // Scheinwerfer: Strahlen, die vom Boden rund um dich in den Himmel leuchten und hin und her schwenken
+            int beams = 5 + (int) (shown * 5);
+            float size = 2.6f + shown * 1.4f;
+            double sweep = 0.35 + 0.35 * shown;
+            for (int b = 0; b < beams; b++) {
+                double baseAng = (b / (double) beams) * Math.PI * 2 + t * 0.08;
+                double rad = 9 + 5 * (b % 3);
+                double bx = px + Math.cos(baseAng) * rad;
+                double bz = pz + Math.sin(baseAng) * rad;
+                double by = py + 0.5;
+                // Schwenken: jeder Strahl pendelt anders, die Richtung zeigt grob nach oben
+                double ph = b * 1.7;
+                double dx = Math.sin(t * 1.1 + ph) * sweep;
+                double dz = Math.cos(t * 0.9 + ph * 1.3) * sweep;
+                double dy = 1.0;
+                double len = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                dx /= len; dy /= len; dz /= len;
+                for (double d = 2; d < 70; d += 3.0) {
+                    if (RND.nextFloat() < 0.35f) continue;
+                    double jx = (RND.nextDouble() - 0.5) * 0.5;
+                    double jz = (RND.nextDouble() - 0.5) * 0.5;
+                    double x = bx + dx * d + jx;
+                    double y = by + dy * d;
+                    double z = bz + dz * d + jz;
+                    int rgb = color(cfg.lightMode, t + (float) d * 0.02f, (float) b / beams * 4f);
+                    mc.particleManager.addParticle(new DustParticleEffect(rgb, size), x, y, z, 0, 0, 0);
+                }
             }
         } catch (Throwable e) {
             shown = 0f;

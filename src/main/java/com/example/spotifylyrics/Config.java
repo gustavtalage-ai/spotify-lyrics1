@@ -9,7 +9,7 @@ import java.nio.file.Path;
 
 /** Einstellungen, gespeichert in .minecraft/config/spotifylyrics.json */
 public class Config {
-    public String clientId = "";
+    public String clientId = "e99a8703feb94217839c96299a537b19";
     public String refreshToken = "";
     public boolean enabled = true;
     /** Kommt dieses Wort in der Zeile vor, wird sie lila umrandet. */
@@ -45,7 +45,10 @@ public class Config {
         try {
             if (Files.exists(FILE)) {
                 Config c = GSON.fromJson(Files.readString(FILE), Config.class);
-                if (c != null) return c;
+                if (c != null) {
+                    if (c.clientId == null || c.clientId.isBlank()) c.clientId = "e99a8703feb94217839c96299a537b19";
+                    return c;
+                }
             }
         } catch (Exception e) {
             SpotifyLyricsClient.LOGGER.warn("Config konnte nicht gelesen werden", e);

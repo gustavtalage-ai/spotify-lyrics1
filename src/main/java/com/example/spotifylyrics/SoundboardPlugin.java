@@ -39,10 +39,14 @@ public class SoundboardPlugin implements VoicechatPlugin {
             short[] frame = Soundboard.nextFrame();
             if (frame != null) event.mergeAudio(frame);
         });
-        // Nur um die echte Stueckgroesse des Voice Chats zu lernen.
+        // Lernt die echte Stueckgroesse des Voice Chats und wendet den Voice Changer auf dein Mikrofon an.
         registration.registerEvent(ClientSoundEvent.class, event -> {
             short[] raw = event.getRawAudio();
-            if (raw != null && raw.length > 0) Soundboard.noteFrameSize(raw.length);
+            if (raw != null && raw.length > 0) {
+                Soundboard.noteFrameSize(raw.length);
+                short[] changed = VoiceChanger.process(raw);
+                if (changed != null) event.setRawAudio(changed);
+            }
         });
     }
 

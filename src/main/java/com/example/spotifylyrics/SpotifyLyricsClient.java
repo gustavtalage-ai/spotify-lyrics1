@@ -8,7 +8,9 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.text.ClickEvent;
@@ -32,6 +34,9 @@ public class SpotifyLyricsClient implements ClientModInitializer {
         HudElementRegistry.addLast(Identifier.of("spotifylyrics", "lyrics"), LyricsHud::render);
         HudElementRegistry.addLast(Identifier.of("spotifylyrics", "soundicon"), SoundIcon::render);
         ClientTickEvents.END_CLIENT_TICK.register(Lightshow::tick);
+        // Server/Welt verlassen oder Spiel beenden: Spotify pausieren
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> SpotifyControl.pauseAndWait());
+        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> SpotifyControl.pauseAndWait());
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> registerCommands(dispatcher));
     }
 

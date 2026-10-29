@@ -238,13 +238,15 @@ public class SpotifyApi {
         Thread t = new Thread(() -> {
             String lastId = "";
             while (true) {
-                long sleepMs = 3000;
+                long sleepMs = 2000;
                 try {
                     Config cfg = Config.INSTANCE;
                     if (cfg.enabled && !cfg.refreshToken.isBlank() && ensureToken()) {
+                        long t0 = System.nanoTime();
                         Resp r = http("GET", API + "/me/player/currently-playing", null, accessToken);
+                        long t1 = System.nanoTime();
                         if (r.code() == 200) {
-                            State s = parseState(r.body());
+                            State s = parseState(r.body(), t0 + (t1 - t0) / 2);   // Position gilt für die Mitte der Anfrage
                             state = s;
                             if (s != null && !s.track().id().equals(lastId)) {
                                 lastId = s.track().id();
@@ -274,7 +276,7 @@ public class SpotifyApi {
         t.start();
     }
 
-    private static State parseState(String body) {
+    private static State parseState(String body, long when) {
         if (body == null || body.isBlank()) return null;
         JsonObject o = JsonParser.parseString(body).getAsJsonObject();
         JsonElement type = o.get("currently_playing_type");
@@ -291,6 +293,6 @@ public class SpotifyApi {
                 it.get("duration_ms").getAsLong());
         boolean playing = o.has("is_playing") && o.get("is_playing").getAsBoolean();
         long progress = o.has("progress_ms") && !o.get("progress_ms").isJsonNull() ? o.get("progress_ms").getAsLong() : 0;
-        return new State(tr, playing, progress, System.nanoTime());
+        return new State(tr, playing, progress, when);
     }
 }

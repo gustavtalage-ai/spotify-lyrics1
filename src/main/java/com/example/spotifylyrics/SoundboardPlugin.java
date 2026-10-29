@@ -34,9 +34,13 @@ public class SoundboardPlugin implements VoicechatPlugin {
 
     @Override
     public void registerEvents(EventRegistration registration) {
-        // Wird fuer jedes 20-ms-Stueck gerufen, auch wenn du still bist: eigenes Audio (Sounds, Spotify-PC-Ton) ins Mikrofon mischen.
+        // Wird fuer jedes 20-ms-Stueck gerufen, auch wenn du still bist: eigenes Audio ins Mikrofon mischen.
         registration.registerEvent(MergeClientSoundEvent.class, event -> {
-            short[] frame = SpotifyShare.mix(Soundboard.nextFrame(), SpotifyShare.nextFrame());
+            short[] a = Soundboard.nextFrame();
+            short[] b = SpotifyShare.nextFrame();
+            Lightshow.feed(a);
+            Lightshow.feed(b);
+            short[] frame = SpotifyShare.mix(a, b);
             if (frame != null) event.mergeAudio(frame);
         });
         // Lernt die echte Stueckgroesse des Voice Chats und wendet den Voice Changer auf dein Mikrofon an.

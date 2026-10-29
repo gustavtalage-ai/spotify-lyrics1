@@ -30,6 +30,9 @@ public class Config {
     public boolean spotifyShare = false;
     public String spotifyDevice = "";
     public float spotifyVolume = 1.0f;
+    /** Lichtshow am Bildschirmrand und Farbmodus. */
+    public boolean lightshow = true;
+    public int lightMode = 0;
     /** Noten-Symbol: Abstand von links und von unten (in GUI-Pixeln). */
     public int noteX = 20;
     public int noteY = 3;

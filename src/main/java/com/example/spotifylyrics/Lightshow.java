@@ -1,17 +1,20 @@
 package com.example.spotifylyrics;
 
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.render.RenderTickCounter;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.particle.DustParticleEffect;
 
-/** Lichtshow: farbiges Leuchten an den Bildschirmrändern, das zur Musik pulsiert. */
+import java.util.Random;
+
+/** Lichtshow: bunte Leuchtpunkte am Himmel rund um dich herum, im Takt der Musik. Der Bildschirm bleibt frei. */
 public class Lightshow {
     public static final String[] MODES = {"Regenbogen", "Lila", "Blau", "Feuer"};
 
+    private static final Random RND = new Random();
     private static volatile float level = 0f;       // 0..1, geglättet
     private static volatile long lastAudioMs = 0;    // wann zuletzt echtes Audio ankam
     private static float shown = 0f;
 
-    /** Echtes Audio (Soundboard oder PC-Ton), 20-ms-Stücke aus dem Voice-Chat-Plugin. */
+    /** Echtes Audio (Soundboard), 20-ms-Stücke aus dem Voice-Chat-Plugin. */
     public static void feed(short[] frame) {
         if (frame == null || frame.length == 0) return;
         double sum = 0;
@@ -49,60 +52,52 @@ public class Lightshow {
         }
     }
 
-    public static void render(DrawContext ctx, RenderTickCounter tickCounter) {
-        Config cfg = Config.INSTANCE;
-        if (!cfg.lightshow) return;
-        long now = System.currentTimeMillis();
-        boolean realAudio = now - lastAudioMs < 600;
-        SpotifyApi.State st = SpotifyApi.state;
-        boolean spotifyPlaying = st != null && st.playing();
-        if (!realAudio && !spotifyPlaying && !Soundboard.isActive()) {
-            shown = shown * 0.9f;
-            if (shown < 0.01f) return;
-        }
-
-        // Stärke: echtes Audio, sonst ein gleichmäßiger Takt (Spotify liefert dem Mod keinen Ton)
-        float target;
-        if (realAudio) {
-            target = level;
-        } else {
-            double beat = (now % 500L) / 500.0;                 // ca. 120 BPM
-            target = (float) (0.25 + 0.45 * Math.pow(1.0 - beat, 3));
-        }
-        shown += (target - shown) * (target > shown ? 0.6f : 0.15f);
-
-        int w = ctx.getScaledWindowWidth();
-        int h = ctx.getScaledWindowHeight();
-        float t = now / 1000f;
-        int layers = 14;
-        int thick = 2 + (int) (shown * 3);
-        for (int side = 0; side < 4; side++) {
-            int rgb = color(cfg.lightMode, t, side);
-            for (int i = 0; i < layers; i++) {
-                float fall = 1f - i / (float) layers;
-                int a = (int) (shown * 150 * fall * fall);
-                if (a < 2) continue;
-                int c = (a << 24) | rgb;
-                int d0 = i * thick / 2;
-                int d1 = d0 + Math.max(1, thick / 2 + 1);
-                switch (side) {
-                    case 0: ctx.fill(0, d0, w, d1, c); break;                 // oben
-                    case 1: ctx.fill(0, h - d1, w, h - d0, c); break;         // unten
-                    case 2: ctx.fill(d0, 0, d1, h, c); break;                 // links
-                    default: ctx.fill(w - d1, 0, w - d0, h, c); break;        // rechts
-                }
+    /** Jeden Client-Tick: setzt Leuchtpunkte in den Himmel um den Spieler. */
+    public static void tick(MinecraftClient mc) {
+        try {
+            Config cfg = Config.INSTANCE;
+            if (!cfg.lightshow || mc.world == null || mc.player == null || mc.isPaused()) {
+                shown = shown * 0.8f;
+                return;
             }
-        }
-        // Equalizer-Balken unten Mitte
-        int bars = 24;
-        int bw = 4, gap = 2;
-        int total = bars * (bw + gap);
-        int bx = (w - total) / 2;
-        for (int i = 0; i < bars; i++) {
-            double wave = 0.5 + 0.5 * Math.sin(t * 6 + i * 0.7) * Math.sin(t * 2.3 + i * 0.3);
-            int bh = 2 + (int) (shown * 26 * (0.3 + 0.7 * wave));
-            int c = 0xC0000000 | color(cfg.lightMode, t, i / (float) bars);
-            ctx.fill(bx + i * (bw + gap), h - 2 - bh, bx + i * (bw + gap) + bw, h - 2, c);
+            long now = System.currentTimeMillis();
+            boolean realAudio = now - lastAudioMs < 600;
+            SpotifyApi.State st = SpotifyApi.state;
+            boolean spotifyPlaying = st != null && st.playing();
+            boolean active = realAudio || spotifyPlaying || Soundboard.isActive();
+            if (!active) {
+                shown = shown * 0.85f;
+                if (shown < 0.03f) return;
+            }
+
+            // Stärke: echtes Audio, sonst ein gleichmäßiger Takt (Spotify liefert dem Mod keinen Ton)
+            float target;
+            if (realAudio) {
+                target = level;
+            } else {
+                double beat = (now % 500L) / 500.0;                 // ca. 120 BPM
+                target = (float) (0.25 + 0.45 * Math.pow(1.0 - beat, 3));
+            }
+            if (!active) target = 0f;
+            shown += (target - shown) * (target > shown ? 0.6f : 0.15f);
+            if (shown < 0.03f) return;
+
+            double px = mc.player.getX(), py = mc.player.getY(), pz = mc.player.getZ();
+            float t = now / 1000f;
+            int count = 8 + (int) (shown * 28);
+            float size = 1.6f + shown * 2.4f;
+            for (int i = 0; i < count; i++) {
+                double ang = RND.nextDouble() * Math.PI * 2;
+                double elev = Math.toRadians(10 + RND.nextDouble() * 65);
+                double r = 14 + RND.nextDouble() * 16;
+                double x = px + Math.cos(ang) * Math.cos(elev) * r;
+                double y = py + 1.6 + Math.sin(elev) * r;
+                double z = pz + Math.sin(ang) * Math.cos(elev) * r;
+                int rgb = color(cfg.lightMode, t, (float) (ang / (Math.PI * 2) * 4.0));
+                mc.particleManager.addParticle(new DustParticleEffect(rgb, size), x, y, z, 0, 0.01, 0);
+            }
+        } catch (Throwable e) {
+            shown = 0f;
         }
     }
 }

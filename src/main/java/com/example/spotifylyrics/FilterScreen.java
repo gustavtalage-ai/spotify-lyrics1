@@ -146,6 +146,7 @@ public class FilterScreen extends Screen {
         }).dimensions(left + 3 * (bw + 4), by, bw, 18).build());
 
         int by2 = by + 22;
+        int b5 = (W - 4 * 3) / 5;
         addDrawableChild(ButtonWidget.builder(Text.literal("Speichern"), b -> {
             if (!selected.isEmpty()) {
                 if (mask == 0L) Config.INSTANCE.filterRules.remove(selected);
@@ -153,7 +154,7 @@ public class FilterScreen extends Screen {
                 Config.INSTANCE.save();
             }
             reopen();
-        }).dimensions(left, by2, bw, 18).build());
+        }).dimensions(left, by2, b5, 18).build());
         addDrawableChild(ButtonWidget.builder(Text.literal("Regel weg"), b -> {
             if (!selected.isEmpty()) {
                 Config.INSTANCE.filterRules.remove(selected);
@@ -161,15 +162,20 @@ public class FilterScreen extends Screen {
                 mask = 0L;
             }
             reopen();
-        }).dimensions(left + (bw + 4), by2, bw, 18).build());
+        }).dimensions(left + (b5 + 3), by2, b5, 18).build());
         addDrawableChild(ButtonWidget.builder(Text.literal("Filter: " + (Config.INSTANCE.filterOn ? "AN" : "AUS")), b -> {
             Config.INSTANCE.filterOn = !Config.INSTANCE.filterOn;
             Config.INSTANCE.save();
             reopen();
-        }).dimensions(left + 2 * (bw + 4), by2, bw, 18).build());
+        }).dimensions(left + 2 * (b5 + 3), by2, b5, 18).build());
+        addDrawableChild(ButtonWidget.builder(Text.literal("Nur diese: " + (Config.INSTANCE.filterStrict ? "AN" : "AUS")), b -> {
+            Config.INSTANCE.filterStrict = !Config.INSTANCE.filterStrict;
+            Config.INSTANCE.save();
+            reopen();
+        }).dimensions(left + 3 * (b5 + 3), by2, b5, 18).build());
         addDrawableChild(ButtonWidget.builder(Text.literal("Zurück"), b ->
             MinecraftClient.getInstance().setScreen(new SoundboardScreen(0))
-        ).dimensions(left + 3 * (bw + 4), by2, bw, 18).build());
+        ).dimensions(left + 4 * (b5 + 3), by2, b5, 18).build());
     }
 
     // Absichtlich ohne @Override, wie im Soundboard-Menü.
@@ -212,6 +218,9 @@ public class FilterScreen extends Screen {
                     ctx.fill(x + 16, y, x + 18, y + 18, g);
                 }
             }
+        }
+        if (Config.INSTANCE.filterStrict) {
+            ctx.drawTextWithShadow(tr, "Nur diese AN: Rest wird weggeworfen!", left + 150, top + 2, 0xFFFF6A6A);
         }
         ctx.drawTextWithShadow(tr, "Rucksack", gx + 9 * 20 + 4, gy + 24, 0xFF7E8494);
         ctx.drawTextWithShadow(tr, "Hotbar", gx + 9 * 20 + 4, gy + 68, 0xFF7E8494);

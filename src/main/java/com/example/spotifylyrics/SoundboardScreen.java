@@ -15,7 +15,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.Locale;
 
-/** Das Soundboard-Menü (Taste K oder /soundboard) mit den Untertabs "Sounds", "Voice Changer" und "Spotify". */
+/** Das Soundboard-Menü (Taste K oder /soundboard) mit den Untertabs "Sounds" und "Voice Changer". */
 public class SoundboardScreen extends Screen {
     private static final int ROW_H = 24;
     private static final int HEADER_H = 34;
@@ -34,9 +34,14 @@ public class SoundboardScreen extends Screen {
 
     /** Suchtext; bleibt beim Neuaufbau des Menüs erhalten. */
     private static String searchText = "";
-    /** Gewählter Untertab: 0 = Sounds, 1 = Voice Changer, 2 = Spotify. */
+    /** Gewählter Untertab: 0 = Sounds, 1 = Voice Changer, 2 = Spotify, 3 = PC-Ton. */
     private static int tab = 0;
     private static final int DEV_SLOTS = 5;
+    /** Spotify-Tab: Suchtext, Zeitpunkt der letzten Änderung und zuletzt gesuchter Text. */
+    private static String songText = "";
+    private static long songChangedAt = 0;
+    private static String searchedText = "";
+    private int tabW = 83;
 
     private int scroll;                 // Index der ersten sichtbaren Zeile
     private List<Path> files = List.of();
@@ -72,25 +77,24 @@ public class SoundboardScreen extends Screen {
         py1 = py0 + panelH;
         rowY0 = py0 + HEADER_H + TAB_H + SEARCH_H + 2;
         half = (px1 - px0 - 24) / 2;
+        tabW = Math.max(40, (px1 - px0 - 16 - 3 * 4) / 4);
 
         // Untertabs (die Knöpfe erledigen das Klicken, gezeichnet werden sie in render())
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < 4; i++) {
             final int target = i;
             addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> {
                 if (tab != target) {
                     tab = target;
                     MinecraftClient.getInstance().setScreen(new SoundboardScreen(0));
                 }
-            }).dimensions(tabX(i), tabY(), TAB_W, 18).build());
+            }).dimensions(tabX(i), tabY(), tabW, 18).build());
         }
 
-        if (tab == 0) initSounds(); else if (tab == 1) initVoice(); else initSpotify();
+        if (tab == 0) initSounds(); else if (tab == 1) initVoice(); else if (tab == 2) initPlayer(); else initSpotify();
     }
 
-    private static final int TAB_W = 104;
-
     private int tabX(int i) {
-        return px0 + 8 + i * (TAB_W + 6);
+        return px0 + 8 + i * (tabW + 4);
     }
 
     private int tabY() {
@@ -164,6 +168,116 @@ public class SoundboardScreen extends Screen {
             VoiceChanger.setPreset(0);
             MinecraftClient.getInstance().setScreen(new SoundboardScreen(0));
         }).dimensions(px0 + 16 + half, py1 - 28, half, 20).build());
+    }
+
+    private void initPlayer() {
+        int w = px1 - px0 - 16, y0 = spotY();
+        int bw = (w - 8) / 3;
+        addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> SpotifyControl.previous())
+            .dimensions(px0 + 8, y0 + 38, bw, 22).build());
+        addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> SpotifyControl.toggle())
+            .dimensions(px0 + 12 + bw, y0 + 38, bw, 22).build());
+        addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> SpotifyControl.next())
+            .dimensions(px0 + 16 + 2 * bw, y0 + 38, bw, 22).build());
+
+        TextFieldWidget f = new TextFieldWidget(this.textRenderer, px0 + 8, y0 + 64, w, 18, Text.literal("Song suchen"));
+        f.setMaxLength(60);
+        f.setText(songText);
+        f.setChangedListener(t -> {
+            songText = t;
+            songChangedAt = System.currentTimeMillis();
+        });
+        addDrawableChild(f);
+        setFocused(f);
+        f.setFocused(true);
+
+        for (int i = 0; i < DEV_SLOTS; i++) {
+            final int idx = i;
+            addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> {
+                List<SpotifyApi.Track> r = SpotifyControl.results;
+                if (idx < r.size()) SpotifyControl.play(r.get(idx));
+            }).dimensions(px0 + 8, y0 + 86 + i * 22, w, 20).build());
+        }
+
+        addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> {
+            Config.INSTANCE.lightshow = !Config.INSTANCE.lightshow;
+            Config.INSTANCE.save();
+        }).dimensions(px0 + 8, py1 - 28, half, 20).build());
+        addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> {
+            Config.INSTANCE.lightMode = (Config.INSTANCE.lightMode + 1) % Lightshow.MODES.length;
+            Config.INSTANCE.save();
+        }).dimensions(px0 + 16 + half, py1 - 28, half, 20).build());
+    }
+
+    private void renderPlayer(DrawContext ctx, TextRenderer tr, int mouseX, int mouseY) {
+        int x0 = px0 + 8, w = px1 - px0 - 16, y0 = spotY();
+
+        // Suche mit kleiner Pause nach dem Tippen starten
+        if (!songText.equals(searchedText) && System.currentTimeMillis() - songChangedAt > 450) {
+            searchedText = songText;
+            SpotifyControl.search(songText.trim());
+        }
+
+        String msg = SpotifyControl.message;
+        // Aktueller Song mit Fortschrittsbalken
+        Ui.round2(ctx, x0, y0, x0 + w, y0 + 34, 0xFF1A1D26);
+        SpotifyApi.State st = SpotifyApi.state;
+        String playingId = "";
+        if (st != null) {
+            playingId = st.track().id();
+            ctx.drawTextWithShadow(tr, "♪", x0 + 8, y0 + 11, 0xFF1ED760);
+            ctx.drawTextWithShadow(tr, tr.trimToWidth(st.track().title(), w - 34), x0 + 22, y0 + 5, 0xFFFFFFFF);
+            if (msg.isEmpty()) ctx.drawTextWithShadow(tr, tr.trimToWidth(st.track().artist(), w - 34), x0 + 22, y0 + 16, 0xFF9AA0AE);
+            else ctx.drawTextWithShadow(tr, tr.trimToWidth(msg, w - 34), x0 + 22, y0 + 16, 0xFFFFAA00);
+            long dur = Math.max(1, st.track().durationMs());
+            int bar = (int) ((w - 20) * Math.min(1.0, st.position() / (double) dur));
+            ctx.fill(x0 + 10, y0 + 28, x0 + w - 10, y0 + 30, 0xFF2E3342);
+            ctx.fill(x0 + 10, y0 + 28, x0 + 10 + bar, y0 + 30, 0xFF1ED760);
+        } else {
+            ctx.drawTextWithShadow(tr, "Es läuft nichts", x0 + 10, y0 + 7, 0xFFFFFFFF);
+            if (msg.isEmpty()) ctx.drawTextWithShadow(tr, tr.trimToWidth("Nicht verbunden? Im Spiel: /lyrics login", w - 20), x0 + 10, y0 + 19, 0xFF9AA0AE);
+            else ctx.drawTextWithShadow(tr, tr.trimToWidth(msg, w - 20), x0 + 10, y0 + 19, 0xFFFFAA00);
+        }
+
+        // Steuerung
+        int bw = (w - 8) / 3;
+        String[] labels = {"<< Zurück", (st != null && st.playing()) ? "Pause" : "Abspielen", "Weiter >>"};
+        for (int i = 0; i < 3; i++) {
+            int bx = x0 + i * (bw + 4);
+            boolean h = Ui.in(mouseX, mouseY, bx, y0 + 38, bx + bw, y0 + 60);
+            Ui.round2(ctx, bx, y0 + 38, bx + bw, y0 + 60, i == 1 ? (h ? 0xFF1FB455 : 0xFF1ED760) : (h ? 0xFF2A3040 : 0xFF1F232E));
+            ctx.drawTextWithShadow(tr, labels[i], bx + (bw - tr.getWidth(labels[i])) / 2, y0 + 45, i == 1 ? 0xFF06140B : 0xFFD6D9E0);
+        }
+
+        // Ergebnisse
+        List<SpotifyApi.Track> res = SpotifyControl.results;
+        if (res.isEmpty()) {
+            String hint = songText.isBlank() ? "Tippe oben einen Song oder Künstler" : (SpotifyControl.busy ? "Suche..." : "");
+            if (!hint.isEmpty()) ctx.drawTextWithShadow(tr, hint, x0 + 4, y0 + 92, 0xFF7E8494);
+        }
+        for (int i = 0; i < DEV_SLOTS && i < res.size(); i++) {
+            SpotifyApi.Track t = res.get(i);
+            int ry = y0 + 86 + i * 22;
+            boolean h = Ui.in(mouseX, mouseY, x0, ry, x0 + w, ry + 20);
+            boolean cur = t.id().equals(playingId);
+            Ui.round2(ctx, x0, ry, x0 + w, ry + 20, cur ? 0xFF15301F : (h ? 0xFF232736 : 0xFF1A1D26));
+            if (cur) ctx.fill(x0, ry + 4, x0 + 2, ry + 16, GREEN);
+            ctx.drawTextWithShadow(tr, ">", x0 + 7, ry + 6, h ? 0xFF1ED760 : 0xFF5A5F6E);
+            ctx.drawTextWithShadow(tr, tr.trimToWidth(t.title() + " · " + t.artist(), w - 28), x0 + 18, ry + 6, cur ? 0xFFFFFFFF : 0xFFE4E7EE);
+        }
+
+        // Fußzeile: Lichtshow
+        boolean on = Config.INSTANCE.lightshow;
+        int fy = py1 - 28;
+        int x1 = px0 + 8, x2 = px0 + 16 + half;
+        boolean h1 = Ui.in(mouseX, mouseY, x1, fy, x1 + half, fy + 20);
+        boolean h2 = Ui.in(mouseX, mouseY, x2, fy, x2 + half, fy + 20);
+        Ui.round2(ctx, x1, fy, x1 + half, fy + 20, h1 ? 0xFF2A3040 : 0xFF1F232E);
+        Ui.round(ctx, x1 + 8, fy + 7, x1 + 14, fy + 13, on ? GREEN : 0xFF5A5F6E);
+        ctx.drawTextWithShadow(tr, tr.trimToWidth("Lichtshow", half - 24), x1 + 20, fy + 6, on ? 0xFFFFFFFF : 0xFF9AA0AE);
+        Ui.round2(ctx, x2, fy, x2 + half, fy + 20, h2 ? 0xFF2A3040 : 0xFF1F232E);
+        String mode = "Farbe: " + Lightshow.MODES[Config.INSTANCE.lightMode % Lightshow.MODES.length];
+        ctx.drawTextWithShadow(tr, tr.trimToWidth(mode, half - 8), x2 + Math.max(4, (half - tr.getWidth(mode)) / 2), fy + 6, 0xFFD6D9E0);
     }
 
     private int spotY() {
@@ -241,23 +355,25 @@ public class SoundboardScreen extends Screen {
             ctx.drawTextWithShadow(tr, count + (count == 1 ? " Sound" : " Sounds") + " · Voice Chat", px0 + 22, py0 + 19, 0xFF7E8494);
         } else if (tab == 1) {
             ctx.drawTextWithShadow(tr, "Verändert dein Mikrofon", px0 + 22, py0 + 19, 0xFF7E8494);
+        } else if (tab == 2) {
+            ctx.drawTextWithShadow(tr, "Songs suchen und abspielen", px0 + 22, py0 + 19, 0xFF7E8494);
         } else {
             ctx.drawTextWithShadow(tr, "Spotify live in den Voice Chat", px0 + 22, py0 + 19, 0xFF7E8494);
         }
 
         // Untertabs
-        String[] tabNames = {"Sounds", "Voice Changer", "Spotify"};
-        for (int i = 0; i < 3; i++) {
+        String[] tabNames = {"Sounds", "Voice Changer", "Spotify", "PC-Ton"};
+        for (int i = 0; i < 4; i++) {
             int tx = tabX(i), ty = tabY();
             boolean sel = tab == i;
-            boolean hov = Ui.in(mouseX, mouseY, tx, ty, tx + TAB_W, ty + 18);
-            Ui.round2(ctx, tx, ty, tx + TAB_W, ty + 18, sel ? 0xFF3A1A5C : (hov ? 0xFF232736 : 0xFF181B24));
-            if (sel) ctx.fill(tx + 6, ty + 16, tx + TAB_W - 6, ty + 18, ACCENT);
+            boolean hov = Ui.in(mouseX, mouseY, tx, ty, tx + tabW, ty + 18);
+            Ui.round2(ctx, tx, ty, tx + tabW, ty + 18, sel ? 0xFF3A1A5C : (hov ? 0xFF232736 : 0xFF181B24));
+            if (sel) ctx.fill(tx + 6, ty + 16, tx + tabW - 6, ty + 18, ACCENT);
             int tw = tr.getWidth(tabNames[i]);
-            ctx.drawTextWithShadow(tr, tabNames[i], tx + (TAB_W - tw) / 2, ty + 5, sel ? 0xFFFFFFFF : 0xFF9AA0AE);
+            ctx.drawTextWithShadow(tr, tabNames[i], tx + (tabW - tw) / 2, ty + 5, sel ? 0xFFFFFFFF : 0xFF9AA0AE);
         }
 
-        if (tab == 0) renderSounds(ctx, tr, mouseX, mouseY); else if (tab == 1) renderVoice(ctx, tr, mouseX, mouseY); else renderSpotify(ctx, tr, mouseX, mouseY);
+        if (tab == 0) renderSounds(ctx, tr, mouseX, mouseY); else if (tab == 1) renderVoice(ctx, tr, mouseX, mouseY); else if (tab == 2) renderPlayer(ctx, tr, mouseX, mouseY); else renderSpotify(ctx, tr, mouseX, mouseY);
     }
 
     private void renderSpotify(DrawContext ctx, TextRenderer tr, int mouseX, int mouseY) {

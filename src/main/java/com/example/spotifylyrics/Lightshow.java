@@ -1,20 +1,17 @@
 package com.example.spotifylyrics;
 
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.particle.DustParticleEffect;
-import net.minecraft.particle.ParticleTypes;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.render.RenderTickCounter;
+import net.minecraft.util.math.Vec3d;
 
-import java.util.Random;
-
-/** Lichtshow: Scheinwerfer-Strahlen, die rund um dich in den Himmel leuchten, im Takt der Musik. Der Bildschirm bleibt frei. */
+/** Lichtshow: Laser-Strahlen, die rund um dich in den Himmel leuchten, im Takt der Musik (direkt auf den Bildschirm gezeichnet, ohne Partikel). */
 public class Lightshow {
     public static final String[] MODES = {"Regenbogen", "Lila", "Blau", "Feuer"};
 
-    private static final Random RND = new Random();
     private static volatile float level = 0f;       // 0..1, geglättet
     private static volatile long lastAudioMs = 0;    // wann zuletzt echtes Audio ankam
     private static float shown = 0f;
-    private static int counter = 0;
     private static boolean logged = false;
     /** Testmodus aus dem Menü: bis zu diesem Zeitpunkt läuft die Lichtshow auch ohne Musik. */
     public static volatile long testUntilMs = 0;
@@ -67,7 +64,7 @@ public class Lightshow {
         return color(Config.INSTANCE.lightMode, t, side);
     }
 
-    /** Jeden Client-Tick: setzt Leuchtpunkte entlang von Scheinwerfer-Strahlen in den Himmel. */
+    /** Jeden Client-Tick: Stärke und Status berechnen. */
     public static void tick(MinecraftClient mc) {
         try {
             Config cfg = Config.INSTANCE;
@@ -83,10 +80,6 @@ public class Lightshow {
             boolean spotifyPlaying = st != null && st.playing();
             boolean active = testing || realAudio || spotifyPlaying || Soundboard.isActive();
             status = testing ? "Test läuft" : (active ? "Lichtshow läuft" : "Wartet auf Musik (Spotify oder Sound spielen)");
-            if (!active) {
-                shown = shown * 0.85f;
-                if (shown < 0.03f) return;
-            }
 
             // Stärke: echtes Audio, sonst ein gleichmäßiger Takt (Spotify liefert dem Mod keinen Ton)
             float target;
@@ -98,21 +91,31 @@ public class Lightshow {
             }
             if (!active) target = 0f;
             shown += (target - shown) * (target > shown ? 0.6f : 0.15f);
-            if (shown < 0.03f) return;
+        } catch (Throwable e) {
+            shown = 0f;
+        }
+    }
 
-            if ((counter++ & 1) != 0) return; // nur jeden 2. Tick, spart Leistung
-            boolean sparkTick = (counter & 3) == 0;
-            double px = mc.player.getX(), py = mc.player.getY(), pz = mc.player.getZ();
-            float t = now / 1000f;
-            // Laser: dünne, lange Strahlen von mehreren Punkten rund um dich, die sich kreuzen und langsam schwenken
+    /** Zeichnet die Laser direkt auf den Bildschirm (HUD), ohne Minecraft-Partikel. */
+    public static void render(DrawContext ctx, RenderTickCounter tc) {
+        try {
+            MinecraftClient mc = MinecraftClient.getInstance();
+            if (shown < 0.03f || mc.player == null || mc.world == null || mc.options.hudHidden) return;
+            float td = tc.getTickProgress(false);
+            if (!Overlay3D.begin(mc, td)) return;
+            Config cfg = Config.INSTANCE;
+            float t = System.currentTimeMillis() / 1000f;
+            Vec3d pp = mc.player.getLerpedPos(td);
+            int thick = shown > 0.5f ? 2 : 1;
+            float power = 0.55f + 0.45f * Math.min(1f, shown * 1.4f);
             int emitters = 5;
             int rays = 3;
             for (int e = 0; e < emitters; e++) {
                 double ea = e / (double) emitters * Math.PI * 2 + t * 0.05;
                 double er = 7 + 3 * (e % 3);
-                double ex = px + Math.cos(ea) * er;
-                double ez = pz + Math.sin(ea) * er;
-                double ey = py + 0.3;
+                double ex = pp.x + Math.cos(ea) * er;
+                double ez = pp.z + Math.sin(ea) * er;
+                double ey = pp.y + 0.3;
                 for (int r = 0; r < rays; r++) {
                     int idx = e * rays + r;
                     double ph = idx * 1.37;
@@ -120,23 +123,18 @@ public class Lightshow {
                     double el = Math.toRadians(55 + 22 * Math.sin(t * 0.8 + ph * 0.8));
                     double ch = Math.cos(el);
                     double dx = Math.cos(az) * ch, dz = Math.sin(az) * ch, dy = Math.sin(el);
-                    boolean white = idx % 2 == 0;
-                    int rgb = white ? 0xFFFFFF : color(cfg.lightMode, t * 0.5f, idx * 0.35f);
-                    int n = 0;
-                    for (double d = 2; d < 80; d += 0.5 + d * 0.04, n++) {
-                        double x = ex + dx * d, y = ey + dy * d, z = ez + dz * d;
-                        float size = (float) Math.min(4.0, 0.4 + d * 0.03 + shown * 0.3);
-                        mc.world.addImportantParticleClient(new DustParticleEffect(rgb, size), x, y, z, 0, 0, 0);
-                        if (sparkTick && white && n % 4 == 0) mc.world.addImportantParticleClient(ParticleTypes.END_ROD, x, y, z, 0, 0, 0);
-                    }
+                    int glow = color(cfg.lightMode, t * 0.5f, idx * 0.35f);
+                    int core = idx % 2 == 0 ? 0xFFFFFF : glow;
+                    double[] a = Overlay3D.view(ex + dx * 2, ey + dy * 2, ez + dz * 2);
+                    double[] b = Overlay3D.view(ex + dx * 180, ey + dy * 180, ez + dz * 180);
+                    Overlay3D.beam(ctx, a, b, core, glow, thick, power);
                 }
             }
-        } catch (Throwable e) {
-            shown = 0f;
-            status = "Fehler: " + e;
+        } catch (Throwable ex) {
+            status = "Fehler: " + ex;
             if (!logged) {
                 logged = true;
-                SpotifyLyricsClient.LOGGER.warn("Lichtshow-Fehler", e);
+                SpotifyLyricsClient.LOGGER.warn("Lichtshow-Fehler", ex);
             }
         }
     }

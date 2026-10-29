@@ -2,6 +2,7 @@ package com.example.spotifylyrics;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.particle.DustParticleEffect;
+import net.minecraft.particle.ParticleTypes;
 
 import java.util.Random;
 
@@ -13,6 +14,14 @@ public class Lightshow {
     private static volatile float level = 0f;       // 0..1, geglättet
     private static volatile long lastAudioMs = 0;    // wann zuletzt echtes Audio ankam
     private static float shown = 0f;
+    private static int counter = 0;
+    /** Testmodus aus dem Menü: bis zu diesem Zeitpunkt läuft die Lichtshow auch ohne Musik. */
+    public static volatile long testUntilMs = 0;
+    private static volatile String status = "";
+
+    public static String status() {
+        return status;
+    }
 
     /** Echtes Audio (Soundboard), 20-ms-Stücke aus dem Voice-Chat-Plugin. */
     public static void feed(short[] frame) {
@@ -61,15 +70,18 @@ public class Lightshow {
     public static void tick(MinecraftClient mc) {
         try {
             Config cfg = Config.INSTANCE;
-            if (!cfg.lightshow || mc.world == null || mc.player == null || mc.isPaused()) {
+            long now = System.currentTimeMillis();
+            boolean testing = now < testUntilMs;
+            if ((!cfg.lightshow && !testing) || mc.world == null || mc.player == null || mc.isPaused()) {
                 shown = shown * 0.8f;
+                status = !cfg.lightshow ? "Lichtshow ist ausgeschaltet" : "";
                 return;
             }
-            long now = System.currentTimeMillis();
             boolean realAudio = now - lastAudioMs < 600;
             SpotifyApi.State st = SpotifyApi.state;
             boolean spotifyPlaying = st != null && st.playing();
-            boolean active = realAudio || spotifyPlaying || Soundboard.isActive();
+            boolean active = testing || realAudio || spotifyPlaying || Soundboard.isActive();
+            status = testing ? "Test läuft" : (active ? "Lichtshow läuft" : "Wartet auf Musik (Spotify oder Sound spielen)");
             if (!active) {
                 shown = shown * 0.85f;
                 if (shown < 0.03f) return;
@@ -87,34 +99,33 @@ public class Lightshow {
             shown += (target - shown) * (target > shown ? 0.6f : 0.15f);
             if (shown < 0.03f) return;
 
+            if ((counter++ & 1) != 0) return; // nur jeden 2. Tick, spart Leistung
             double px = mc.player.getX(), py = mc.player.getY(), pz = mc.player.getZ();
             float t = now / 1000f;
-            // Scheinwerfer: Strahlen, die vom Boden rund um dich in den Himmel leuchten und hin und her schwenken
-            int beams = 5 + (int) (shown * 5);
-            float size = 2.6f + shown * 1.4f;
-            double sweep = 0.35 + 0.35 * shown;
+            // Scheinwerfer: Strahlen, die rund um dich vom Boden in den Himmel leuchten und hin und her schwenken
+            int beams = 6 + (int) (shown * 4);
+            float size = 3.4f + shown * 0.6f;
+            double sweep = 0.25 + 0.35 * shown;
             for (int b = 0; b < beams; b++) {
-                double baseAng = (b / (double) beams) * Math.PI * 2 + t * 0.08;
-                double rad = 9 + 5 * (b % 3);
+                double baseAng = (b / (double) beams) * Math.PI * 2 + t * 0.1;
+                double rad = 5 + 3 * (b % 4);
                 double bx = px + Math.cos(baseAng) * rad;
                 double bz = pz + Math.sin(baseAng) * rad;
-                double by = py + 0.5;
-                // Schwenken: jeder Strahl pendelt anders, die Richtung zeigt grob nach oben
+                double by = py + 1.0;
                 double ph = b * 1.7;
                 double dx = Math.sin(t * 1.1 + ph) * sweep;
                 double dz = Math.cos(t * 0.9 + ph * 1.3) * sweep;
                 double dy = 1.0;
                 double len = Math.sqrt(dx * dx + dy * dy + dz * dz);
                 dx /= len; dy /= len; dz /= len;
-                for (double d = 2; d < 70; d += 3.0) {
-                    if (RND.nextFloat() < 0.35f) continue;
-                    double jx = (RND.nextDouble() - 0.5) * 0.5;
-                    double jz = (RND.nextDouble() - 0.5) * 0.5;
-                    double x = bx + dx * d + jx;
+                int n = 0;
+                for (double d = 1; d < 64; d += 2.2, n++) {
+                    double x = bx + dx * d + (RND.nextDouble() - 0.5) * 0.3;
                     double y = by + dy * d;
-                    double z = bz + dz * d + jz;
+                    double z = bz + dz * d + (RND.nextDouble() - 0.5) * 0.3;
                     int rgb = color(cfg.lightMode, t + (float) d * 0.02f, (float) b / beams * 4f);
                     mc.particleManager.addParticle(new DustParticleEffect(rgb, size), x, y, z, 0, 0, 0);
+                    if (n % 3 == 0) mc.particleManager.addParticle(ParticleTypes.END_ROD, x, y, z, 0, 0.01, 0);
                 }
             }
         } catch (Throwable e) {

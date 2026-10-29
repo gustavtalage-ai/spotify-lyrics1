@@ -15,6 +15,7 @@ public class Lightshow {
     private static volatile long lastAudioMs = 0;    // wann zuletzt echtes Audio ankam
     private static float shown = 0f;
     private static int counter = 0;
+    private static boolean logged = false;
     /** Testmodus aus dem Menü: bis zu diesem Zeitpunkt läuft die Lichtshow auch ohne Musik. */
     public static volatile long testUntilMs = 0;
     private static volatile String status = "";
@@ -125,13 +126,18 @@ public class Lightshow {
                     for (double d = 2; d < 80; d += 0.5 + d * 0.04, n++) {
                         double x = ex + dx * d, y = ey + dy * d, z = ez + dz * d;
                         float size = (float) Math.min(4.0, 0.4 + d * 0.03 + shown * 0.3);
-                        mc.particleManager.addParticle(new DustParticleEffect(rgb, size), x, y, z, 0, 0, 0);
-                        if (sparkTick && white && n % 4 == 0) mc.particleManager.addParticle(ParticleTypes.END_ROD, x, y, z, 0, 0, 0);
+                        mc.world.addImportantParticleClient(new DustParticleEffect(rgb, size), x, y, z, 0, 0, 0);
+                        if (sparkTick && white && n % 4 == 0) mc.world.addImportantParticleClient(ParticleTypes.END_ROD, x, y, z, 0, 0, 0);
                     }
                 }
             }
         } catch (Throwable e) {
             shown = 0f;
+            status = "Fehler: " + e;
+            if (!logged) {
+                logged = true;
+                SpotifyLyricsClient.LOGGER.warn("Lichtshow-Fehler", e);
+            }
         }
     }
 }

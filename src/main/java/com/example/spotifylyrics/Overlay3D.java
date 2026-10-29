@@ -8,7 +8,20 @@ import org.joml.Matrix3x2fStack;
 
 /** Zeichnet leuchtende 3D-Linien direkt auf den Bildschirm (ohne Minecraft-Partikel). Weltpunkte werden auf den Bildschirm umgerechnet. */
 final class Overlay3D {
-    private static double cx, cy, cz, fx, fy, fz, rx, ry, rz, ux, uy, uz, focal, halfW, halfH;
+    private static double cx, cy, cz, fx, fy, fz, rx, ry, rz, ux, uy, uz, focal, halfW, halfH, horizon;
+
+    /** Bildschirmzeile, auf der der Horizont liegt (kann außerhalb des Bildes sein). */
+    static double horizonY() {
+        return horizon;
+    }
+
+    static int screenW() {
+        return (int) Math.round(halfW * 2);
+    }
+
+    static int screenH() {
+        return (int) Math.round(halfH * 2);
+    }
 
     private Overlay3D() {}
 
@@ -38,6 +51,7 @@ final class Overlay3D {
         focal = (h / 2.0) / Math.tan(Math.toRadians(fov) / 2.0);
         halfW = w / 2.0;
         halfH = h / 2.0;
+        horizon = halfH - Math.tan(pitch) * focal;
         return true;
     }
 

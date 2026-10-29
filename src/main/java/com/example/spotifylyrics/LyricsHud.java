@@ -4,6 +4,8 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.render.RenderTickCounter;
+import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
 
 import java.util.List;
 import java.util.Locale;
@@ -52,20 +54,20 @@ public class LyricsHud {
             pos = st.position() + cfg.offsetMs;
             ready = !lines.isEmpty() && st.track().id().equals(Lyrics.forTrackId);
         }
-        final int W = 176, pad = 8, inner = W - 2 * pad, lineH = 11;
+        final int W = 190, pad = 8, inner = W - 2 * pad, lineH = 11;
         header = tr.trimToWidth(header, inner);
 
         List<String> cur;
         String prev = null, next1 = null, next2 = null;
         if (!ready) {
-            cur = wrap(tr, status.isEmpty() ? "♪" : status, inner, 3);
+            cur = wrap(tr, status.isEmpty() ? "♪" : status, inner - 14, 3);
         } else {
             int idx = -1;
             for (int i = 0; i < lines.size(); i++) {
                 if (lines.get(i).timeMs() <= pos) idx = i; else break;
             }
             String c = idx < 0 || lines.get(idx).text().isBlank() ? "♪" : lines.get(idx).text();
-            cur = wrap(tr, c, inner, 3);
+            cur = wrap(tr, c, inner - 14, 3);
             prev = lineAt(lines, idx - 1);
             next1 = lineAt(lines, idx + 1);
             next2 = lineAt(lines, idx + 2);
@@ -75,14 +77,14 @@ public class LyricsHud {
         boolean hit = !cfg.keyword.isBlank()
                 && curText.toLowerCase(Locale.ROOT).contains(cfg.keyword.toLowerCase(Locale.ROOT));
 
-        int rows = 1 + cur.size() + (prev != null ? 1 : 0) + (next1 != null ? 1 : 0) + (next2 != null ? 1 : 0);
-        int h = pad + lineH + 5 + rows * lineH - lineH + 4 + pad;
+        int rows = 1 + cur.size() * 1 + (prev != null ? 1 : 0) + (next1 != null ? 1 : 0) + (next2 != null ? 1 : 0);
+        int h = pad + lineH + 5 + rows * lineH - lineH + cur.size() * 2 + 4 + pad;
         if (sound && Soundboard.durationMs() > 0) h += 5;
         int x = screenW - W - 6;
         int y = 6;
 
-        Ui.round(ctx, x - 1, y - 1, x + W + 1, y + h + 1, 0x40AA00FF);   // Leuchten
-        Ui.round(ctx, x, y, x + W, y + h, 0xEE1A1030);                    // dunkles Lila wie bei Spotify
+        Ui.round(ctx, x - 1, y - 1, x + W + 1, y + h + 1, 0x28FFFFFF);   // feiner heller Rand
+        Ui.round(ctx, x, y, x + W, y + h, 0x88201838);                    // halb durchsichtig (Apple-Music-Stil)
         if (hit) { // lila Rahmen, 2 Pixel dick
             int t = 2;
             ctx.fill(x, y, x + W, y + t, PURPLE);
@@ -93,12 +95,12 @@ public class LyricsHud {
 
         int tx = x + pad;
         int ty = y + pad;
-        ctx.drawTextWithShadow(tr, header, tx, ty, 0xFFC9A0FF);            // Titel
+        ctx.drawTextWithShadow(tr, header, tx, ty, 0xFFE4D4FF);            // Titel
         ty += lineH + 5;
-        if (prev != null) { ctx.drawTextWithShadow(tr, tr.trimToWidth(prev, inner), tx, ty, 0xFF6F6A85); ty += lineH; }
-        for (String c : cur) { ctx.drawTextWithShadow(tr, c, tx, ty, 0xFFFFFFFF); ty += lineH; } // aktuelle Zeile hell
-        if (next1 != null) { ctx.drawTextWithShadow(tr, tr.trimToWidth(next1, inner), tx, ty, 0xFF8F8AA8); ty += lineH; }
-        if (next2 != null) { ctx.drawTextWithShadow(tr, tr.trimToWidth(next2, inner), tx, ty, 0xFF6F6A85); }
+        if (prev != null) { ctx.drawTextWithShadow(tr, tr.trimToWidth(prev, inner), tx, ty, 0x99FFFFFF); ty += lineH; }
+        for (String c : cur) { ctx.drawTextWithShadow(tr, Text.literal(c).formatted(Formatting.BOLD), tx, ty, 0xFFFFFFFF); ty += lineH + 2; } // aktuelle Zeile: fett und hell
+        if (next1 != null) { ctx.drawTextWithShadow(tr, tr.trimToWidth(next1, inner), tx, ty, 0x99FFFFFF); ty += lineH; }
+        if (next2 != null) { ctx.drawTextWithShadow(tr, tr.trimToWidth(next2, inner), tx, ty, 0x66FFFFFF); }
 
         if (sound && Soundboard.durationMs() > 0) { // Fortschrittsbalken unten
             long p = Math.max(0, Math.min(Soundboard.positionMs(), Soundboard.durationMs()));

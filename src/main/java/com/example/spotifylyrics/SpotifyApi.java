@@ -104,15 +104,15 @@ public class SpotifyApi {
                 String url = "https://accounts.spotify.com/authorize?" + form(
                         "response_type", "code",
                         "client_id", cfg.clientId,
-                        "scope", "user-read-currently-playing user-read-playback-state",
+                        "scope", "user-read-currently-playing user-read-playback-state user-modify-playback-state",
                         "redirect_uri", REDIRECT,
                         "code_challenge_method", "S256",
                         "code_challenge", challenge,
                         "state", stateParam);
                 onUrl.accept(url);
 
-                Map<String, String> query = null;
-                while (query == null) {
+                Map<String, String> params = null;
+                while (params == null) {
                     try (Socket s = server.accept()) {
                         s.setSoTimeout(5000);
                         BufferedReader r = new BufferedReader(new InputStreamReader(s.getInputStream(), StandardCharsets.UTF_8));
@@ -132,20 +132,21 @@ public class SpotifyApi {
                         o.flush();
                         if (isCallback) {
                             String path = line.split(" ")[1];
-                            query = parseQuery(URI.create("http://127.0.0.1" + path).getRawQuery());
+                            int qm = path.indexOf('?');
+                            params = parseParams(qm < 0 ? null : path.substring(qm + 1));
                         }
                     } catch (SocketTimeoutException ignored) {
                         // einzelne Verbindung war zu langsam, weiter warten
                     }
                 }
 
-                if (query.containsKey("error") || !stateParam.equals(query.get("state")) || !query.containsKey("code")) {
-                    onMessage.accept("Login abgebrochen oder fehlgeschlagen: " + query.getOrDefault("error", "ungültige Antwort"));
+                if (params.containsKey("error") || !stateParam.equals(params.get("state")) || !params.containsKey("code")) {
+                    onMessage.accept("Login abgebrochen oder fehlgeschlagen: " + params.getOrDefault("error", "ungültige Antwort"));
                     return;
                 }
                 Resp r = http("POST", TOKEN_URL, form(
                         "grant_type", "authorization_code",
-                        "code", query.get("code"),
+                        "code", params.get("code"),
                         "redirect_uri", REDIRECT,
                         "client_id", cfg.clientId,
                         "code_verifier", verifier), null);
@@ -170,7 +171,7 @@ public class SpotifyApi {
         t.start();
     }
 
-    private static Map<String, String> parseQuery(String q) {
+    private static Map<String, String> parseParams(String q) {
         Map<String, String> m = new HashMap<>();
         if (q == null) return m;
         for (String p : q.split("&")) {
@@ -220,6 +221,15 @@ public class SpotifyApi {
             cfg.save();
         }
         return false;
+    }
+
+    /** Gültiges Zugriffs-Token für andere Klassen, null wenn nicht eingeloggt. */
+    static String token() {
+        try {
+            return ensureToken() ? accessToken : null;
+        } catch (IOException e) {
+            return null;
+        }
     }
 
     // ---------- Abfrage ----------

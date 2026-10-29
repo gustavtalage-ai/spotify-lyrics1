@@ -36,11 +36,16 @@ public class SoundboardScreen extends Screen {
     private static String searchText = "";
     /** Gewählter Untertab: 0 = Effekte (unter 30 s), 1 = Musik (ab 30 s), 2 = Voice Changer, 3 = Spotify. */
     private static int tab = 0;
-    private static final int DEV_SLOTS = 5;
+    private static final int DEV_SLOTS = 4;
     /** Spotify-Tab: Suchtext, Zeitpunkt der letzten Änderung und zuletzt gesuchter Text. */
     private static String songText = "";
     private static long songChangedAt = 0;
     private static String searchedText = "";
+    /** Spulbalken und Lautstärke: erst kurz nach dem Loslassen/Ziehen an Spotify schicken. */
+    private long seekAt = 0, seekHold = 0, volAt = 0, volHold = 0;
+    private long seekMs = -1;
+    private int volPending = -1;
+    private double seekVal = 0, volVal = 0;
     private int tabW = 83;
     private boolean playerConnected = true;
     private int catTotal = 0;
@@ -73,7 +78,7 @@ public class SoundboardScreen extends Screen {
             panelH = HEADER_H + TAB_H + 8 + CARD_ROWS * (CARD_H + 4) + FOOTER_H + 2;
         } else {
             shown = 0;
-            panelH = HEADER_H + TAB_H + 8 + 86 + DEV_SLOTS * 22 + FOOTER_H + 2;
+            panelH = HEADER_H + TAB_H + 8 + 110 + DEV_SLOTS * 22 + FOOTER_H + 2;
         }
         px0 = (this.width - panelW) / 2;
         px1 = px0 + panelW;
@@ -190,9 +195,17 @@ public class SoundboardScreen extends Screen {
                 .dimensions(px0 + 16 + 2 * bw, y0 + 38, bw, 22).build());
             addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> SpotifyControl.login())
                 .dimensions(px0 + 8 + w - 76, y0 + 3, 72, 13).build());
+            // Spulbalken (im Statusfeld) und Lautstärke
+            addDrawableChild(new SeekSlider(px0 + 8 + 10, y0 + 21, w - 20, 12));
+            addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> SpotifyControl.setVolume(shownVolume() - 10))
+                .dimensions(px0 + 8, y0 + 64, 22, 16).build());
+            addDrawableChild(new VolSlider(px0 + 8 + 28, y0 + 64, w - 28 - 56, 16));
+            addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> SpotifyControl.setVolume(shownVolume() + 10))
+                .dimensions(px0 + 8 + w - 22, y0 + 64, 22, 16).build());
+            SpotifyControl.loadVolume();
         }
 
-        TextFieldWidget f = new TextFieldWidget(this.textRenderer, px0 + 8, y0 + 64, w, 18, Text.literal("Song suchen"));
+        TextFieldWidget f = new TextFieldWidget(this.textRenderer, px0 + 8, y0 + 88, w, 18, Text.literal("Song suchen"));
         f.setMaxLength(60);
         f.setText(songText);
         f.setChangedListener(t -> {
@@ -208,7 +221,7 @@ public class SoundboardScreen extends Screen {
             addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> {
                 List<SpotifyApi.Track> r = SpotifyControl.results;
                 if (idx < r.size()) SpotifyControl.play(r.get(idx));
-            }).dimensions(px0 + 8, y0 + 86 + i * 22, w, 20).build());
+            }).dimensions(px0 + 8, y0 + 110 + i * 22, w, 20).build());
         }
 
         addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> {
@@ -235,6 +248,15 @@ public class SoundboardScreen extends Screen {
             MinecraftClient.getInstance().setScreen(new SoundboardScreen(0));
             return;
         }
+        long nowMs = System.currentTimeMillis();
+        if (seekMs >= 0 && nowMs - seekAt > 250) {
+            SpotifyControl.seek(seekMs);
+            seekMs = -1;
+        }
+        if (volPending >= 0 && nowMs - volAt > 250) {
+            SpotifyControl.setVolume(volPending);
+            volPending = -1;
+        }
         String msg = SpotifyControl.message;
         // Aktueller Song mit Fortschrittsbalken
         Ui.round2(ctx, x0, y0, x0 + w, y0 + 34, 0xFF1A1D26);
@@ -244,12 +266,20 @@ public class SoundboardScreen extends Screen {
             playingId = st.track().id();
             ctx.drawTextWithShadow(tr, "♪", x0 + 8, y0 + 11, 0xFF1ED760);
             ctx.drawTextWithShadow(tr, tr.trimToWidth(st.track().title(), w - 112), x0 + 22, y0 + 5, 0xFFFFFFFF);
-            if (msg.isEmpty()) ctx.drawTextWithShadow(tr, tr.trimToWidth(st.track().artist(), w - 34), x0 + 22, y0 + 16, 0xFF9AA0AE);
-            else ctx.drawTextWithShadow(tr, tr.trimToWidth(msg, w - 34), x0 + 22, y0 + 16, 0xFFFFAA00);
             long dur = Math.max(1, st.track().durationMs());
-            int bar = (int) ((w - 20) * Math.min(1.0, st.position() / (double) dur));
-            ctx.fill(x0 + 10, y0 + 28, x0 + w - 10, y0 + 30, 0xFF2E3342);
-            ctx.fill(x0 + 10, y0 + 28, x0 + 10 + bar, y0 + 30, 0xFF1ED760);
+            double frac = nowMs < seekHold ? seekVal : Math.min(1.0, st.position() / (double) dur);
+            long posMs = (long) (frac * dur);
+            String time = mmss(posMs) + " / " + mmss(dur);
+            int timeW = tr.getWidth(time);
+            if (msg.isEmpty()) ctx.drawTextWithShadow(tr, tr.trimToWidth(st.track().artist(), w - 40 - timeW), x0 + 22, y0 + 16, 0xFF9AA0AE);
+            else ctx.drawTextWithShadow(tr, tr.trimToWidth(msg, w - 34), x0 + 22, y0 + 16, 0xFFFFAA00);
+            if (msg.isEmpty()) ctx.drawTextWithShadow(tr, time, x0 + w - 10 - timeW, y0 + 16, 0xFF7E8494);
+            boolean sh = Ui.in(mouseX, mouseY, x0 + 10, y0 + 21, x0 + w - 10, y0 + 33);
+            int bar = (int) ((w - 20) * Math.max(0.0, Math.min(1.0, frac)));
+            int by0 = sh ? y0 + 26 : y0 + 27, by1 = sh ? y0 + 31 : y0 + 30;
+            Ui.round(ctx, x0 + 10, by0, x0 + w - 10, by1, 0xFF2E3342);
+            if (bar > 0) Ui.round(ctx, x0 + 10, by0, x0 + 10 + bar, by1, 0xFF1ED760);
+            Ui.round(ctx, x0 + 10 + bar - 2, y0 + 25, x0 + 10 + bar + 3, y0 + 32, sh ? 0xFFFFFFFF : 0xFFE4E7EE);
         } else {
             ctx.drawTextWithShadow(tr, "Es läuft nichts", x0 + 10, y0 + 7, 0xFFFFFFFF);
             if (msg.isEmpty()) ctx.drawTextWithShadow(tr, tr.trimToWidth("Spotify ist noch nicht verbunden.", w - 20), x0 + 10, y0 + 19, 0xFF9AA0AE);
@@ -281,15 +311,38 @@ public class SoundboardScreen extends Screen {
             ctx.drawTextWithShadow(tr, labels[i], bx + (bw - tr.getWidth(labels[i])) / 2, y0 + 45, i == 1 ? 0xFF06140B : 0xFFD6D9E0);
         }
 
+        // Lautstärke: [-] Balken [+]
+        if (playerConnected) {
+            int vy = y0 + 64;
+            int vol = shownVolume();
+            ctx.fill(x0, vy, x0 + w, vy + 16, PANEL);   // Standard-Regler darunter verdecken
+            boolean hm = Ui.in(mouseX, mouseY, x0, vy, x0 + 22, vy + 16);
+            boolean hp = Ui.in(mouseX, mouseY, x0 + w - 22, vy, x0 + w, vy + 16);
+            Ui.round2(ctx, x0, vy, x0 + 22, vy + 16, hm ? 0xFF2A3040 : 0xFF1F232E);
+            Ui.round2(ctx, x0 + w - 22, vy, x0 + w, vy + 16, hp ? 0xFF2A3040 : 0xFF1F232E);
+            ctx.fill(x0 + 7, vy + 7, x0 + 15, vy + 9, hm ? 0xFFFFFFFF : 0xFFD6D9E0);
+            ctx.fill(x0 + w - 15, vy + 7, x0 + w - 7, vy + 9, hp ? 0xFFFFFFFF : 0xFFD6D9E0);
+            ctx.fill(x0 + w - 12, vy + 4, x0 + w - 10, vy + 12, hp ? 0xFFFFFFFF : 0xFFD6D9E0);
+            int tx0 = x0 + 28 + 3, tx1 = x0 + w - 56 - 3;
+            int ty = vy + 6;
+            Ui.round(ctx, tx0, ty, tx1, ty + 4, 0xFF2C3040);
+            int fx = tx0 + (int) Math.round((tx1 - tx0) * vol / 100.0);
+            if (fx > tx0) Ui.round(ctx, tx0, ty, fx, ty + 4, 0xFF1ED760);
+            boolean vh = Ui.in(mouseX, mouseY, x0 + 28, vy, x0 + w - 56, vy + 16);
+            Ui.round(ctx, fx - 2, ty - 3, fx + 3, ty + 7, vh ? 0xFFFFFFFF : 0xFFE4E7EE);
+            String vt = vol + " %";
+            ctx.drawTextWithShadow(tr, vt, x0 + w - 26 - tr.getWidth(vt), vy + 4, 0xFF9AA0AE);
+        }
+
         // Ergebnisse
         List<SpotifyApi.Track> res = SpotifyControl.results;
         if (res.isEmpty()) {
             String hint = songText.isBlank() ? "Tippe oben einen Song oder Künstler" : (SpotifyControl.busy ? "Suche..." : "");
-            if (!hint.isEmpty()) ctx.drawTextWithShadow(tr, hint, x0 + 4, y0 + 92, 0xFF7E8494);
+            if (!hint.isEmpty()) ctx.drawTextWithShadow(tr, hint, x0 + 4, y0 + 116, 0xFF7E8494);
         }
         for (int i = 0; i < DEV_SLOTS && i < res.size(); i++) {
             SpotifyApi.Track t = res.get(i);
-            int ry = y0 + 86 + i * 22;
+            int ry = y0 + 110 + i * 22;
             boolean h = Ui.in(mouseX, mouseY, x0, ry, x0 + w, ry + 20);
             boolean cur = t.id().equals(playingId);
             Ui.round2(ctx, x0, ry, x0 + w, ry + 20, cur ? 0xFF15301F : (h ? 0xFF232736 : 0xFF1A1D26));
@@ -310,6 +363,58 @@ public class SoundboardScreen extends Screen {
         Ui.round2(ctx, x2, fy, x2 + half, fy + 20, h2 ? 0xFF2A3040 : 0xFF1F232E);
         String mode = "Farbe: " + Lightshow.MODES[Config.INSTANCE.lightMode % Lightshow.MODES.length];
         ctx.drawTextWithShadow(tr, tr.trimToWidth(mode, half - 8), x2 + Math.max(4, (half - tr.getWidth(mode)) / 2), fy + 6, 0xFFD6D9E0);
+    }
+
+    private static String mmss(long ms) {
+        long s = Math.max(0, ms) / 1000;
+        return (s / 60) + ":" + (s % 60 < 10 ? "0" : "") + (s % 60);
+    }
+
+    private int shownVolume() {
+        if (System.currentTimeMillis() < volHold) return (int) Math.round(volVal * 100);
+        return SpotifyControl.volume >= 0 ? SpotifyControl.volume : Config.INSTANCE.playerVolume;
+    }
+
+    /** Unsichtbarer Regler über dem Fortschrittsbalken: Klicken oder Ziehen spult im Lied. */
+    private class SeekSlider extends SliderWidget {
+        SeekSlider(int x, int y, int w, int h) {
+            super(x, y, w, h, Text.literal(""), 0.0);
+        }
+
+        @Override
+        protected void updateMessage() {
+        }
+
+        @Override
+        protected void applyValue() {
+            SpotifyApi.State s = SpotifyApi.state;
+            if (s == null) return;
+            long now = System.currentTimeMillis();
+            seekVal = this.value;
+            seekMs = (long) (this.value * s.track().durationMs());
+            seekAt = now;
+            seekHold = now + 1500;
+        }
+    }
+
+    /** Unsichtbarer Regler für die Spotify-Lautstärke. */
+    private class VolSlider extends SliderWidget {
+        VolSlider(int x, int y, int w, int h) {
+            super(x, y, w, h, Text.literal(""), shownVolume() / 100.0);
+        }
+
+        @Override
+        protected void updateMessage() {
+        }
+
+        @Override
+        protected void applyValue() {
+            long now = System.currentTimeMillis();
+            volVal = this.value;
+            volPending = (int) Math.round(this.value * 100);
+            volAt = now;
+            volHold = now + 1500;
+        }
     }
 
     private int spotY() {

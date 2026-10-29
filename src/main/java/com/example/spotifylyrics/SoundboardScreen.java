@@ -81,7 +81,7 @@ public class SoundboardScreen extends Screen {
             panelH = HEADER_H + TAB_H + 8 + 110 + DEV_SLOTS * 22 + FOOTER_H + 2;
         } else {
             shown = 0;
-            panelH = HEADER_H + TAB_H + 8 + 124 + FOOTER_H + 2;
+            panelH = HEADER_H + TAB_H + 8 + 150 + FOOTER_H + 2;
         }
         px0 = (this.width - panelW) / 2;
         px1 = px0 + panelW;
@@ -425,6 +425,17 @@ public class SoundboardScreen extends Screen {
             cfg.save();
             reopenTools();
         }).dimensions(x0 + hw + 4, y3, hw, 20).build());
+
+        int y4 = y3 + 24;
+        addDrawableChild(ButtonWidget.builder(Text.literal("Lichtshow testen (20 s)"), b -> {
+            Lightshow.testUntilMs = System.currentTimeMillis() + 20000;
+            MinecraftClient.getInstance().setScreen(null);
+        }).dimensions(x0, y4, hw, 20).build());
+        addDrawableChild(ButtonWidget.builder(Text.literal("Lichtshow: " + (cfg.lightshow ? "AN" : "AUS")), b -> {
+            cfg.lightshow = !cfg.lightshow;
+            cfg.save();
+            reopenTools();
+        }).dimensions(x0 + hw + 4, y4, hw, 20).build());
     }
 
     private void renderTools(DrawContext ctx, TextRenderer tr) {
@@ -432,6 +443,7 @@ public class SoundboardScreen extends Screen {
         ctx.drawTextWithShadow(tr, "Platzhilfe", x0, y0 + 1, 0xFFC77DFF);
         ctx.drawTextWithShadow(tr, tr.trimToWidth(PlaceHelper.describe(), px1 - px0 - 100), px0 + 80, y0 + 1, 0xFF7E8494);
         ctx.drawTextWithShadow(tr, "Inventar", x0, y0 + 88, 0xFFC77DFF);
+        ctx.drawTextWithShadow(tr, tr.trimToWidth(Lightshow.status(), px1 - px0 - 20), x0, y0 + 148, 0xFF7E8494);
         ctx.drawTextWithShadow(tr, "Zielblock anschauen, Startpunkt setzen:", px0 + 10, py1 - FOOTER_H + 8, 0xFF9AA0AE);
         ctx.drawTextWithShadow(tr, "grün = Start, blau = jeder n-te Block.", px0 + 10, py1 - FOOTER_H + 20, 0xFF9AA0AE);
     }

@@ -38,6 +38,13 @@ public class Config {
     /** Noten-Symbol: Abstand von links und von unten (in GUI-Pixeln). */
     public int noteX = 20;
     public int noteY = 3;
+    /** Platzhilfe: an/aus, Abstand (jeder n-te Block), Richtung (-1 = Blickrichtung beim Setzen). */
+    public boolean placeHelper = false;
+    public int placeSpacing = 3;
+    public int placeDir = -1;
+    /** Inventar-Filter: an/aus und Regeln (Item-ID -> Slot-Maske, Bit 0-8 Hotbar, 9-35 Rucksack). */
+    public boolean filterOn = true;
+    public java.util.Map<String, Long> filterRules = new java.util.LinkedHashMap<>();
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("spotifylyrics.json");

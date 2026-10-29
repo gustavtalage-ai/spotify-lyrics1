@@ -30,6 +30,8 @@ public class Config {
     public boolean spotifyShare = false;
     public String spotifyDevice = "";
     public float spotifyVolume = 1.0f;
+    /** Spotify-Lautstärke in Prozent (zuletzt im Menü gestellt). */
+    public int playerVolume = 50;
     /** Lichtshow am Bildschirmrand und Farbmodus. */
     public boolean lightshow = true;
     public int lightMode = 0;

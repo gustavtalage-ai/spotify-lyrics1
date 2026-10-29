@@ -42,6 +42,7 @@ public final class SoundLyrics {
         String[] at = parseName(file);
         if (at == null) {
             clear();
+            SpotifyLyricsClient.chat(net.minecraft.text.Text.literal("Soundboard: Keine Lyrics gesucht. Die Datei muss 'Künstler - Titel.mp3' heißen."));
             return;
         }
         final String k = file + "#" + token;
@@ -53,6 +54,9 @@ public final class SoundLyrics {
         Thread th = new Thread(() -> {
             List<Lyrics.Line> res = Lyrics.fetch(t);
             if (k.equals(key)) {
+                SpotifyLyricsClient.chat(net.minecraft.text.Text.literal(res.isEmpty()
+                    ? "Soundboard: Keine Lyrics gefunden für " + at[0] + " – " + at[1]
+                    : "Soundboard: Lyrics geladen (" + res.size() + " Zeilen)"));
                 lines = res;
                 status = res.isEmpty() ? "Keine Lyrics gefunden" : "";
             }

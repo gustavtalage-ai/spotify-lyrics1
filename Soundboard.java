@@ -226,6 +226,10 @@ public final class Soundboard {
         return true;
     }
 
+    public static long durationMs() {
+        return durationMs;
+    }
+
     /** Position im laufenden Sound in ms, oder -1 wenn nichts läuft / noch lädt. */
     public static long positionMs() {
         if (!isActive()) return -1;

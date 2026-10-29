@@ -36,6 +36,9 @@ public final class SoundIcon {
         int h = mc.getWindow().getScaledHeight();
         int x = Config.INSTANCE.iconX;
         int y = h - Config.INSTANCE.iconY - NOTE.length;
+        boolean beat = (System.currentTimeMillis() / 450) % 2 == 0; // sanftes Pulsieren
+        Ui.round(ctx, x - 5, y - 4, x + NOTE[0].length() + 4, y + NOTE.length + 4, beat ? 0x50AA00FF : 0x30AA00FF);
+        Ui.card(ctx, x - 3, y - 2, x + NOTE[0].length() + 2, y + NOTE.length + 2, 0xFFAA00FF, 0xE0140A24);
         paint(ctx, x + 1, y + 1, 0xA0000000); // Schatten
         paint(ctx, x, y, 0xFFFFFFFF);
     }

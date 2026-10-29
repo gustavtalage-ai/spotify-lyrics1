@@ -76,11 +76,13 @@ public class LyricsHud {
         int textW = Math.max(tr.getWidth(header), Math.max(tr.getWidth(current), next == null ? 0 : tr.getWidth(next)));
         int w = textW + 16;
         int lineH = 11;
-        int h = 8 + lineH * (next == null ? 2 : 3);
+        int h = 10 + lineH * (next == null ? 2 : 3);
         int x = (screenW - w) / 2;
         int y = 6;
 
-        ctx.fill(x, y, x + w, y + h, BACKGROUND);
+        Ui.round(ctx, x - 1, y - 1, x + w + 1, y + h + 1, 0x30AA00FF);   // Leuchten
+        Ui.round(ctx, x, y, x + w, y + h, 0xB0101218);
+        ctx.fill(x + 2, y + 3, x + 4, y + h - 3, PURPLE);              // lila Streifen links
         if (hit) { // lila Kasten, 2 Pixel dick (aus vier Rechtecken, ohne versionsabhängige Methode)
             int t = 2;
             ctx.fill(x, y, x + w, y + t, PURPLE);               // oben
@@ -88,9 +90,14 @@ public class LyricsHud {
             ctx.fill(x, y, x + t, y + h, PURPLE);               // links
             ctx.fill(x + w - t, y, x + w, y + h, PURPLE);       // rechts
         }
+        if (sound && Soundboard.durationMs() > 0) { // Fortschrittsbalken unten
+            long p = Math.max(0, Math.min(Soundboard.positionMs(), Soundboard.durationMs()));
+            ctx.fill(x + 6, y + h - 3, x + w - 6, y + h - 2, 0x40FFFFFF);
+            ctx.fill(x + 6, y + h - 3, x + 6 + (int) ((w - 12) * p / Soundboard.durationMs()), y + h - 2, PURPLE);
+        }
 
         int ty = y + 5;
-        centered(ctx, tr, header, screenW, ty, 0xFFB0B0B0);
+        centered(ctx, tr, header, screenW, ty, sound ? 0xFFC9A0FF : 0xFFB0B0B0);
         ty += lineH;
         centered(ctx, tr, current, screenW, ty, 0xFFFFFFFF);
         ty += lineH;

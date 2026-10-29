@@ -81,7 +81,7 @@ public class SoundboardScreen extends Screen {
             panelH = HEADER_H + TAB_H + 8 + 110 + DEV_SLOTS * 22 + FOOTER_H + 2;
         } else {
             shown = 0;
-            panelH = HEADER_H + TAB_H + 8 + 150 + FOOTER_H + 2;
+            panelH = HEADER_H + TAB_H + 8 + 180 + FOOTER_H + 2;
         }
         px0 = (this.width - panelW) / 2;
         px1 = px0 + panelW;
@@ -118,7 +118,10 @@ public class SoundboardScreen extends Screen {
         for (int v = 0; v < shown && scroll + v < files.size(); v++) {
             Path f = files.get(scroll + v);
             int ry = rowY0 + v * ROW_H;
-            addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> Soundboard.play(f))
+            addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> {
+                if (f.equals(Soundboard.nowPlaying)) Soundboard.stop();
+                else Soundboard.play(f);
+            })
                 .dimensions(px0 + 9, ry + 2, 20, 20).build());
             addDrawableChild(new VolumeSlider(sliderX(), ry + 2, SLIDER_W, 20, f));
         }
@@ -372,80 +375,123 @@ public class SoundboardScreen extends Screen {
         MinecraftClient.getInstance().setScreen(new SoundboardScreen(0));
     }
 
+    // ---------- Tools-Tab: Zeilen-Positionen (gleich für Knöpfe und Zeichnung) ----------
+    private int tlX() {
+        return px0 + 8;
+    }
+
+    private int tlW() {
+        return px1 - px0 - 16;
+    }
+
+    private int tlHalf() {
+        return (tlW() - 4) / 2;
+    }
+
+    private int tlRight() {
+        return tlX() + tlHalf() + 4;
+    }
+
+    private int tlY(int rel) {
+        return spotY() + rel;
+    }
+
+    private static final int R1 = 13, R2 = 35, R3 = 57, R4 = 97, R5 = 137, R6 = 159;
+
+    private void toolBtn(int x, int y, int w, Runnable r) {
+        addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> r.run()).dimensions(x, y, w, 20).build());
+    }
+
     private void initTools() {
         Config cfg = Config.INSTANCE;
-        int x0 = px0 + 8, w = px1 - px0 - 16, y0 = spotY() + 12;
-        int hw = (w - 4) / 2;
-        addDrawableChild(ButtonWidget.builder(Text.literal("Platzhilfe: " + (cfg.placeHelper ? "AN" : "AUS")), b -> {
+        int xl = tlX(), xr = tlRight(), hw = tlHalf(), w = tlW();
+        toolBtn(xl, tlY(R1), hw, () -> {
             cfg.placeHelper = !cfg.placeHelper;
             cfg.save();
             reopenTools();
-        }).dimensions(x0, y0, hw, 20).build());
-        addDrawableChild(ButtonWidget.builder(Text.literal("Startpunkt setzen"), b -> {
+        });
+        toolBtn(xr, tlY(R1), hw, () -> {
             cfg.placeHelper = true;
             cfg.save();
             PlaceHelper.pendingStart = true;
             MinecraftClient.getInstance().setScreen(null);
-        }).dimensions(x0 + hw + 4, y0, hw, 20).build());
-
-        int y1 = y0 + 24;
-        addDrawableChild(ButtonWidget.builder(Text.literal("-"), b -> {
+        });
+        toolBtn(xl, tlY(R2), 24, () -> {
             cfg.placeSpacing = Math.max(1, cfg.placeSpacing - 1);
             cfg.save();
             reopenTools();
-        }).dimensions(x0, y1, 24, 20).build());
-        ButtonWidget lab = ButtonWidget.builder(Text.literal("Abstand: " + cfg.placeSpacing + " (jeder " + cfg.placeSpacing + ". Block)"), b -> { })
-            .dimensions(x0 + 28, y1, w - 56, 20).build();
-        lab.active = false;
-        addDrawableChild(lab);
-        addDrawableChild(ButtonWidget.builder(Text.literal("+"), b -> {
+        });
+        toolBtn(xl + w - 24, tlY(R2), 24, () -> {
             cfg.placeSpacing = Math.min(32, cfg.placeSpacing + 1);
             cfg.save();
             reopenTools();
-        }).dimensions(x0 + w - 24, y1, 24, 20).build());
-
-        int y2 = y1 + 24;
-        String dn = cfg.placeDir < 0 || cfg.placeDir >= PlaceHelper.DIR_NAMES.length ? "Blickrichtung" : PlaceHelper.DIR_NAMES[cfg.placeDir];
-        addDrawableChild(ButtonWidget.builder(Text.literal("Richtung: " + dn), b -> {
+        });
+        toolBtn(xl, tlY(R3), hw, () -> {
             cfg.placeDir = cfg.placeDir + 1 >= PlaceHelper.DIR_NAMES.length ? -1 : cfg.placeDir + 1;
             cfg.save();
             reopenTools();
-        }).dimensions(x0, y2, hw, 20).build());
-        addDrawableChild(ButtonWidget.builder(Text.literal("Markierung löschen"), b -> {
+        });
+        toolBtn(xr, tlY(R3), hw, () -> {
             PlaceHelper.clear();
             reopenTools();
-        }).dimensions(x0 + hw + 4, y2, hw, 20).build());
-
-        int y3 = y2 + 40;
-        addDrawableChild(ButtonWidget.builder(Text.literal("Item-Filter einrichten"), b ->
-            MinecraftClient.getInstance().setScreen(new FilterScreen())
-        ).dimensions(x0, y3, hw, 20).build());
-        addDrawableChild(ButtonWidget.builder(Text.literal("Filter: " + (cfg.filterOn ? "AN" : "AUS") + " (" + cfg.filterRules.size() + " Regeln)"), b -> {
+        });
+        toolBtn(xl, tlY(R4), hw, () -> MinecraftClient.getInstance().setScreen(new FilterScreen()));
+        toolBtn(xr, tlY(R4), hw, () -> {
             cfg.filterOn = !cfg.filterOn;
             cfg.save();
             reopenTools();
-        }).dimensions(x0 + hw + 4, y3, hw, 20).build());
-
-        int y4 = y3 + 24;
-        addDrawableChild(ButtonWidget.builder(Text.literal("Lichtshow testen (20 s)"), b -> {
-            Lightshow.testUntilMs = System.currentTimeMillis() + 20000;
-            MinecraftClient.getInstance().setScreen(null);
-        }).dimensions(x0, y4, hw, 20).build());
-        addDrawableChild(ButtonWidget.builder(Text.literal("Lichtshow: " + (cfg.lightshow ? "AN" : "AUS")), b -> {
+        });
+        toolBtn(xl, tlY(R5), hw, () -> {
             cfg.lightshow = !cfg.lightshow;
             cfg.save();
             reopenTools();
-        }).dimensions(x0 + hw + 4, y4, hw, 20).build());
+        });
+        toolBtn(xr, tlY(R5), hw, () -> {
+            cfg.lightMode = (cfg.lightMode + 1) % Lightshow.MODES.length;
+            cfg.save();
+            reopenTools();
+        });
+        toolBtn(xl, tlY(R6), hw, () -> {
+            Lightshow.testUntilMs = System.currentTimeMillis() + 20000;
+            MinecraftClient.getInstance().setScreen(null);
+        });
     }
 
-    private void renderTools(DrawContext ctx, TextRenderer tr) {
-        int x0 = px0 + 10, y0 = spotY();
-        ctx.drawTextWithShadow(tr, "Platzhilfe", x0, y0 + 1, 0xFFC77DFF);
-        ctx.drawTextWithShadow(tr, tr.trimToWidth(PlaceHelper.describe(), px1 - px0 - 100), px0 + 80, y0 + 1, 0xFF7E8494);
-        ctx.drawTextWithShadow(tr, "Inventar", x0, y0 + 88, 0xFFC77DFF);
-        ctx.drawTextWithShadow(tr, tr.trimToWidth(Lightshow.status(), px1 - px0 - 20), x0, y0 + 148, 0xFF7E8494);
-        ctx.drawTextWithShadow(tr, "Zielblock anschauen, Startpunkt setzen:", px0 + 10, py1 - FOOTER_H + 8, 0xFF9AA0AE);
-        ctx.drawTextWithShadow(tr, "grün = Start, blau = jeder n-te Block.", px0 + 10, py1 - FOOTER_H + 20, 0xFF9AA0AE);
+    private void renderTools(DrawContext ctx, TextRenderer tr, int mx, int my) {
+        Config cfg = Config.INSTANCE;
+        int xl = tlX(), xr = tlRight(), hw = tlHalf(), w = tlW();
+        int sw = px1 - px0 - 20;
+
+        String info = tr.trimToWidth(PlaceHelper.describe(), sw - 90);
+        int iw = tr.getWidth(info);
+        Ui.section(ctx, tr, xl + 2, tlY(0), "Platzhilfe", sw - iw - 8);
+        ctx.drawTextWithShadow(tr, info, px1 - 12 - iw, tlY(0), 0xFF7E8494);
+        Ui.toggle(ctx, tr, xl, tlY(R1), xl + hw, tlY(R1) + 20, "Platzhilfe", cfg.placeHelper, Ui.in(mx, my, xl, tlY(R1), xl + hw, tlY(R1) + 20));
+        Ui.btn(ctx, tr, xr, tlY(R1), xr + hw, tlY(R1) + 20, "Startpunkt setzen", Ui.in(mx, my, xr, tlY(R1), xr + hw, tlY(R1) + 20), 0xFF3A1A5C, 0xFF4B2373, 0xFFFFFFFF);
+
+        boolean hm = Ui.in(mx, my, xl, tlY(R2), xl + 24, tlY(R2) + 20);
+        boolean hp = Ui.in(mx, my, xl + w - 24, tlY(R2), xl + w, tlY(R2) + 20);
+        Ui.btn(ctx, tr, xl, tlY(R2), xl + 24, tlY(R2) + 20, "-", hm, 0xFF1F232E, 0xFF2A3040, 0xFFFFFFFF);
+        Ui.btn(ctx, tr, xl + w - 24, tlY(R2), xl + w, tlY(R2) + 20, "+", hp, 0xFF1F232E, 0xFF2A3040, 0xFFFFFFFF);
+        Ui.btn(ctx, tr, xl + 28, tlY(R2), xl + w - 28, tlY(R2) + 20, "Abstand: jeder " + cfg.placeSpacing + ". Block", false, 0xFF171A22, 0xFF171A22, 0xFFD6D9E0);
+
+        String dn = cfg.placeDir < 0 || cfg.placeDir >= PlaceHelper.DIR_NAMES.length ? "Blickrichtung" : PlaceHelper.DIR_NAMES[cfg.placeDir];
+        Ui.btn(ctx, tr, xl, tlY(R3), xl + hw, tlY(R3) + 20, "Richtung: " + dn, Ui.in(mx, my, xl, tlY(R3), xl + hw, tlY(R3) + 20), 0xFF1F232E, 0xFF2A3040, 0xFFD6D9E0);
+        Ui.btn(ctx, tr, xr, tlY(R3), xr + hw, tlY(R3) + 20, "Markierung löschen", Ui.in(mx, my, xr, tlY(R3), xr + hw, tlY(R3) + 20), 0xFF3B1A22, 0xFF53222D, 0xFFFF9A9A);
+
+        Ui.section(ctx, tr, xl + 2, tlY(84), "Inventar", sw);
+        Ui.btn(ctx, tr, xl, tlY(R4), xl + hw, tlY(R4) + 20, "Filter einrichten (" + cfg.filterRules.size() + ")", Ui.in(mx, my, xl, tlY(R4), xl + hw, tlY(R4) + 20), 0xFF3A1A5C, 0xFF4B2373, 0xFFFFFFFF);
+        Ui.toggle(ctx, tr, xr, tlY(R4), xr + hw, tlY(R4) + 20, "Item-Filter", cfg.filterOn, Ui.in(mx, my, xr, tlY(R4), xr + hw, tlY(R4) + 20));
+
+        Ui.section(ctx, tr, xl + 2, tlY(124), "Lichtshow", sw);
+        Ui.toggle(ctx, tr, xl, tlY(R5), xl + hw, tlY(R5) + 20, "Lichtshow", cfg.lightshow, Ui.in(mx, my, xl, tlY(R5), xl + hw, tlY(R5) + 20));
+        Ui.btn(ctx, tr, xr, tlY(R5), xr + hw, tlY(R5) + 20, "Farbe: " + Lightshow.MODES[cfg.lightMode % Lightshow.MODES.length], Ui.in(mx, my, xr, tlY(R5), xr + hw, tlY(R5) + 20), 0xFF1F232E, 0xFF2A3040, 0xFFD6D9E0);
+        Ui.btn(ctx, tr, xl, tlY(R6), xl + hw, tlY(R6) + 20, "Testen (20 s)", Ui.in(mx, my, xl, tlY(R6), xl + hw, tlY(R6) + 20), 0xFF3A1A5C, 0xFF4B2373, 0xFFFFFFFF);
+        String ls = Lightshow.status();
+        ctx.drawTextWithShadow(tr, tr.trimToWidth(ls, hw - 4), xr + 4, tlY(R6) + 6, 0xFF7E8494);
+
+        ctx.drawTextWithShadow(tr, "Zielblock anschauen, dann Startpunkt setzen.", px0 + 10, py1 - FOOTER_H + 8, 0xFF9AA0AE);
+        ctx.drawTextWithShadow(tr, "Grün = Start, blau = jeder n-te Block.", px0 + 10, py1 - FOOTER_H + 20, 0xFF9AA0AE);
     }
 
     private static String mmss(long ms) {
@@ -566,7 +612,7 @@ public class SoundboardScreen extends Screen {
             ctx.drawTextWithShadow(tr, tabNames[i], tx + (tabW - tw) / 2, ty + 5, sel ? 0xFFFFFFFF : 0xFF9AA0AE);
         }
 
-        if (tab <= 1) renderSounds(ctx, tr, mouseX, mouseY); else if (tab == 2) renderVoice(ctx, tr, mouseX, mouseY); else if (tab == 3) renderPlayer(ctx, tr, mouseX, mouseY); else renderTools(ctx, tr);
+        if (tab <= 1) renderSounds(ctx, tr, mouseX, mouseY); else if (tab == 2) renderVoice(ctx, tr, mouseX, mouseY); else if (tab == 3) renderPlayer(ctx, tr, mouseX, mouseY); else renderTools(ctx, tr, mouseX, mouseY);
     }
 
     private void renderVoice(DrawContext ctx, TextRenderer tr, int mouseX, int mouseY) {
@@ -652,7 +698,7 @@ public class SoundboardScreen extends Screen {
             int bx = px0 + 9, by = ry + 2;
             boolean bHov = Ui.in(mouseX, mouseY, bx, by, bx + 20, by + 20);
             Ui.round2(ctx, bx, by, bx + 20, by + 20, playing ? GREEN : (bHov ? 0xFF4A5068 : 0xFF2C3040));
-            if (playing) equalizer(ctx, bx + 5, by + 15);
+            if (playing) ctx.fill(bx + 6, by + 6, bx + 14, by + 14, 0xFF0B1A10);
             else playTriangle(ctx, bx, by, bHov ? 0xFFFFFFFF : 0xFFE4E7EE);
 
             ctx.drawTextWithShadow(tr, tr.trimToWidth(shortName(f), nameMax), nameX, ry + 8, playing ? 0xFFFFFFFF : 0xFFD6D9E0);

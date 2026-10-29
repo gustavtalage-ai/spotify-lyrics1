@@ -100,32 +100,34 @@ public class Lightshow {
             if (shown < 0.03f) return;
 
             if ((counter++ & 1) != 0) return; // nur jeden 2. Tick, spart Leistung
+            boolean sparkTick = (counter & 3) == 0;
             double px = mc.player.getX(), py = mc.player.getY(), pz = mc.player.getZ();
             float t = now / 1000f;
-            // Scheinwerfer: Strahlen, die rund um dich vom Boden in den Himmel leuchten und hin und her schwenken
-            int beams = 6 + (int) (shown * 4);
-            float size = 3.4f + shown * 0.6f;
-            double sweep = 0.25 + 0.35 * shown;
-            for (int b = 0; b < beams; b++) {
-                double baseAng = (b / (double) beams) * Math.PI * 2 + t * 0.1;
-                double rad = 5 + 3 * (b % 4);
-                double bx = px + Math.cos(baseAng) * rad;
-                double bz = pz + Math.sin(baseAng) * rad;
-                double by = py + 1.0;
-                double ph = b * 1.7;
-                double dx = Math.sin(t * 1.1 + ph) * sweep;
-                double dz = Math.cos(t * 0.9 + ph * 1.3) * sweep;
-                double dy = 1.0;
-                double len = Math.sqrt(dx * dx + dy * dy + dz * dz);
-                dx /= len; dy /= len; dz /= len;
-                int n = 0;
-                for (double d = 1; d < 64; d += 2.2, n++) {
-                    double x = bx + dx * d + (RND.nextDouble() - 0.5) * 0.3;
-                    double y = by + dy * d;
-                    double z = bz + dz * d + (RND.nextDouble() - 0.5) * 0.3;
-                    int rgb = color(cfg.lightMode, t + (float) d * 0.02f, (float) b / beams * 4f);
-                    mc.particleManager.addParticle(new DustParticleEffect(rgb, size), x, y, z, 0, 0, 0);
-                    if (n % 3 == 0) mc.particleManager.addParticle(ParticleTypes.END_ROD, x, y, z, 0, 0.01, 0);
+            // Laser: dünne, lange Strahlen von mehreren Punkten rund um dich, die sich kreuzen und langsam schwenken
+            int emitters = 5;
+            int rays = 3;
+            for (int e = 0; e < emitters; e++) {
+                double ea = e / (double) emitters * Math.PI * 2 + t * 0.05;
+                double er = 7 + 3 * (e % 3);
+                double ex = px + Math.cos(ea) * er;
+                double ez = pz + Math.sin(ea) * er;
+                double ey = py + 0.3;
+                for (int r = 0; r < rays; r++) {
+                    int idx = e * rays + r;
+                    double ph = idx * 1.37;
+                    double az = ea + Math.PI + (r - 1) * 0.55 + Math.sin(t * 0.6 + ph) * 0.8;
+                    double el = Math.toRadians(55 + 22 * Math.sin(t * 0.8 + ph * 0.8));
+                    double ch = Math.cos(el);
+                    double dx = Math.cos(az) * ch, dz = Math.sin(az) * ch, dy = Math.sin(el);
+                    boolean white = idx % 2 == 0;
+                    int rgb = white ? 0xFFFFFF : color(cfg.lightMode, t * 0.5f, idx * 0.35f);
+                    int n = 0;
+                    for (double d = 2; d < 80; d += 0.5 + d * 0.04, n++) {
+                        double x = ex + dx * d, y = ey + dy * d, z = ez + dz * d;
+                        float size = (float) Math.min(4.0, 0.4 + d * 0.03 + shown * 0.3);
+                        mc.particleManager.addParticle(new DustParticleEffect(rgb, size), x, y, z, 0, 0, 0);
+                        if (sparkTick && white && n % 4 == 0) mc.particleManager.addParticle(ParticleTypes.END_ROD, x, y, z, 0, 0, 0);
+                    }
                 }
             }
         } catch (Throwable e) {

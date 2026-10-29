@@ -14,7 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-/** Spotify aus Minecraft steuern: Songs suchen, abspielen, pausieren, weiter, zurück. */
+/** Spotify aus Minecraft steuern: Songs suchen, abspielen, pausieren, weiter, zurück, spulen, Lautstärke. */
 public class SpotifyControl {
     private static final String API = "https://api.spotify.com/v1";
     private static final AtomicInteger seq = new AtomicInteger();
@@ -24,6 +24,8 @@ public class SpotifyControl {
     /** Hinweis oder Fehler für die Anzeige (leer = alles gut). */
     public static volatile String message = "";
     public static volatile boolean busy = false;
+    /** Zuletzt bekannte Spotify-Lautstärke in Prozent (-1 = unbekannt). */
+    public static volatile int volume = -1;
 
     private static SpotifyApi.Resp req(String method, String url, String json) throws IOException {
         String tok = SpotifyApi.token();
@@ -179,7 +181,7 @@ public class SpotifyControl {
     public static void toggle() {
         SpotifyApi.State s = SpotifyApi.state;
         boolean playing = s != null && s.playing();
-        simple("PUT", playing ? "/me/player/pause" : "/me/player/play");
+        simple(playing ? "PUT" : "PUT", playing ? "/me/player/pause" : "/me/player/play");
     }
 
     public static void next() {
@@ -188,6 +190,67 @@ public class SpotifyControl {
 
     public static void previous() {
         simple("POST", "/me/player/previous");
+    }
+
+    /** Springt im Lied an die Stelle (Millisekunden). */
+    public static void seek(long ms) {
+        final long pos = Math.max(0, ms);
+        SpotifyApi.State s = SpotifyApi.state;
+        if (s != null) SpotifyApi.state = new SpotifyApi.State(s.track(), s.playing(), pos, System.nanoTime());
+        async("spotifylyrics-seek", () -> {
+            SpotifyApi.Resp r = req("PUT", API + "/me/player/seek?position_ms=" + pos, null);
+            message = (r.code() >= 200 && r.code() < 300) ? "" : describe(r);
+        });
+    }
+
+    /** Lautstärke von Spotify (0 bis 100). Nicht jedes Gerät erlaubt das (Handy meist nicht). */
+    public static void setVolume(int pct) {
+        final int v = Math.max(0, Math.min(100, pct));
+        volume = v;
+        Config.INSTANCE.playerVolume = v;
+        async("spotifylyrics-vol", () -> {
+            SpotifyApi.Resp r = req("PUT", API + "/me/player/volume?volume_percent=" + v, null);
+            if (r.code() >= 200 && r.code() < 300) message = "";
+            else if (r.code() == 403) message = "Dieses Gerät lässt keine Lautstärke zu. Am Gerät regeln.";
+            else message = describe(r);
+        });
+    }
+
+    /** Liest die aktuelle Lautstärke des Spotify-Geräts. */
+    public static void loadVolume() {
+        async("spotifylyrics-getvol", () -> {
+            SpotifyApi.Resp r = req("GET", API + "/me/player", null);
+            if (r.code() != 200 || r.body() == null || r.body().isBlank()) return;
+            JsonObject o = JsonParser.parseString(r.body()).getAsJsonObject();
+            if (o.has("device") && !o.get("device").isJsonNull()) {
+                JsonObject d = o.getAsJsonObject("device");
+                if (d.has("volume_percent") && !d.get("volume_percent").isJsonNull()) {
+                    volume = d.get("volume_percent").getAsInt();
+                }
+            }
+        });
+    }
+
+    /** Pausiert und wartet kurz, bis Spotify geantwortet hat (für Server verlassen / Spiel beenden). */
+    public static void pauseAndWait() {
+        try {
+            SpotifyApi.State s = SpotifyApi.state;
+            if (s == null || !s.playing() || Config.INSTANCE.refreshToken.isBlank()) return;
+            Thread t = new Thread(() -> {
+                try {
+                    req("PUT", API + "/me/player/pause", null);
+                } catch (Exception ignored) {
+                    // egal
+                }
+            }, "spotifylyrics-leave");
+            t.setDaemon(true);
+            t.start();
+            t.join(2500);
+            SpotifyApi.State n = SpotifyApi.state;
+            if (n != null) SpotifyApi.state = new SpotifyApi.State(n.track(), false, n.position(), System.nanoTime());
+        } catch (Throwable ignored) {
+            // egal
+        }
     }
 
     private static void simple(String method, String path) {

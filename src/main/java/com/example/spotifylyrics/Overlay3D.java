@@ -3,7 +3,10 @@ package com.example.spotifylyrics;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.render.Camera;
+import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.RaycastContext;
 import org.joml.Matrix3x2fStack;
 
 /** Zeichnet leuchtende 3D-Linien direkt auf den Bildschirm (ohne Minecraft-Partikel). Weltpunkte werden auf den Bildschirm umgerechnet. */
@@ -25,20 +28,30 @@ final class Overlay3D {
 
     private Overlay3D() {}
 
-    /** Kamera für diesen Frame berechnen. false = gerade nicht zeichnen (z.B. Third-Person). */
+    /** Kamera für diesen Frame berechnen (Ego-Ansicht und F5). false = gerade nicht zeichnen. */
     static boolean begin(MinecraftClient mc, float tickDelta) {
         if (mc.player == null || mc.world == null) return false;
         Camera cam = mc.gameRenderer.getCamera();
-        if (cam == null || cam.isThirdPerson()) return false;
+        if (cam == null) return false;
         Vec3d p = mc.player.getCameraPosVec(tickDelta);
-        cx = p.x;
-        cy = p.y;
-        cz = p.z;
         double yaw = Math.toRadians(cam.getYaw());
         double pitch = Math.toRadians(cam.getPitch());
         fx = -Math.sin(yaw) * Math.cos(pitch);
         fy = -Math.sin(pitch);
         fz = Math.cos(yaw) * Math.cos(pitch);
+        if (cam.isThirdPerson()) {
+            // F5: Kamera steht hinter (oder vor) dem Spieler, höchstens 4 Blöcke weg, vor Wänden gebremst
+            double dist = 4.0;
+            Vec3d target = new Vec3d(p.x - fx * dist, p.y - fy * dist, p.z - fz * dist);
+            BlockHitResult hit = mc.world.raycast(new RaycastContext(p, target, RaycastContext.ShapeType.COLLIDER, RaycastContext.FluidHandling.NONE, mc.player));
+            if (hit != null && hit.getType() != HitResult.Type.MISS) {
+                dist = Math.max(0.3, hit.getPos().distanceTo(p) - 0.15);
+            }
+            p = new Vec3d(p.x - fx * dist, p.y - fy * dist, p.z - fz * dist);
+        }
+        cx = p.x;
+        cy = p.y;
+        cz = p.z;
         rx = -Math.cos(yaw);
         ry = 0;
         rz = -Math.sin(yaw);
@@ -113,7 +126,6 @@ final class Overlay3D {
     /** Leuchtender Strahl: heller Kern, weicher farbiger Schein außen herum. power 0..1 = Helligkeit. */
     static void beam(DrawContext c, double[] a, double[] b, int coreRgb, int glowRgb, int thick, float power) {
         float pw = Math.max(0.05f, Math.min(1f, power));
-        line(c, a, b, glowRgb, (int) (0x1A * pw), thick * 8);
         line(c, a, b, glowRgb, (int) (0x34 * pw), thick * 5);
         line(c, a, b, glowRgb, (int) (0x70 * pw), thick * 3);
         line(c, a, b, coreRgb, (int) (0xF0 * pw), thick);

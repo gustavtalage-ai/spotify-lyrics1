@@ -6,6 +6,7 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.SliderWidget;
+import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.text.Text;
 
 import java.nio.file.Files;
@@ -18,6 +19,7 @@ import java.util.Locale;
 public class SoundboardScreen extends Screen {
     private static final int ROW_H = 22;
     private static final int HEADER_H = 28;
+    private static final int SEARCH_H = 24;
     private static final int FOOTER_H = 34;
     private static final int SLIDER_W = 96;
 
@@ -25,6 +27,9 @@ public class SoundboardScreen extends Screen {
     private static final int PANEL = 0xFF12141A;
     private static final int HEADER = 0xFF1B1E27;
     private static final int GREEN = 0xFF4ADE80;
+
+    /** Suchtext; bleibt beim Neuaufbau des Menüs erhalten. */
+    private static String searchText = "";
 
     private int scroll;                 // Index der ersten sichtbaren Zeile
     private List<Path> files = List.of();
@@ -38,19 +43,19 @@ public class SoundboardScreen extends Screen {
 
     @Override
     protected void init() {
-        files = Soundboard.list();
-        int maxRows = Math.max(3, (this.height - 24 - HEADER_H - FOOTER_H - 8) / ROW_H);
+        files = filter(Soundboard.list(), searchText);
+        int maxRows = Math.max(3, (this.height - 24 - HEADER_H - SEARCH_H - FOOTER_H - 8) / ROW_H);
         shown = Math.max(2, Math.min(files.size(), maxRows));
         int maxScroll = Math.max(0, files.size() - shown);
         scroll = Math.max(0, Math.min(scroll, maxScroll));
 
         int panelW = Math.min(330, this.width - 20);
-        int panelH = HEADER_H + shown * ROW_H + FOOTER_H + 4;
+        int panelH = HEADER_H + SEARCH_H + shown * ROW_H + FOOTER_H + 4;
         px0 = (this.width - panelW) / 2;
         px1 = px0 + panelW;
         py0 = (this.height - panelH) / 2;
         py1 = py0 + panelH;
-        rowY0 = py0 + HEADER_H + 2;
+        rowY0 = py0 + HEADER_H + SEARCH_H + 2;
 
         // Zeilen: Play-Knopf links, Regler rechts
         for (int v = 0; v < shown && scroll + v < files.size(); v++) {
@@ -60,6 +65,20 @@ public class SoundboardScreen extends Screen {
                 .dimensions(px0 + 6, ry + 1, 20, 20).build());
             addDrawableChild(new VolumeSlider(px1 - 10 - SLIDER_W, ry + 1, SLIDER_W, 20, f));
         }
+
+        // Suchleiste unter der Kopfzeile
+        TextFieldWidget search = new TextFieldWidget(this.textRenderer, px0 + 6, py0 + HEADER_H + 4, px1 - px0 - 12, 18, Text.literal("Suche"));
+        search.setMaxLength(60);
+        search.setText(searchText);
+        search.setChangedListener(t -> {
+            if (!t.equals(searchText)) {
+                searchText = t;
+                MinecraftClient.getInstance().setScreen(new SoundboardScreen(0));
+            }
+        });
+        addDrawableChild(search);
+        setFocused(search);
+        search.setFocused(true);
 
         // Kopfzeile: Selbst hören
         boolean self = Soundboard.isListenSelf();
@@ -118,6 +137,13 @@ public class SoundboardScreen extends Screen {
         ctx.drawTextWithShadow(tr, "Soundboard", px0 + 10, py0 + 6, 0xFFFFFFFF);
         ctx.drawTextWithShadow(tr, "läuft über Simple Voice Chat", px0 + 10, py0 + 17, 0xFF8A8F9C);
 
+        if (searchText.isEmpty()) {
+            ctx.drawTextWithShadow(tr, "Suchen …", px0 + 12, py0 + HEADER_H + 9, 0xFF6F7380);
+        }
+        if (files.isEmpty() && !searchText.isEmpty()) {
+            centered(ctx, tr, "Nichts gefunden für \"" + tr.trimToWidth(searchText, 140) + "\".", rowY0 + 6, 0xFFFFAA00);
+            return;
+        }
         if (files.isEmpty()) {
             centered(ctx, tr, "Keine MP3-Dateien im Ordner.", rowY0 + 6, 0xFFFFAA00);
             centered(ctx, tr, "Auf 'Ordner öffnen' klicken und MP3s hineinlegen.", rowY0 + 20, 0xFFB0B0B0);
@@ -180,6 +206,23 @@ public class SoundboardScreen extends Screen {
             SpotifyLyricsClient.LOGGER.warn("Drag-and-drop fehlgeschlagen", e);
         }
         MinecraftClient.getInstance().setScreen(new SoundboardScreen(scroll));
+    }
+
+    /** Behält nur Sounds, deren Name den Suchtext enthält (Groß-/Kleinschreibung egal, mehrere Wörter = alle müssen vorkommen). */
+    private static List<Path> filter(List<Path> all, String q) {
+        String t = q.trim().toLowerCase(Locale.ROOT);
+        if (t.isEmpty()) return all;
+        String[] words = t.split("\\s+");
+        List<Path> out = new java.util.ArrayList<>();
+        for (Path f : all) {
+            String n = shortName(f).toLowerCase(Locale.ROOT);
+            boolean ok = true;
+            for (String w : words) {
+                if (!n.contains(w)) { ok = false; break; }
+            }
+            if (ok) out.add(f);
+        }
+        return out;
     }
 
     private static String shortName(Path f) {

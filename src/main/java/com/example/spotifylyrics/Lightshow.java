@@ -52,6 +52,11 @@ public class Lightshow {
         }
     }
 
+    /** Akzentfarbe passend zum gewählten Farbmodus (für den Lyrics-Kasten). */
+    static int accent(float t, float side) {
+        return color(Config.INSTANCE.lightMode, t, side);
+    }
+
     /** Jeden Client-Tick: setzt Leuchtpunkte in den Himmel um den Spieler. */
     public static void tick(MinecraftClient mc) {
         try {

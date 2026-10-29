@@ -185,6 +185,8 @@ public class SoundboardScreen extends Screen {
                 .dimensions(px0 + 12 + bw, y0 + 38, bw, 22).build());
             addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> SpotifyControl.next())
                 .dimensions(px0 + 16 + 2 * bw, y0 + 38, bw, 22).build());
+            addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> SpotifyControl.login())
+                .dimensions(px0 + 8 + w - 76, y0 + 3, 72, 13).build());
         }
 
         TextFieldWidget f = new TextFieldWidget(this.textRenderer, px0 + 8, y0 + 64, w, 18, Text.literal("Song suchen"));
@@ -238,7 +240,7 @@ public class SoundboardScreen extends Screen {
         if (st != null) {
             playingId = st.track().id();
             ctx.drawTextWithShadow(tr, "♪", x0 + 8, y0 + 11, 0xFF1ED760);
-            ctx.drawTextWithShadow(tr, tr.trimToWidth(st.track().title(), w - 34), x0 + 22, y0 + 5, 0xFFFFFFFF);
+            ctx.drawTextWithShadow(tr, tr.trimToWidth(st.track().title(), w - 112), x0 + 22, y0 + 5, 0xFFFFFFFF);
             if (msg.isEmpty()) ctx.drawTextWithShadow(tr, tr.trimToWidth(st.track().artist(), w - 34), x0 + 22, y0 + 16, 0xFF9AA0AE);
             else ctx.drawTextWithShadow(tr, tr.trimToWidth(msg, w - 34), x0 + 22, y0 + 16, 0xFFFFAA00);
             long dur = Math.max(1, st.track().durationMs());
@@ -249,6 +251,15 @@ public class SoundboardScreen extends Screen {
             ctx.drawTextWithShadow(tr, "Es läuft nichts", x0 + 10, y0 + 7, 0xFFFFFFFF);
             if (msg.isEmpty()) ctx.drawTextWithShadow(tr, tr.trimToWidth("Spotify ist noch nicht verbunden.", w - 20), x0 + 10, y0 + 19, 0xFF9AA0AE);
             else ctx.drawTextWithShadow(tr, tr.trimToWidth(msg, w - 20), x0 + 10, y0 + 19, 0xFFFFAA00);
+        }
+
+        // Neu verbinden (klein, oben rechts im Statusfeld)
+        if (playerConnected) {
+            int rx = x0 + w - 76;
+            boolean hr = Ui.in(mouseX, mouseY, rx, y0 + 3, rx + 72, y0 + 16);
+            Ui.round2(ctx, rx, y0 + 3, rx + 72, y0 + 16, hr ? 0xFF2A3040 : 0xFF232736);
+            String rt = "Neu verbinden";
+            ctx.drawTextWithShadow(tr, rt, rx + (72 - tr.getWidth(rt)) / 2, y0 + 6, hr ? 0xFF1ED760 : 0xFF9AA0AE);
         }
 
         // Steuerung
@@ -584,7 +595,7 @@ public class SoundboardScreen extends Screen {
 
     // Absichtlich ohne @Override (Signatur hat sich zwischen Versionen geändert): Mausrad scrollt die Liste.
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
-        if (tab == 0 && files.size() > shown && verticalAmount != 0) {
+        if (files.size() > shown && verticalAmount != 0) {
             int next = scroll + (verticalAmount > 0 ? -1 : 1);
             next = Math.max(0, Math.min(next, files.size() - shown));
             if (next != scroll) MinecraftClient.getInstance().setScreen(new SoundboardScreen(next));

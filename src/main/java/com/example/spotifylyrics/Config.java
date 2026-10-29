@@ -26,6 +26,10 @@ public class Config {
     /** Voice Changer: gewählter Effekt (0 = aus) und ob du dich selbst hörst. */
     public int voicePreset = 0;
     public boolean voiceSelfHear = true;
+    /** Spotify (PC-Ton) in den Voice Chat mischen, Aufnahmegerät ("" = automatisch) und Lautstärke. */
+    public boolean spotifyShare = false;
+    public String spotifyDevice = "";
+    public float spotifyVolume = 1.0f;
     /** Noten-Symbol: Abstand von links und von unten (in GUI-Pixeln). */
     public int noteX = 20;
     public int noteY = 3;

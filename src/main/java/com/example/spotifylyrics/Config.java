@@ -23,6 +23,9 @@ public class Config {
 
     /** Lyrics per Spracherkennung heraushören, wenn lrclib nichts findet. */
     public boolean transcribe = true;
+    /** Voice Changer: gewählter Effekt (0 = aus) und ob du dich selbst hörst. */
+    public int voicePreset = 0;
+    public boolean voiceSelfHear = true;
     /** Noten-Symbol: Abstand von links und von unten (in GUI-Pixeln). */
     public int noteX = 20;
     public int noteY = 3;

@@ -21,9 +21,11 @@ public class Config {
     /** Soundboard: Sound auch selbst hören. */
     public boolean listenSelf = true;
 
+    /** Lyrics per Spracherkennung heraushören, wenn lrclib nichts findet. */
+    public boolean transcribe = true;
     /** Noten-Symbol: Abstand von links und von unten (in GUI-Pixeln). */
-    public int iconX = 22;
-    public int iconY = 3;
+    public int noteX = 20;
+    public int noteY = 3;
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("spotifylyrics.json");

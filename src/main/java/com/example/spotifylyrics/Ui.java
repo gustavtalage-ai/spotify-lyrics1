@@ -1,5 +1,6 @@
 package com.example.spotifylyrics;
 
+import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 
 /** Kleine Zeichenhelfer für das Design (nur einfache Rechtecke, darum in jeder Version sicher). */
@@ -38,5 +39,31 @@ final class Ui {
 
     static boolean in(int mx, int my, int x0, int y0, int x1, int y1) {
         return mx >= x0 && mx < x1 && my >= y0 && my < y1;
+    }
+
+    /** Moderner Knopf: abgerundet, Text mittig. Deckt den normalen Knopf darunter komplett ab. */
+    static void btn(DrawContext c, TextRenderer tr, int x0, int y0, int x1, int y1, String label, boolean hov, int bg, int bgHov, int fg) {
+        c.fill(x0, y0, x1, y1, 0xFF0F1117);
+        round2(c, x0, y0, x1, y1, hov ? bgHov : bg);
+        String t = tr.trimToWidth(label, Math.max(4, x1 - x0 - 8));
+        c.drawTextWithShadow(tr, t, x0 + (x1 - x0 - tr.getWidth(t)) / 2, y0 + (y1 - y0 - 8) / 2, fg);
+    }
+
+    /** Schalter mit Name links und kleinem Ein/Aus-Schieber rechts. */
+    static void toggle(DrawContext c, TextRenderer tr, int x0, int y0, int x1, int y1, String label, boolean on, boolean hov) {
+        c.fill(x0, y0, x1, y1, 0xFF0F1117);
+        round2(c, x0, y0, x1, y1, hov ? 0xFF2A3040 : 0xFF1F232E);
+        c.drawTextWithShadow(tr, tr.trimToWidth(label, Math.max(4, x1 - x0 - 44)), x0 + 8, y0 + (y1 - y0 - 8) / 2, on ? 0xFFFFFFFF : 0xFF9AA0AE);
+        int sx1 = x1 - 8, sx0 = sx1 - 22, sy0 = y0 + (y1 - y0 - 10) / 2;
+        round(c, sx0, sy0, sx1, sy0 + 10, on ? 0xFF4ADE80 : 0xFF3A3F50);
+        int kx = on ? sx1 - 9 : sx0 + 1;
+        round(c, kx, sy0 + 1, kx + 8, sy0 + 9, 0xFFFFFFFF);
+    }
+
+    /** Abschnitts-Ueberschrift mit feiner Linie. */
+    static void section(DrawContext c, TextRenderer tr, int x, int y, String text, int width) {
+        c.drawTextWithShadow(tr, text, x, y, 0xFFC77DFF);
+        int lx = x + tr.getWidth(text) + 6;
+        c.fill(lx, y + 4, x + width - 4, y + 5, 0x22FFFFFF);
     }
 }

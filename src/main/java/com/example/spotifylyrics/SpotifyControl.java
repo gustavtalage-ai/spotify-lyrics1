@@ -84,6 +84,30 @@ public class SpotifyControl {
         void run() throws Exception;
     }
 
+    // ---------- Login aus dem Menü ----------
+
+    public static void login() {
+        message = "Login wird gestartet ...";
+        SpotifyApi.login(url -> {
+            openUrl(url);
+            message = "Browser geöffnet. Bei Spotify bestätigen.";
+        }, msg -> message = msg);
+    }
+
+    private static void openUrl(String url) {
+        try {
+            new ProcessBuilder("rundll32", "url.dll,FileProtocolHandler", url).start();
+            return;
+        } catch (Throwable ignored) {
+            // weiter mit dem nächsten Weg
+        }
+        try {
+            java.awt.Desktop.getDesktop().browse(URI.create(url));
+        } catch (Throwable ignored) {
+            message = "Browser ließ sich nicht öffnen.";
+        }
+    }
+
     // ---------- Suche ----------
 
     public static void search(String text) {

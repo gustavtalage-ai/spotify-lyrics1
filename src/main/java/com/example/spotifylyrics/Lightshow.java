@@ -7,7 +7,7 @@ import net.minecraft.util.math.Vec3d;
 
 /** Lichtshow: Laser-Strahlen, die rund um dich in den Himmel leuchten, im Takt der Musik (direkt auf den Bildschirm gezeichnet, ohne Partikel). */
 public class Lightshow {
-    public static final String[] MODES = {"Regenbogen", "Lila", "Blau", "Feuer"};
+    public static final String[] MODES = {"Regenbogen", "Lila", "Blau", "Feuer", "Grün", "Pink", "Eis", "Gold", "Party"};
 
     private static volatile float level = 0f;       // 0..1, geglättet
     private static volatile long lastAudioMs = 0;    // wann zuletzt echtes Audio ankam
@@ -53,11 +53,17 @@ public class Lightshow {
     }
 
     private static int color(int mode, float t, float side) {
+        float w = (float) Math.sin(t * 2 + side);
         switch (mode) {
-            case 1: return hsv(0.76f + 0.05f * (float) Math.sin(t * 2 + side), 0.75f, 1f);
-            case 2: return hsv(0.58f + 0.06f * (float) Math.sin(t * 2 + side), 0.8f, 1f);
-            case 3: return hsv(0.02f + 0.07f * (0.5f + 0.5f * (float) Math.sin(t * 2 + side)), 0.9f, 1f);
-            default: return hsv(t * 0.12f + side * 0.25f, 0.8f, 1f);
+            case 1: return hsv(0.76f + 0.05f * w, 0.75f, 1f);                        // Lila
+            case 2: return hsv(0.58f + 0.06f * w, 0.8f, 1f);                         // Blau
+            case 3: return hsv(0.02f + 0.07f * (0.5f + 0.5f * w), 0.9f, 1f);         // Feuer
+            case 4: return hsv(0.33f + 0.04f * w, 0.8f, 1f);                         // Grün
+            case 5: return hsv(0.90f + 0.04f * w, 0.7f, 1f);                         // Pink
+            case 6: return hsv(0.50f + 0.03f * w, 0.65f, 1f);                        // Eis
+            case 7: return hsv(0.12f + 0.03f * w, 0.85f, 1f);                        // Gold
+            case 8: return hsv(side * 0.37f + (float) Math.floor(t * 3f) * 0.17f, 0.9f, 1f); // Party: springt durch alle Farben
+            default: return hsv(t * 0.12f + side * 0.25f, 0.8f, 1f);                 // Regenbogen
         }
     }
 
@@ -144,41 +150,58 @@ public class Lightshow {
                 }
             }
 
-            // Konzert-Muster: wechselt alle 7 Sekunden
-            int pat = ((int) (animT / 7.0)) % 3;
+            // Konzert-Muster: wechselt alle 8 Sekunden
+            int[] order = {0, 3, 1, 4, 2, 5};
+            int pat = order[((int) (animT / 8.0)) % order.length];
             int emitters = 6;
-            int rays = 4;
+            int rays = 3;
             for (int e = 0; e < emitters; e++) {
-                double ea = e / (double) emitters * Math.PI * 2 + animT * 0.05;
+                double ea = e / (double) emitters * Math.PI * 2 + animT * 0.04;
                 double er = 8 + 3 * (e % 3);
                 double ex = pp.x + Math.cos(ea) * er;
                 double ez = pp.z + Math.sin(ea) * er;
                 double ey = pp.y + 0.3;
                 double dir = (e & 1) == 0 ? 1 : -1;
+                double inward = ea + Math.PI;   // zeigt von diesem Strahler zur Mitte
+                int glow = color(cfg.lightMode, t * 0.5f, e * 0.55f);
                 for (int r = 0; r < rays; r++) {
                     int idx = e * rays + r;
-                    double ph = idx * 0.9;
-                    double spread = r - 1.5;
+                    double spread = r - 1.0;
                     double az, elDeg;
-                    if (pat == 0) {          // weit hin und her schwenken
-                        az = ea + Math.PI + spread * 0.35 + Math.sin(animT * 1.1 + ph * 0.5 + e) * 1.2 * dir;
-                        elDeg = 52 + 30 * Math.sin(animT * 0.9 + ph);
-                    } else if (pat == 1) {   // Fächer: alle schwingen zusammen über dich
-                        az = ea + Math.PI + spread * 0.25 + Math.sin(animT * 1.6) * 0.6 * dir;
-                        elDeg = 62 + 24 * Math.sin(animT * 1.3 + e * 0.6);
-                    } else {                 // Kreisen
-                        az = ea + animT * 1.4 * dir + spread * 0.5;
-                        elDeg = 40 + 38 * Math.abs(Math.sin(animT * 0.7 + ph * 0.3));
+                    switch (pat) {
+                        case 0:  // Schwenken: weit links und rechts, gegenläufig
+                            az = inward + spread * 0.30 + Math.sin(animT * 1.0 + e * 0.5) * 1.3 * dir;
+                            elDeg = 55 + 22 * Math.sin(animT * 0.8 + idx);
+                            break;
+                        case 1:  // Welle: die Höhe läuft wellenförmig durch alle Strahlen
+                            az = inward + spread * 0.35;
+                            elDeg = 55 + 30 * Math.sin(animT * 2.0 - idx * 0.55);
+                            break;
+                        case 2:  // Kreisen
+                            az = ea + animT * 1.2 * dir + spread * 0.45;
+                            elDeg = 45 + 30 * Math.abs(Math.sin(animT * 0.6 + e));
+                            break;
+                        case 3:  // Kreuz: die Strahlen kreuzen sich über dir
+                            az = inward + spread * 0.2 + dir * (0.5 + 0.5 * Math.sin(animT * 1.4)) * 0.8;
+                            elDeg = 68 + 16 * Math.sin(animT * 1.1 + e * 0.8);
+                            break;
+                        case 4:  // Suchscheinwerfer: flach über den Horizont
+                            az = inward + Math.sin(animT * 0.55 + e * 1.1) * 2.2;
+                            elDeg = 22 + 14 * Math.sin(animT * 0.9 + idx * 0.7);
+                            break;
+                        default: // Fächer geht auf und zu
+                            az = inward + spread * (0.15 + 0.9 * Math.abs(Math.sin(animT * 0.9)));
+                            elDeg = 84 - 40 * Math.abs(Math.sin(animT * 0.9 + e * 0.2));
+                            break;
                     }
-                    elDeg = Math.max(12, Math.min(88, elDeg));
+                    elDeg = Math.max(10, Math.min(88, elDeg));
                     double el = Math.toRadians(elDeg);
                     double ch = Math.cos(el);
                     double dx = Math.cos(az) * ch, dz = Math.sin(az) * ch, dy = Math.sin(el);
-                    int glow = color(cfg.lightMode, t * 0.5f, idx * 0.35f);
-                    int core = idx % 2 == 0 ? 0xFFFFFF : glow;
-                    double[] a = Overlay3D.view(ex + dx * 2, ey + dy * 2, ez + dz * 2);
-                    double[] b = Overlay3D.view(ex + dx * 180, ey + dy * 180, ez + dz * 180);
-                    Overlay3D.beam(ctx, a, b, core, glow, thick, power);
+                    int core = r == 1 ? 0xFFFFFF : glow;
+                    double[] pa = Overlay3D.view(ex + dx * 2, ey + dy * 2, ez + dz * 2);
+                    double[] pb = Overlay3D.view(ex + dx * 180, ey + dy * 180, ez + dz * 180);
+                    Overlay3D.beam(ctx, pa, pb, core, glow, thick, power);
                 }
             }
         } catch (Throwable ex) {

@@ -19,14 +19,19 @@ import java.util.Locale;
 
 /** Item-Filter einrichten: Item wählen, Slots anklicken, speichern. */
 public class FilterScreen extends Screen {
-    private static final int W = 320;
     private static final int ROWS = 4;
+    private static final int HEAD = 28;
+    private static final int PANEL_H = 293;
+    private static final int ACCENT = 0xFFAA00FF;
+    private static final int PANEL = 0xFF0F1117;
+    private static final int HEADER = 0xFF181B24;
+    private static final int GREEN = 0xFF4ADE80;
 
     private static String search = "";
     private static String selected = "";
     private static long mask = 0L;
 
-    private int left, top, gx, gy;
+    private int px0, px1, py0, py1, cx, cw, gx, gy, rowsY, infoY, botY, bot2Y, qx, qw, searchY;
     private List<Item> found = List.of();
 
     public FilterScreen() {
@@ -77,12 +82,45 @@ public class FilterScreen extends Screen {
         return out;
     }
 
+    private int slotX(int c) {
+        return gx + c * 20;
+    }
+
+    private int slotY(int r) {
+        return gy + r * 20 + (r == 3 ? 4 : 0);
+    }
+
+    private static int slotIdx(int r, int c) {
+        return r < 3 ? 9 + r * 9 + c : c;
+    }
+
+    private void invisible(int x, int y, int w, int h, Runnable r) {
+        addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> r.run()).dimensions(x, y, w, h).build());
+    }
+
     @Override
     protected void init() {
-        left = (this.width - W) / 2;
-        top = Math.max(4, (this.height - 252) / 2);
+        int panelW = Math.min(340, this.width - 20);
+        px0 = (this.width - panelW) / 2;
+        px1 = px0 + panelW;
+        py0 = Math.max(4, (this.height - PANEL_H) / 2);
+        py1 = py0 + PANEL_H;
+        cx = px0 + 10;
+        cw = panelW - 20;
+        searchY = py0 + HEAD + 4;
+        rowsY = searchY + 22;
+        infoY = rowsY + ROWS * 19 + 3;
+        gy = infoY + 16;
+        botY = gy + 82 + 8;
+        bot2Y = botY + 24;
+        gx = cx;
+        qx = cx + 9 * 20 + 8;
+        qw = cx + cw - qx;
 
-        TextFieldWidget f = new TextFieldWidget(this.textRenderer, left, top + 14, W, 18, Text.literal("Item suchen"));
+        // Zurück
+        invisible(px1 - 10 - 64, py0 + 5, 64, 18, () -> MinecraftClient.getInstance().setScreen(new SoundboardScreen(0)));
+
+        TextFieldWidget f = new TextFieldWidget(this.textRenderer, cx, searchY, cw, 18, Text.literal("Item suchen"));
         f.setMaxLength(40);
         f.setText(search);
         f.setChangedListener(t -> {
@@ -98,40 +136,35 @@ public class FilterScreen extends Screen {
         found = find();
         for (int i = 0; i < found.size(); i++) {
             final Item it = found.get(i);
-            addDrawableChild(ButtonWidget.builder(it.getName(), b -> {
+            invisible(cx, rowsY + i * 19, cw, 18, () -> {
                 selected = Registries.ITEM.getId(it).toString();
                 Long m = Config.INSTANCE.filterRules.get(selected);
                 mask = m == null ? 0L : m;
                 reopen();
-            }).dimensions(left + 22, top + 34 + i * 18, W - 22, 17).build());
+            });
         }
 
         // Slot-Raster: 3 Reihen Rucksack, darunter die Hotbar
-        gx = left + (W - 9 * 20) / 2;
-        gy = top + 34 + ROWS * 18 + 22;
         for (int r = 0; r < 4; r++) {
             for (int c = 0; c < 9; c++) {
-                final int idx = r < 3 ? 9 + r * 9 + c : c;
-                int x = gx + c * 20;
-                int y = gy + r * 20 + (r == 3 ? 4 : 0);
-                addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> {
+                final int idx = slotIdx(r, c);
+                invisible(slotX(c), slotY(r), 18, 18, () -> {
                     mask ^= 1L << idx;
                     reopen();
-                }).dimensions(x, y, 18, 18).build());
+                });
             }
         }
 
-        int by = gy + 4 * 20 + 8;
-        int bw = (W - 3 * 4) / 4;
-        addDrawableChild(ButtonWidget.builder(Text.literal("Alle"), b -> {
+        // Schnellwahl rechts neben dem Raster
+        invisible(qx, gy, qw, 19, () -> {
             mask = (1L << 36) - 1;
             reopen();
-        }).dimensions(left, by, bw, 18).build());
-        addDrawableChild(ButtonWidget.builder(Text.literal("Keine"), b -> {
+        });
+        invisible(qx, gy + 21, qw, 19, () -> {
             mask = 0L;
             reopen();
-        }).dimensions(left + (bw + 4), by, bw, 18).build());
-        addDrawableChild(ButtonWidget.builder(Text.literal("Freie"), b -> {
+        });
+        invisible(qx, gy + 42, qw, 19, () -> {
             long m = 0L;
             MinecraftClient mc = MinecraftClient.getInstance();
             if (mc.player != null) {
@@ -139,43 +172,52 @@ public class FilterScreen extends Screen {
             }
             mask = m;
             reopen();
-        }).dimensions(left + 2 * (bw + 4), by, bw, 18).build());
-        addDrawableChild(ButtonWidget.builder(Text.literal("Hotbar"), b -> {
+        });
+        invisible(qx, gy + 63, qw, 19, () -> {
             mask = (1L << 9) - 1;
             reopen();
-        }).dimensions(left + 3 * (bw + 4), by, bw, 18).build());
+        });
 
-        int by2 = by + 22;
-        int b5 = (W - 4 * 3) / 5;
-        addDrawableChild(ButtonWidget.builder(Text.literal("Speichern"), b -> {
+        int hw = (cw - 4) / 2;
+        invisible(cx, botY, hw, 20, () -> {
             if (!selected.isEmpty()) {
                 if (mask == 0L) Config.INSTANCE.filterRules.remove(selected);
                 else Config.INSTANCE.filterRules.put(selected, mask);
                 Config.INSTANCE.save();
             }
             reopen();
-        }).dimensions(left, by2, b5, 18).build());
-        addDrawableChild(ButtonWidget.builder(Text.literal("Regel weg"), b -> {
+        });
+        invisible(cx + hw + 4, botY, hw, 20, () -> {
             if (!selected.isEmpty()) {
                 Config.INSTANCE.filterRules.remove(selected);
                 Config.INSTANCE.save();
                 mask = 0L;
             }
             reopen();
-        }).dimensions(left + (b5 + 3), by2, b5, 18).build());
-        addDrawableChild(ButtonWidget.builder(Text.literal("Filter: " + (Config.INSTANCE.filterOn ? "AN" : "AUS")), b -> {
+        });
+        invisible(cx, bot2Y, hw, 20, () -> {
             Config.INSTANCE.filterOn = !Config.INSTANCE.filterOn;
             Config.INSTANCE.save();
             reopen();
-        }).dimensions(left + 2 * (b5 + 3), by2, b5, 18).build());
-        addDrawableChild(ButtonWidget.builder(Text.literal("Nur diese: " + (Config.INSTANCE.filterStrict ? "AN" : "AUS")), b -> {
+        });
+        invisible(cx + hw + 4, bot2Y, hw, 20, () -> {
             Config.INSTANCE.filterStrict = !Config.INSTANCE.filterStrict;
             Config.INSTANCE.save();
             reopen();
-        }).dimensions(left + 3 * (b5 + 3), by2, b5, 18).build());
-        addDrawableChild(ButtonWidget.builder(Text.literal("Zurück"), b ->
-            MinecraftClient.getInstance().setScreen(new SoundboardScreen(0))
-        ).dimensions(left + 4 * (b5 + 3), by2, b5, 18).build());
+        });
+    }
+
+    // Absichtlich ohne @Override, wie im Soundboard-Menü.
+    public void renderBackground(DrawContext ctx, int mouseX, int mouseY, float delta) {
+        ctx.fill(0, 0, this.width, this.height, 0xB0050609);
+        Ui.round2(ctx, px0 - 5, py0 - 5, px1 + 5, py1 + 5, 0x20AA00FF);
+        Ui.round2(ctx, px0 - 3, py0 - 3, px1 + 3, py1 + 3, 0x28AA00FF);
+        Ui.round2(ctx, px0 - 1, py0 - 1, px1 + 1, py1 + 1, ACCENT);
+        Ui.round2(ctx, px0, py0, px1, py1, PANEL);
+        Ui.round2(ctx, px0, py0, px1, py0 + HEAD, HEADER);
+        ctx.fill(px0, py0 + HEAD - 4, px1, py0 + HEAD, HEADER);
+        ctx.fill(px0 + 1, py0 + HEAD, px1 - 1, py0 + HEAD + 1, ACCENT);
+        ctx.fill(px0 + 1, py0 + HEAD + 1, px1 - 1, py0 + HEAD + 3, 0x20AA00FF);
     }
 
     // Absichtlich ohne @Override, wie im Soundboard-Menü.
@@ -183,46 +225,77 @@ public class FilterScreen extends Screen {
         super.render(ctx, mouseX, mouseY, delta);
         TextRenderer tr = MinecraftClient.getInstance().textRenderer;
         MinecraftClient mc = MinecraftClient.getInstance();
-        ctx.drawTextWithShadow(tr, "Item-Filter · Regeln: " + Config.INSTANCE.filterRules.size(), left, top + 2, 0xFFFFFFFF);
+        Config cfg = Config.INSTANCE;
 
+        // Kopf
+        ctx.drawTextWithShadow(tr, "Item-Filter", px0 + 10, py0 + 6, 0xFFFFFFFF);
+        if (cfg.filterStrict) {
+            ctx.drawTextWithShadow(tr, "Nur-diese-Modus: Rest wird weggeworfen!", px0 + 10, py0 + 17, 0xFFFF6A6A);
+        } else {
+            ctx.drawTextWithShadow(tr, cfg.filterRules.size() + " Regeln · Filter " + (cfg.filterOn ? "an" : "aus"), px0 + 10, py0 + 17, 0xFF7E8494);
+        }
+        Ui.btn(ctx, tr, px1 - 10 - 64, py0 + 5, px1 - 10, py0 + 23, "Zurück", Ui.in(mouseX, mouseY, px1 - 10 - 64, py0 + 5, px1 - 10, py0 + 23), 0xFF1F232E, 0xFF2A3040, 0xFFD6D9E0);
+
+        if (search.isEmpty()) ctx.drawTextWithShadow(tr, "Item suchen (z.B. Schwert, Brot) …", cx + 5, searchY + 5, 0xFF6F7380);
+
+        // Treffer
         for (int i = 0; i < found.size(); i++) {
-            ctx.drawItem(new ItemStack(found.get(i)), left + 3, top + 34 + i * 18);
+            Item it = found.get(i);
+            int ry = rowsY + i * 19;
+            boolean isSel = Registries.ITEM.getId(it).toString().equals(selected);
+            boolean hov = Ui.in(mouseX, mouseY, cx, ry, cx + cw, ry + 18);
+            ctx.fill(cx, ry, cx + cw, ry + 18, PANEL);
+            Ui.round2(ctx, cx, ry, cx + cw, ry + 18, isSel ? 0xFF15301F : (hov ? 0xFF232736 : 0xFF1A1D26));
+            if (isSel) ctx.fill(cx, ry + 4, cx + 2, ry + 14, GREEN);
+            ctx.drawItem(new ItemStack(it), cx + 5, ry + 1);
+            ctx.drawTextWithShadow(tr, tr.trimToWidth(it.getName().getString(), cw - 34), cx + 26, ry + 5, isSel ? 0xFFFFFFFF : 0xFFE4E7EE);
         }
         if (found.isEmpty()) {
-            ctx.drawTextWithShadow(tr, "Tippe oben ein Item (z.B. Schwert, Brot, Fackel)", left + 4, top + 40, 0xFF9AA0AE);
+            ctx.drawTextWithShadow(tr, "Tippe oben ein Item ein.", cx + 4, rowsY + 6, 0xFF9AA0AE);
         }
 
-        Item sel = selected.isEmpty() ? null : itemOf(selected);
-        int sy = top + 34 + ROWS * 18 + 3;
-        if (sel != null) {
-            ctx.drawItem(new ItemStack(sel), left, sy - 3);
-            ctx.drawTextWithShadow(tr, "Gewählt: " + sel.getName().getString() + "  → grüne Slots", left + 20, sy + 2, 0xFF4ADE80);
+        // Gewähltes Item
+        Item chosen = selected.isEmpty() ? null : itemOf(selected);
+        if (chosen != null) {
+            ctx.drawTextWithShadow(tr, tr.trimToWidth("Gewählt: " + chosen.getName().getString() + " · grüne Slots = hier darf es liegen", cw), cx, infoY + 4, 0xFF4ADE80);
         } else {
-            ctx.drawTextWithShadow(tr, "Wähle oben ein Item, dann die Slots anklicken.", left, sy + 2, 0xFFFFAA00);
+            ctx.drawTextWithShadow(tr, "Wähle oben ein Item, dann die Slots anklicken.", cx, infoY + 4, 0xFFFFAA00);
         }
 
+        // Slot-Raster
         for (int r = 0; r < 4; r++) {
             for (int c = 0; c < 9; c++) {
-                int idx = r < 3 ? 9 + r * 9 + c : c;
-                int x = gx + c * 20;
-                int y = gy + r * 20 + (r == 3 ? 4 : 0);
+                int idx = slotIdx(r, c);
+                int x = slotX(c), y = slotY(r);
+                boolean on = ((mask >> idx) & 1L) != 0;
+                boolean hov = Ui.in(mouseX, mouseY, x, y, x + 18, y + 18);
+                ctx.fill(x, y, x + 18, y + 18, PANEL);
+                Ui.round(ctx, x, y, x + 18, y + 18, on ? 0xFF1F5A35 : (hov ? 0xFF2A3040 : 0xFF1A1D26));
+                if (on) {
+                    ctx.fill(x, y + 2, x + 1, y + 16, GREEN);
+                    ctx.fill(x + 17, y + 2, x + 18, y + 16, GREEN);
+                    ctx.fill(x + 2, y, x + 16, y + 1, GREEN);
+                    ctx.fill(x + 2, y + 17, x + 16, y + 18, GREEN);
+                }
                 if (mc.player != null) {
                     ItemStack s = mc.player.getInventory().getStack(idx);
                     if (!s.isEmpty()) ctx.drawItem(s, x + 1, y + 1);
                 }
-                if (((mask >> idx) & 1L) != 0) {
-                    int g = 0xFF4ADE80;
-                    ctx.fill(x, y, x + 18, y + 2, g);
-                    ctx.fill(x, y + 16, x + 18, y + 18, g);
-                    ctx.fill(x, y, x + 2, y + 18, g);
-                    ctx.fill(x + 16, y, x + 18, y + 18, g);
-                }
             }
         }
-        if (Config.INSTANCE.filterStrict) {
-            ctx.drawTextWithShadow(tr, "Nur diese AN: Rest wird weggeworfen!", left + 150, top + 2, 0xFFFF6A6A);
+
+        // Schnellwahl
+        String[] q = {"Alle Slots", "Keine", "Nur freie", "Nur Hotbar"};
+        for (int i = 0; i < 4; i++) {
+            int y = gy + i * 21;
+            Ui.btn(ctx, tr, qx, y, qx + qw, y + 19, q[i], Ui.in(mouseX, mouseY, qx, y, qx + qw, y + 19), 0xFF1F232E, 0xFF2A3040, 0xFFD6D9E0);
         }
-        ctx.drawTextWithShadow(tr, "Rucksack", gx + 9 * 20 + 4, gy + 24, 0xFF7E8494);
-        ctx.drawTextWithShadow(tr, "Hotbar", gx + 9 * 20 + 4, gy + 68, 0xFF7E8494);
+
+        // Unten
+        int hw = (cw - 4) / 2;
+        Ui.btn(ctx, tr, cx, botY, cx + hw, botY + 20, "Speichern", Ui.in(mouseX, mouseY, cx, botY, cx + hw, botY + 20), 0xFF3A1A5C, 0xFF4B2373, 0xFFFFFFFF);
+        Ui.btn(ctx, tr, cx + hw + 4, botY, cx + cw, botY + 20, "Regel löschen", Ui.in(mouseX, mouseY, cx + hw + 4, botY, cx + cw, botY + 20), 0xFF3B1A22, 0xFF53222D, 0xFFFF9A9A);
+        Ui.toggle(ctx, tr, cx, bot2Y, cx + hw, bot2Y + 20, "Filter an", cfg.filterOn, Ui.in(mouseX, mouseY, cx, bot2Y, cx + hw, bot2Y + 20));
+        Ui.toggle(ctx, tr, cx + hw + 4, bot2Y, cx + cw, bot2Y + 20, "Nur diese behalten", cfg.filterStrict, Ui.in(mouseX, mouseY, cx + hw + 4, bot2Y, cx + cw, bot2Y + 20));
     }
 }

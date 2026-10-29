@@ -111,6 +111,72 @@ public final class Soundboard {
         return out;
     }
 
+    private static final Map<String, Long> LENGTHS = new ConcurrentHashMap<>();
+    /** Ab dieser Länge (Sekunden) zählt eine Datei als Lied, darunter als Soundeffekt. */
+    public static final int MUSIC_SECONDS = 30;
+
+    /** Ist die Datei ein Lied (mindestens 30 Sekunden)? Länge kommt aus dem MP3-Kopf, ohne zu dekodieren. */
+    public static boolean isMusic(Path file) {
+        try {
+            long size = Files.size(file);
+            String key = file.toAbsolutePath() + ":" + size;
+            Long ms = LENGTHS.get(key);
+            if (ms == null) {
+                ms = mp3LengthMs(file, size);
+                LENGTHS.put(key, ms);
+            }
+            return ms >= MUSIC_SECONDS * 1000L;
+        } catch (Throwable e) {
+            return false;
+        }
+    }
+
+    private static final int[] BR_V1 = {0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320};
+    private static final int[] BR_V2 = {0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160};
+
+    /** Schätzt die Länge aus dem ersten MP3-Frame (Xing/Info-Kopf oder gleichbleibende Bitrate). */
+    private static long mp3LengthMs(Path file, long size) {
+        try (java.io.RandomAccessFile f = new java.io.RandomAccessFile(file.toFile(), "r")) {
+            int start = 0;
+            byte[] head = new byte[10];
+            f.readFully(head);
+            if (head[0] == 'I' && head[1] == 'D' && head[2] == '3') {
+                start = 10 + ((head[6] & 0x7F) << 21 | (head[7] & 0x7F) << 14 | (head[8] & 0x7F) << 7 | (head[9] & 0x7F));
+            }
+            f.seek(start);
+            byte[] b = new byte[(int) Math.min(65536, size - start)];
+            f.readFully(b);
+            for (int i = 0; i + 4 < b.length; i++) {
+                if ((b[i] & 0xFF) != 0xFF || (b[i + 1] & 0xE0) != 0xE0) continue;
+                int ver = (b[i + 1] >> 3) & 3;        // 3 = MPEG1, 2 = MPEG2, 0 = MPEG2.5
+                int layer = (b[i + 1] >> 1) & 3;      // 1 = Layer 3
+                int bi = (b[i + 2] >> 4) & 15;
+                int si = (b[i + 2] >> 2) & 3;
+                if (ver == 1 || layer != 1 || bi == 0 || bi == 15 || si == 3) continue;
+                boolean v1 = ver == 3;
+                int rate = (v1 ? new int[]{44100, 48000, 32000} : new int[]{22050, 24000, 16000})[si];
+                if (ver == 0) rate /= 2;
+                int kbps = (v1 ? BR_V1 : BR_V2)[bi];
+                boolean mono = ((b[i + 3] >> 6) & 3) == 3;
+                int side = v1 ? (mono ? 17 : 32) : (mono ? 9 : 17);
+                int x = i + 4 + side;
+                if (x + 12 <= b.length) {
+                    String tag = new String(b, x, 4, java.nio.charset.StandardCharsets.ISO_8859_1);
+                    if (tag.equals("Xing") || tag.equals("Info")) {
+                        int flags = b[x + 7] & 0xFF;
+                        if ((flags & 1) != 0) {
+                            long frames = ((long) (b[x + 8] & 0xFF) << 24) | ((b[x + 9] & 0xFF) << 16) | ((b[x + 10] & 0xFF) << 8) | (b[x + 11] & 0xFF);
+                            return frames * (v1 ? 1152L : 576L) * 1000L / rate;
+                        }
+                    }
+                }
+                return (size - start - i) * 8L / kbps;   // kbps = Bit pro ms
+            }
+        } catch (Throwable ignored) {
+        }
+        return 0;
+    }
+
     public static void openFolder() {
         try {
             Path dir = folder();

@@ -44,6 +44,8 @@ public class Config {
     public int placeDir = -1;
     /** Inventar-Filter: an/aus und Regeln (Item-ID -> Slot-Maske, Bit 0-8 Hotbar, 9-35 Rucksack). */
     public boolean filterOn = true;
+    /** Streng: Alles ohne Regel wird sofort weggeworfen (nur Filter-Items bleiben im Inventar). */
+    public boolean filterStrict = false;
     public java.util.Map<String, Long> filterRules = new java.util.LinkedHashMap<>();
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();

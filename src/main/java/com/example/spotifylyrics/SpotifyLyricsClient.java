@@ -44,14 +44,19 @@ public class SpotifyLyricsClient implements ClientModInitializer {
         d.register(ClientCommandManager.literal("soundboard").executes(c -> {
             Soundboard.openRequested = true; // der Tick oeffnet das Menue, sobald der Chat zu ist
             return Command.SINGLE_SUCCESS;
-        }).then(ClientCommandManager.literal("icon")
+        }).then(ClientCommandManager.literal("whisper").executes(c -> {
+            Config.INSTANCE.transcribe = !Config.INSTANCE.transcribe;
+            Config.INSTANCE.save();
+            c.getSource().sendFeedback(Text.literal("Lyrics heraushören: " + (Config.INSTANCE.transcribe ? "an" : "aus")));
+            return Command.SINGLE_SUCCESS;
+        })).then(ClientCommandManager.literal("icon")
             .then(ClientCommandManager.argument("x", IntegerArgumentType.integer(0, 4000))
                 .then(ClientCommandManager.argument("y", IntegerArgumentType.integer(0, 4000)).executes(c -> {
-                    Config.INSTANCE.iconX = IntegerArgumentType.getInteger(c, "x");
-                    Config.INSTANCE.iconY = IntegerArgumentType.getInteger(c, "y");
+                    Config.INSTANCE.noteX = IntegerArgumentType.getInteger(c, "x");
+                    Config.INSTANCE.noteY = IntegerArgumentType.getInteger(c, "y");
                     Config.INSTANCE.save();
-                    c.getSource().sendFeedback(Text.literal("Noten-Symbol: " + Config.INSTANCE.iconX + " von links, "
-                        + Config.INSTANCE.iconY + " von unten"));
+                    c.getSource().sendFeedback(Text.literal("Noten-Symbol: " + Config.INSTANCE.noteX + " von links, "
+                        + Config.INSTANCE.noteY + " von unten"));
                     return Command.SINGLE_SUCCESS;
                 })))));
         d.register(ClientCommandManager.literal("lyrics")

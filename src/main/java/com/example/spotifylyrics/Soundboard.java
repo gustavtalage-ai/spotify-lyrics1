@@ -7,6 +7,8 @@ import org.lwjgl.glfw.GLFW;
 
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.DataLine;
+import javax.sound.sampled.Mixer;
 import javax.sound.sampled.SourceDataLine;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -189,8 +191,12 @@ public final class Soundboard {
                 }
                 durationMs = pcm.length * 1000L / SAMPLE_RATE;
                 startNanos = System.nanoTime();
-                SoundLyrics.request(file, durationMs, token);
                 if (Config.INSTANCE.listenSelf) startLocal(pcm, token);
+                try {
+                    SoundLyrics.request(file, durationMs, token, pcm);
+                } catch (Throwable e) {
+                    SpotifyLyricsClient.LOGGER.warn("Lyrics-Start fehlgeschlagen", e);
+                }
             } catch (Throwable e) {
                 SpotifyLyricsClient.LOGGER.warn("Sound konnte nicht geladen werden: " + file, e);
                 SpotifyLyricsClient.chat(Text.literal("Soundboard: Konnte " + file.getFileName() + " nicht laden."));
@@ -243,14 +249,43 @@ public final class Soundboard {
         }
     }
 
+    /** Öffnet eine Audioausgabe; probiert bei Problemen andere Geräte und mehrere Versuche. */
+    private static SourceDataLine openLine(AudioFormat fmt, int token) throws Exception {
+        Exception last = null;
+        for (int attempt = 0; attempt < 6 && token == localToken; attempt++) {
+            try {
+                SourceDataLine l = AudioSystem.getSourceDataLine(fmt);
+                l.open(fmt, 19200);
+                return l;
+            } catch (Exception e) {
+                last = e;
+            }
+            for (Mixer.Info mi : AudioSystem.getMixerInfo()) {
+                try {
+                    Mixer m = AudioSystem.getMixer(mi);
+                    DataLine.Info info = new DataLine.Info(SourceDataLine.class, fmt);
+                    if (!m.isLineSupported(info)) continue;
+                    SourceDataLine l = (SourceDataLine) m.getLine(info);
+                    l.open(fmt, 19200);
+                    return l;
+                } catch (Exception e) {
+                    last = e;
+                }
+            }
+            Thread.sleep(150); // evtl. schließt gerade die vorige Wiedergabe noch
+        }
+        if (last != null) throw last;
+        return null;
+    }
+
     /** Spielt den Sound zusätzlich bei dir selbst ab (reines Java, unabhängig vom Voice Chat). */
     private static void startLocal(short[] pcm, int token) {
         Thread t = new Thread(() -> {
             SourceDataLine line = null;
             try {
                 AudioFormat fmt = new AudioFormat(SAMPLE_RATE, 16, 1, true, false);
-                line = AudioSystem.getSourceDataLine(fmt);
-                line.open(fmt, 19200);
+                line = openLine(fmt, token);
+                if (line == null) return; // inzwischen wurde etwas anderes gestartet
                 line.start();
                 byte[] buf = new byte[1920];
                 int p = 0;
@@ -267,9 +302,14 @@ public final class Soundboard {
                 }
                 if (token == localToken) line.drain(); else line.flush();
             } catch (Throwable e) {
-                SpotifyLyricsClient.LOGGER.debug("Lokale Wiedergabe nicht möglich", e);
+                SpotifyLyricsClient.LOGGER.warn("Lokale Wiedergabe nicht möglich", e);
+                if (token == localToken) {
+                    SpotifyLyricsClient.chat(Text.literal("Soundboard: Selbst hören nicht möglich (" + e.getMessage() + ")"));
+                }
             } finally {
-                if (line != null) line.close();
+                if (line != null) {
+                    try { line.close(); } catch (Throwable ignored) { }
+                }
             }
         }, "soundboard-local");
         t.setDaemon(true);

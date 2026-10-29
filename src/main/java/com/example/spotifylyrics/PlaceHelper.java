@@ -20,12 +20,14 @@ public class PlaceHelper {
     private static BlockPos start = null;
     private static Direction dir = Direction.NORTH;
     private static int counter = 0;
+    private static String error = "";
 
     public static void clear() {
         start = null;
     }
 
     public static String describe() {
+        if (!error.isEmpty()) return "Fehler: " + error;
         if (start == null) return "Noch kein Startpunkt";
         return "Start: " + start.getX() + " " + start.getY() + " " + start.getZ() + " Richtung " + nameOf(dir);
     }
@@ -35,22 +37,26 @@ public class PlaceHelper {
         return "?";
     }
 
-    /** Zeichnet einen Kasten um den Block: Ecken, und bei "full" auch Punkte auf den Kanten. */
-    private static void box(MinecraftClient mc, BlockPos p, DustParticleEffect e, boolean full, boolean sparkle) {
+    private static void put(MinecraftClient mc, DustParticleEffect e, double x, double y, double z, boolean glow) {
+        mc.world.addImportantParticleClient(e, x, y, z, 0, 0, 0);
+        if (glow) mc.world.addImportantParticleClient(ParticleTypes.SOUL_FIRE_FLAME, x, y, z, 0, 0, 0);
+    }
+
+    /** Zeichnet einen Kasten um den Block: Ecken, und bei "full" auch Punkte auf den Kanten. glow = leuchtende blaue Flammen-Outline. */
+    private static void box(MinecraftClient mc, BlockPos p, DustParticleEffect e, boolean full, boolean glow) {
         double[] c = {-0.02, 1.02};
-        double[] m = {0.34, 0.66};
+        double[] m = glow ? new double[] {0.17, 0.34, 0.5, 0.66, 0.83} : new double[] {0.34, 0.66};
         double bx = p.getX(), by = p.getY(), bz = p.getZ();
         for (int u = 0; u < 2; u++) {
             for (int v = 0; v < 2; v++) {
                 for (int w = 0; w < 2; w++) {
-                    mc.particleManager.addParticle(e, bx + c[u], by + c[v], bz + c[w], 0, 0, 0);
-                    if (sparkle) mc.particleManager.addParticle(ParticleTypes.END_ROD, bx + c[u], by + c[v], bz + c[w], 0, 0, 0);
+                    put(mc, e, bx + c[u], by + c[v], bz + c[w], glow);
                 }
                 if (!full) continue;
                 for (double q : m) {
-                    mc.particleManager.addParticle(e, bx + q, by + c[u], bz + c[v], 0, 0, 0);
-                    mc.particleManager.addParticle(e, bx + c[u], by + q, bz + c[v], 0, 0, 0);
-                    mc.particleManager.addParticle(e, bx + c[u], by + c[v], bz + q, 0, 0, 0);
+                    put(mc, e, bx + q, by + c[u], bz + c[v], glow);
+                    put(mc, e, bx + c[u], by + q, bz + c[v], glow);
+                    put(mc, e, bx + c[u], by + c[v], bz + q, glow);
                 }
             }
         }
@@ -92,8 +98,11 @@ public class PlaceHelper {
                     box(mc, p, new DustParticleEffect(0x2A7BFF, 1.0f), missing <= 8, false);
                 }
             }
-        } catch (Throwable ignored) {
-            // nie das Spiel stören
+        } catch (Throwable ex) {
+            if (error.isEmpty()) {
+                error = String.valueOf(ex);
+                SpotifyLyricsClient.LOGGER.warn("Platzhilfe-Fehler", ex);
+            }
         }
     }
 }

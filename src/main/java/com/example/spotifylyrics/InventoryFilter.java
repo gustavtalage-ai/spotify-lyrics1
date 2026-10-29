@@ -26,10 +26,21 @@ public class InventoryFilter {
             if (mc.player == null || mc.world == null || mc.interactionManager == null) return;
             if (mc.currentScreen != null || mc.player.isCreative() || mc.player.isSpectator()) return;
             if (--cooldown > 0) return;
-            cooldown = 8;
+            cooldown = cfg.filterStrict ? 4 : 8;
             if (mc.player.currentScreenHandler.syncId != 0) return;
             if (!mc.player.currentScreenHandler.getCursorStack().isEmpty()) return;
             PlayerInventory inv = mc.player.getInventory();
+            if (cfg.filterStrict) {
+                // Nur Items mit Regel behalten: alles andere wegwerfen
+                for (int i = 0; i < 36; i++) {
+                    ItemStack s = inv.getStack(i);
+                    if (s.isEmpty()) continue;
+                    Long m = cfg.filterRules.get(idOf(s));
+                    if (m != null && m != 0L) continue;
+                    mc.interactionManager.clickSlot(0, slotId(i), 1, SlotActionType.THROW, mc.player);
+                    return;
+                }
+            }
             for (int i = 0; i < 36; i++) {
                 ItemStack s = inv.getStack(i);
                 if (s.isEmpty()) continue;

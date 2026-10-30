@@ -12,7 +12,18 @@ import net.minecraft.text.Text;
 public class PvpScreen extends Screen {
     private static final int HEAD = 28;
     private int px0, px1, py0, py1, cx, cw;
-    private int yHit, yHint, yQueue, yWeap, yW0, yMin, yGfx, yFire, yFireHint;
+    private int yHit, yHint, yQueue, yWeap, yW0, yMin, yGfx, yQuick;
+    /** Schnellschalter: Anzeigename, danach Suchbegriffe (klein, ohne Leerzeichen) im Pack-Namen. */
+    private static final String[][] QUICK = {
+        {"Low Fire", "lowonfire", "lowfire"},
+        {"Low Shield", "lowshield"},
+        {"Schild + Totem klein", "smallshieldtotem"},
+        {"Totem-Pop klein", "smalltotempop"},
+        {"Kurze Schwerter", "shortswords", "shorterswords"},
+        {"Crystal PvP", "crystalvanilla"}
+    };
+    private final java.util.List<String> qLabel = new java.util.ArrayList<>();
+    private final java.util.List<ResourcePackProfile> qProf = new java.util.ArrayList<>();
 
     public PvpScreen() {
         super(Text.literal("PvP"));
@@ -29,7 +40,16 @@ public class PvpScreen extends Screen {
     @Override
     protected void init() {
         int panelW = Math.min(320, this.width - 20);
-        int panelH = 290;
+        qLabel.clear();
+        qProf.clear();
+        for (String[] q : QUICK) {
+            ResourcePackProfile f = Packs.find(java.util.Arrays.copyOfRange(q, 1, q.length));
+            if (f != null && !qProf.contains(f)) {
+                qLabel.add(q[0]);
+                qProf.add(f);
+            }
+        }
+        int panelH = 227 + 14 + Math.max(1, (qProf.size() + 1) / 2) * 22 + 14;
         px0 = (this.width - panelW) / 2;
         px1 = px0 + panelW;
         py0 = Math.max(4, (this.height - panelH) / 2);
@@ -43,9 +63,8 @@ public class PvpScreen extends Screen {
         yWeap = yQueue + 38;              // "Waffen"
         yW0 = yWeap + 13;                // 3 Reihen à 22
         yMin = yW0 + 3 * 22 + 4;         // Aufladung
-        yGfx = yMin + 30;                // "Grafik"
-        yFire = yGfx + 13;
-        yFireHint = yFire + 24;
+        yGfx = yMin + 30;                // "Packs"
+        yQuick = yGfx + 14;
 
         Config c = Config.INSTANCE;
         invisible(px1 - 10 - 64, py0 + 5, 64, 18, () -> MinecraftClient.getInstance().setScreen(new HubScreen()));
@@ -81,11 +100,17 @@ public class PvpScreen extends Screen {
             c.save();
             reopen();
         });
-        invisible(cx, yFire, cw, 22, () -> {
-            ResourcePackProfile p = Packs.lowFire();
-            if (p != null) Packs.set(p, !Packs.isOn(p));
-            reopen();
-        });
+        int qh = (cw - 6) / 2;
+        for (int i = 0; i < qProf.size(); i++) {
+            final ResourcePackProfile qp = qProf.get(i);
+            int x = cx + (i % 2) * (qh + 6);
+            int y = yQuick + (i / 2) * 22;
+            invisible(x, y, qh, 20, () -> {
+                Packs.set(qp, !Packs.isOn(qp));
+                reopen();
+            });
+        }
+        invisible(px1 - 10 - 80, yGfx - 3, 80, 14, () -> MinecraftClient.getInstance().setScreen(new TexturePacksScreen()));
     }
 
     // Absichtlich ohne @Override, wie in den anderen Menüs.
@@ -99,7 +124,7 @@ public class PvpScreen extends Screen {
         Config c = Config.INSTANCE;
 
         ctx.drawTextWithShadow(tr, "PvP", px0 + 10, py0 + 6, 0xFFFFFFFF);
-        ctx.drawTextWithShadow(tr, "Hit-Assistent und Low Fire", px0 + 10, py0 + 17, 0xFF7E8494);
+        ctx.drawTextWithShadow(tr, "Hit-Assistent und Schnell-Packs", px0 + 10, py0 + 17, 0xFF7E8494);
         Ui.btn(ctx, tr, px1 - 10 - 64, py0 + 5, px1 - 10, py0 + 23, "‹ Menü",
             Ui.in(mouseX, mouseY, px1 - 10 - 64, py0 + 5, px1 - 10, py0 + 23), 0xFF1F232E, 0xFF2A3040, 0xFFD6D9E0);
 
@@ -122,13 +147,18 @@ public class PvpScreen extends Screen {
         Ui.btn(ctx, tr, cx + cw - 24, yMin + 2, cx + cw, yMin + 22, "+",
             Ui.in(mouseX, mouseY, cx + cw - 24, yMin + 2, cx + cw, yMin + 22), 0xFF1F232E, 0xFF2A3040, 0xFFFFFFFF);
 
-        Ui.section(ctx, tr, cx, yGfx, "Grafik", cw);
-        ResourcePackProfile p = Packs.lowFire();
-        Ui.toggle(ctx, tr, cx, yFire, cx + cw, yFire + 22, "Low Fire", p != null && Packs.isOn(p), Ui.in(mouseX, mouseY, cx, yFire, cx + cw, yFire + 22));
-        if (p == null) {
-            ctx.drawTextWithShadow(tr, "Pack \"LowOnFire\" nicht gefunden (resourcepacks-Ordner).", cx + 2, yFireHint, 0xFFFF6A6A);
-        } else {
-            ctx.drawTextWithShadow(tr, "Schaltet dein Pack \"" + tr.trimToWidth(p.getDisplayName().getString(), cw - 90) + "\" an/aus.", cx + 2, yFireHint, 0xFF7E8494);
+        Ui.section(ctx, tr, cx, yGfx, "Schnell-Packs", cw - 80);
+        boolean lh = Ui.in(mouseX, mouseY, px1 - 10 - 80, yGfx - 3, px1 - 10, yGfx + 11);
+        String more = "Alle Packs \u203a";
+        ctx.drawTextWithShadow(tr, more, px1 - 10 - tr.getWidth(more), yGfx, lh ? 0xFFFFFFFF : 0xFF9AA0AE);
+        int qh = (cw - 6) / 2;
+        for (int i = 0; i < qProf.size(); i++) {
+            int x = cx + (i % 2) * (qh + 6);
+            int y = yQuick + (i / 2) * 22;
+            Ui.toggle(ctx, tr, x, y, x + qh, y + 20, qLabel.get(i), Packs.isOn(qProf.get(i)), Ui.in(mouseX, mouseY, x, y, x + qh, y + 20));
+        }
+        if (qProf.isEmpty()) {
+            ctx.drawTextWithShadow(tr, "Keine passenden Packs gefunden.", cx + 2, yQuick + 6, 0xFFFF6A6A);
         }
     }
 }

@@ -51,6 +51,8 @@ public class Config {
     public boolean hitAssist = false;
     public int hitAssistMin = 100;
     public int hitWeapons = 1;
+    /** Zu früh geklickt: Schlag merken und bei voller Leiste ausführen. */
+    public boolean hitQueue = true;
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("spotifylyrics.json");

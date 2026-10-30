@@ -83,6 +83,25 @@ public class Config {
     public int crossGap = 2;
     public int crossThick = 1;
     public int crossColor = 4;
+    /** Lyrics-Anzeige: Stil (0 Kasten, 1 Leiste, 2 Karaoke), Textart (0 Sätze, 1 Wort für Wort, 2 ein Wort), Farbe, Hintergrund, Größe in %. */
+    public int lyStyle = 0;
+    public int lyUnit = 0;
+    public int lyColor = 0;
+    public int lyBg = 0;
+    public int lyScale = 100;
+    public boolean lyTitle = true;
+    public boolean lyProgress = true;
+    public boolean lyPrev = true;
+    public int lyNext = 2;
+    /** Lyrics-Stelle je Stil: x und y in Promille (-1 = Standard). */
+    public int[] lyPos = lyPosInit();
+
+    private static int[] lyPosInit() {
+        int[] a = new int[6];
+        java.util.Arrays.fill(a, -1);
+        return a;
+    }
+
     /** Kampf-Timer: Sekunden nach dem letzten Kampf. */
     public int combatSecs = 15;
     /** Letzter Todespunkt. */
@@ -145,6 +164,7 @@ public class Config {
                         c.hudPos = np;
                     }
                     if (c.deathDim == null) c.deathDim = "";
+                    if (c.lyPos == null || c.lyPos.length < 6) c.lyPos = lyPosInit();
                     if (c.macros == null) c.macros = new java.util.ArrayList<>();
                     if (c.pvpVer < 2) {
                         c.pvpMods &= ~((1 << 14) | (1 << 15));

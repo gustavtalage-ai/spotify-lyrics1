@@ -13,6 +13,7 @@ import net.minecraft.text.Text;
 public class HubScreen extends Screen {
     private static final int HEAD = 34;
     private static final int CARD_H = 76;
+    private static final int BAR_H = 34;
 
     private int px0, px1, py0, py1, cardW;
 
@@ -28,10 +29,14 @@ public class HubScreen extends Screen {
         return py0 + HEAD + 12 + (i / 2) * (CARD_H + 10);
     }
 
+    private int barY() {
+        return py0 + HEAD + 12 + 2 * (CARD_H + 10);
+    }
+
     @Override
     protected void init() {
         int panelW = Math.min(372, this.width - 20);
-        int panelH = HEAD + 12 + 2 * CARD_H + 10 + 12;
+        int panelH = HEAD + 12 + 2 * CARD_H + 10 + 10 + BAR_H + 12;
         px0 = (this.width - panelW) / 2;
         px1 = px0 + panelW;
         py0 = Math.max(4, (this.height - panelH) / 2);
@@ -42,6 +47,8 @@ public class HubScreen extends Screen {
             addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> open(idx))
                 .dimensions(cx(i), cy(i), cardW, CARD_H).build());
         }
+        addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> MinecraftClient.getInstance().setScreen(new LyricsScreen()))
+            .dimensions(px0 + 12, barY(), panelW - 24, BAR_H).build());
     }
 
     private static void open(int i) {
@@ -95,5 +102,20 @@ public class HubScreen extends Screen {
             Ui.round(ctx, x0 + 10, y1 - 15, x0 + 16, y1 - 9, live[i] ? Ui.GREEN : 0xFF4A5164);
             Ui.txt(ctx, tr, tr.trimToWidth(sub2[i], cardW - 34), x0 + 22, y1 - 17, live[i] ? Ui.TEXT : Ui.MUTED);
         }
+
+        // Lyrics-Leiste unten
+        int lx0 = px0 + 12, ly0 = barY(), lx1 = px1 - 12, ly1 = ly0 + BAR_H;
+        boolean lhov = Ui.in(mouseX, mouseY, lx0, ly0, lx1, ly1);
+        int lacc = 0xFFF472B6;
+        ctx.fill(lx0, ly0, lx1, ly1, Ui.BG);
+        Ui.card(ctx, lx0, ly0, lx1, ly1, lhov ? lacc : Ui.BORDER, lhov ? 0xFF1A202B : 0xFF151921);
+        Ui.round2(ctx, lx0 + 8, ly0 + 5, lx0 + 32, ly0 + 29, (lacc & 0x00FFFFFF) | 0x30000000);
+        ctx.drawItem(new ItemStack(Items.JUKEBOX), lx0 + 12, ly0 + 9);
+        Ui.txt(ctx, tr, "Lyrics", lx0 + 40, ly0 + 7, Ui.TEXT);
+        boolean lyLive = cfg.enabled && (SpotifyApi.state != null || playing);
+        Ui.txt(ctx, tr, tr.trimToWidth(LyricsHud.STYLES[Math.floorMod(cfg.lyStyle, LyricsHud.STYLES.length)] + " · "
+            + LyricsHud.UNITS[Math.floorMod(cfg.lyUnit, LyricsHud.UNITS.length)] + " · verschiebbar", lx1 - lx0 - 80), lx0 + 40, ly0 + 19, Ui.MUTED);
+        Ui.round(ctx, lx1 - 44, ly0 + 13, lx1 - 38, ly0 + 19, !cfg.enabled ? 0xFF4A5164 : lyLive ? Ui.GREEN : Ui.AMBER);
+        Ui.txt(ctx, tr, "›", lx1 - 14, ly0 + 13, lhov ? lacc : Ui.MUTED);
     }
 }

@@ -13,19 +13,28 @@ public class HudEditScreen extends Screen {
     private int drag = -1, offX, offY;
     private boolean wasDown = false;
     private final int[][] rects = new int[32][];
+    private static final int LY = 100;
+    private int[] lyRect;
+    private final Screen backTo;
 
     public HudEditScreen() {
+        this(null);
+    }
+
+    public HudEditScreen(Screen backTo) {
         super(Text.literal("Anzeigen verschieben"));
+        this.backTo = backTo;
     }
 
     @Override
     protected void init() {
         int y = this.height - 30;
-        addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> MinecraftClient.getInstance().setScreen(new PvpScreen()))
+        addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> MinecraftClient.getInstance().setScreen(backTo != null ? backTo : new PvpScreen()))
             .dimensions(this.width / 2 - 104, y, 100, 20).build());
         addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> {
             PvpHud.resetPositions();
-            MinecraftClient.getInstance().setScreen(new HudEditScreen());
+            LyricsHud.resetPos();
+            MinecraftClient.getInstance().setScreen(new HudEditScreen(backTo));
         }).dimensions(this.width / 2 + 4, y, 100, 20).build());
     }
 
@@ -49,6 +58,18 @@ public class HudEditScreen extends Screen {
             shown++;
             rects[id] = new int[] {pp[0], pp[1], sz[0], sz[1]};
         }
+        lyRect = Config.INSTANCE.enabled ? LyricsHud.drawDemo(ctx) : null;
+        if (lyRect != null) shown++;
+        if (lyRect != null) {
+            boolean act = drag == LY || (drag < 0 && Ui.in(mouseX, mouseY, lyRect[0], lyRect[1], lyRect[0] + lyRect[2], lyRect[1] + lyRect[3]));
+            int col = act ? 0xFF38BDF8 : 0x70FFFFFF;
+            int[] r = lyRect;
+            ctx.fill(r[0] - 2, r[1] - 2, r[0] + r[2] + 2, r[1] - 1, col);
+            ctx.fill(r[0] - 2, r[1] + r[3] + 1, r[0] + r[2] + 2, r[1] + r[3] + 2, col);
+            ctx.fill(r[0] - 2, r[1] - 1, r[0] - 1, r[1] + r[3] + 1, col);
+            ctx.fill(r[0] + r[2] + 1, r[1] - 1, r[0] + r[2] + 2, r[1] + r[3] + 1, col);
+            if (act) Ui.txt(ctx, tr, "Lyrics", r[0], Math.max(0, r[1] - 12), 0xFF7DD3FC);
+        }
         for (int id : PvpHud.HUD_IDS) {
             int[] r = rects[id];
             if (r == null) continue;
@@ -65,7 +86,12 @@ public class HudEditScreen extends Screen {
         long win = GLFW.glfwGetCurrentContext();
         boolean down = win != 0 && GLFW.glfwGetMouseButton(win, GLFW.GLFW_MOUSE_BUTTON_LEFT) == GLFW.GLFW_PRESS;
         if (down && !wasDown && mouseY < h - 58) {
-            for (int i = PvpHud.HUD_IDS.length - 1; i >= 0; i--) {
+            if (lyRect != null && Ui.in(mouseX, mouseY, lyRect[0] - 2, lyRect[1] - 2, lyRect[0] + lyRect[2] + 2, lyRect[1] + lyRect[3] + 2)) {
+                drag = LY;
+                offX = mouseX - lyRect[0];
+                offY = mouseY - lyRect[1];
+            }
+            for (int i = PvpHud.HUD_IDS.length - 1; i >= 0 && drag < 0; i--) {
                 int id = PvpHud.HUD_IDS[i];
                 int[] r = rects[id];
                 if (r != null && Ui.in(mouseX, mouseY, r[0] - 2, r[1] - 2, r[0] + r[2] + 2, r[1] + r[3] + 2)) {
@@ -76,7 +102,11 @@ public class HudEditScreen extends Screen {
                 }
             }
         }
-        if (down && drag >= 0) PvpHud.setPos(drag, mouseX - offX, mouseY - offY, w, h);
+        if (down && drag == LY) {
+            if (lyRect != null) LyricsHud.setPos(mouseX - offX, mouseY - offY, lyRect[2], w, h);
+        } else if (down && drag >= 0) {
+            PvpHud.setPos(drag, mouseX - offX, mouseY - offY, w, h);
+        }
         if (!down && wasDown && drag >= 0) {
             Config.INSTANCE.save();
             drag = -1;

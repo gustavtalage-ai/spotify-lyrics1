@@ -149,8 +149,10 @@ public class PvpScreen extends ItemScreen {
         row(mod(PvpHud.CROSS).w(4), G("Einstellungen \u203a", () -> MinecraftClient.getInstance().setScreen(new CrosshairScreen())).w(3));
         gap(2);
         sec("Reichweite");
-        row(mod(PvpHud.REACH).w(4), G("Einstellungen \u203a", () -> MinecraftClient.getInstance().setScreen(new ReachScreen())).w(3));
-        row(mod(PvpHud.CIRCLE).w(4), G("Einstellungen \u203a", () -> MinecraftClient.getInstance().setScreen(new ReachScreen())).w(3));
+        row(T("Reichweite (Kreis)", PvpHud.on(PvpHud.CIRCLE), () -> {
+            PvpHud.flip(PvpHud.CIRCLE);
+            again();
+        }).w(4), G("Einstellungen \u203a", () -> MinecraftClient.getInstance().setScreen(new ReachScreen())).w(3));
         gap(2);
         sec("Im Spiel");
         row(mod(PvpHud.BAR).w(4), G("Einstellungen \u203a", () -> MinecraftClient.getInstance().setScreen(new BarScreen())).w(3));

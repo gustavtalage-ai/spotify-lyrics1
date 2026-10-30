@@ -59,14 +59,20 @@ final class Packs {
         return s.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "");
     }
 
-    /** Dein "LowOnFire"-Pack (Name oder Dateiname enthält lowonfire / lowfire). */
-    static ResourcePackProfile lowFire() {
-        for (ResourcePackProfile p : list()) {
-            String a = norm(p.getId());
-            String b = norm(p.getDisplayName().getString());
-            if (a.contains("lowonfire") || b.contains("lowonfire") || a.contains("lowfire") || b.contains("lowfire")) return p;
+    /** Erstes Pack, dessen Name oder Dateiname einen der Begriffe enthält (Reihenfolge = Vorrang). */
+    static ResourcePackProfile find(String... keys) {
+        List<ResourcePackProfile> all = list();
+        for (String k : keys) {
+            for (ResourcePackProfile p : all) {
+                if (norm(p.getId()).contains(k) || norm(p.getDisplayName().getString()).contains(k)) return p;
+            }
         }
         return null;
+    }
+
+    /** Dein "LowOnFire"-Pack. */
+    static ResourcePackProfile lowFire() {
+        return find("lowonfire", "lowfire");
     }
 
     static boolean lowFireOn() {

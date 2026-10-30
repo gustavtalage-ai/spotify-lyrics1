@@ -463,6 +463,6 @@ public final class Soundboard {
             openRequested = false;
             open = true;
         }
-        if (open) mc.setScreen(new SoundboardScreen(0));
+        if (open) mc.setScreen(new HubScreen());
     }
 }

@@ -723,7 +723,7 @@ final class PvpHud {
         }
     }
 
-    /** Kreis um dich auf dem Boden, Radius = deine Reichweite. Leuchtende durchgehende Linie (wie die Platzhilfe). */
+    /** Kreis um dich auf dem Boden, Radius = deine Reichweite. Schlichte durchgehende Linie. */
     private static void drawCircle(DrawContext ctx, MinecraftClient mc, ClientPlayerEntity p, float td, int sw, int sh) {
         Config c = Config.INSTANCE;
         if (c.circleWeapon && HitAssist.kindOf(p.getMainHandStack()) < 0) return;
@@ -740,8 +740,7 @@ final class PvpHud {
         }
         // Farbe: 0 = rot, gruen sobald ein Spieler im Kreis ist; 1 = immer gruen; 2 = immer rot
         boolean green = c.circleColor == 1 || (c.circleColor == 0 && !in.isEmpty());
-        int core = green ? 0x9BFFB8 : 0xFF9A9A;
-        int glow = green ? 0x4ADE80 : 0xFF4A4A;
+        int rgb = green ? 0x22B14C : 0xED1C24;   // schlichtes Paint-Gruen / Paint-Rot
         int th = Math.max(1, Math.min(3, c.circleThick));
 
         double gy = feet.y + 0.03;
@@ -750,14 +749,13 @@ final class PvpHud {
         for (int i = 0; i <= n; i++) {
             double a = 2 * Math.PI * i / n;
             double[] cur = Overlay3D.view(feet.x + Math.cos(a) * r, gy, feet.z + Math.sin(a) * r);
-            if (prev != null) Overlay3D.beam(ctx, prev, cur, core, glow, th, 0.9f);
+            if (prev != null) Overlay3D.line(ctx, prev, cur, rgb, 255, th);
             prev = cur;
         }
 
         // Markierung: Kasten um jeden Spieler im Kreis (immer gleiche Farbe wie der Kreis, bei "rot" gelb damit man es sieht)
         if (c.circleMark) {
-            int mCore = green ? core : 0xFFE08A;
-            int mGlow = green ? glow : 0xFFB020;
+            int mRgb = green ? 0x22B14C : 0xFFF200;
             for (PlayerEntity o : in) {
                 Vec3d q = o.getLerpedPos(td);
                 double hw = 0.35, h = o.getHeight() + 0.1;
@@ -770,9 +768,9 @@ final class PvpHud {
                 }
                 for (int i = 0; i < 4; i++) {
                     int j = (i + 1) % 4;
-                    Overlay3D.beam(ctx, bot[i], bot[j], mCore, mGlow, 1, 0.8f);
-                    Overlay3D.beam(ctx, top[i], top[j], mCore, mGlow, 1, 0.8f);
-                    Overlay3D.beam(ctx, bot[i], top[i], mCore, mGlow, 1, 0.8f);
+                    Overlay3D.line(ctx, bot[i], bot[j], mRgb, 255, 1);
+                    Overlay3D.line(ctx, top[i], top[j], mRgb, 255, 1);
+                    Overlay3D.line(ctx, bot[i], top[i], mRgb, 255, 1);
                 }
             }
         }
@@ -823,7 +821,7 @@ final class PvpHud {
         if (!Overlay3D.begin(mc, td)) return;
         double[] a = Overlay3D.view(c.deathX, c.deathY, c.deathZ);
         double[] b = Overlay3D.view(c.deathX, c.deathY + 6.0, c.deathZ);
-        Overlay3D.beam(ctx, a, b, 0xFFB4BE, 0xFB7185, 1, 0.9f);
+        Overlay3D.line(ctx, a, b, 0xED1C24, 255, 1);
         double[] sc = Overlay3D.screen(b);
         if (sc != null) {
             TextRenderer tr = mc.textRenderer;

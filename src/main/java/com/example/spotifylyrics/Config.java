@@ -105,6 +105,25 @@ public class Config {
     /** Auto-Klick: Taste zum Starten/Stoppen (GLFW-Code, 74 = J). */
     public int autoKey = 74;
 
+    /** Makros: Schritt (type 0 = Taste tippen, 1 = Taste halten, 2 = warten, 3 = Chat/Befehl; arg = Aktion bzw. Millisekunden). */
+    public static class MacroStep {
+        public int type;
+        public int arg;
+        public int arg2 = 500;
+        public String text = "";
+    }
+
+    /** Ein Makro: Name, Starttaste (GLFW-Code, -1 = keine), Ablauf (0 = einmal, 1 = Anzahl, 2 = endlos) und Schritte. */
+    public static class Macro {
+        public String name = "Makro";
+        public int key = -1;
+        public int mode = 0;
+        public int count = 5;
+        public java.util.List<MacroStep> steps = new java.util.ArrayList<>();
+    }
+
+    public java.util.List<Macro> macros = new java.util.ArrayList<>();
+
     /** Pack-Sets: bis zu 4 Plätze, je die Pack-IDs getrennt mit "|" (leer = frei). */
     public java.util.List<String> packSets = new java.util.ArrayList<>();
 
@@ -126,6 +145,7 @@ public class Config {
                         c.hudPos = np;
                     }
                     if (c.deathDim == null) c.deathDim = "";
+                    if (c.macros == null) c.macros = new java.util.ArrayList<>();
                     if (c.pvpVer < 2) {
                         c.pvpMods &= ~((1 << 14) | (1 << 15));
                         c.pvpVer = 2;

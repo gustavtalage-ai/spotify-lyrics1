@@ -469,7 +469,7 @@ public class SoundboardScreen extends Screen {
             AutoClick.setActive(!AutoClick.active);
             reopenTools();
         });
-        toolBtn(xr, tlY(R7), hw, () -> MinecraftClient.getInstance().setScreen(new AutoClickScreen()));
+        toolBtn(xr, tlY(R7), hw, () -> MinecraftClient.getInstance().setScreen(new MacroScreen()));
     }
 
     private void renderTools(DrawContext ctx, TextRenderer tr, int mx, int my) {
@@ -510,7 +510,7 @@ public class SoundboardScreen extends Screen {
         Ui.section(ctx, tr, xl + 2, tlY(186), "Auto-Klick", sw - acw - 8);
         Ui.txt(ctx, tr, ac, px1 - 12 - acw, tlY(186), 0xFF8B92A5);
         Ui.toggle(ctx, tr, xl, tlY(R7), xl + hw, tlY(R7) + 20, "Auto-Klick (Taste " + AutoClick.keyName() + ")", AutoClick.active, Ui.in(mx, my, xl, tlY(R7), xl + hw, tlY(R7) + 20));
-        Ui.btn(ctx, tr, xr, tlY(R7), xr + hw, tlY(R7) + 20, "Einstellungen \u203a", Ui.in(mx, my, xr, tlY(R7), xr + hw, tlY(R7) + 20), 0xFF123A55, 0xFF1A4E73, 0xFFFFFFFF);
+        Ui.btn(ctx, tr, xr, tlY(R7), xr + hw, tlY(R7) + 20, "Makros \u203a", Ui.in(mx, my, xr, tlY(R7), xr + hw, tlY(R7) + 20), 0xFF123A55, 0xFF1A4E73, 0xFFFFFFFF);
 
         Ui.txt(ctx, tr, "Zielblock anschauen, dann Startpunkt setzen.", px0 + 10, py1 - FOOTER_H + 8, 0xFF9AA0AE);
         Ui.txt(ctx, tr, "Grün = Start, blau = jeder n-te Block.", px0 + 10, py1 - FOOTER_H + 20, 0xFF9AA0AE);

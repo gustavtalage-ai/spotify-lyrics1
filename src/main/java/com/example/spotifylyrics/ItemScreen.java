@@ -81,6 +81,8 @@ abstract class ItemScreen extends Screen {
     }
 
     private final List<It> items = new ArrayList<>();
+    /** Je Zeile die Kästen der Zellen (x relativ zum Inhalt, y relativ zum Panel, Breite, Höhe). */
+    private final List<int[][]> rowRects = new ArrayList<>();
     private final String head, sub;
     protected int px0, px1, py0, py1, cx, cw;
     private int cur;
@@ -154,11 +156,13 @@ abstract class ItemScreen extends Screen {
         for (Cell c : cs) total += c.weight;
         int avail = cw - gapPx * (cs.length - 1);
         int x = 0, used = 0, wsum = 0;
+        int[][] rects = new int[cs.length][];
         for (int i = 0; i < cs.length; i++) {
             Cell c = cs[i];
             wsum += c.weight;
             int w = (i == cs.length - 1) ? avail - used : Math.round(avail * (float) c.weight / total);
             if (i < cs.length - 1) used += w;
+            rects[i] = new int[] {x, cur, w, 20};
             It it = add(c.kind, x, cur, w, 20, c.label);
             it.on = c.on;
             it.act = c.act;
@@ -167,7 +171,19 @@ abstract class ItemScreen extends Screen {
             it.fg = c.fg;
             x += w + gapPx;
         }
+        rowRects.add(rects);
         cur += 22;
+    }
+
+    /** Nummer der zuletzt gebauten Zeile. */
+    protected int lastRow() {
+        return rowRects.size() - 1;
+    }
+
+    /** Kasten einer Zelle in Bildschirm-Koordinaten {x, y, Breite, Höhe}; erst nach build() gültig. */
+    protected int[] rect(int row, int cell) {
+        int[] r = rowRects.get(row)[cell];
+        return new int[] {cx + r[0], py0 + r[1], r[2], r[3]};
     }
 
     /** [-]  Text  [+] */
@@ -180,6 +196,7 @@ abstract class ItemScreen extends Screen {
     @Override
     protected void init() {
         items.clear();
+        rowRects.clear();
         int panelW = Math.min(panelWidth(), this.width - 20);
         cw = panelW - 20;
         cur = HEAD + 8;

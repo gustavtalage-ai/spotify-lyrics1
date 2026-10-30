@@ -16,12 +16,12 @@ public class AutoClickScreen extends ItemScreen {
 
     @Override
     protected Screen back() {
-        return SoundboardScreen.create(true);
+        return new MacroScreen();
     }
 
     @Override
     protected String backLabel() {
-        return "‹ Tools";
+        return "‹ Makros";
     }
 
     @Override

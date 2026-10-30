@@ -170,10 +170,14 @@ public class Config {
                         c.pvpMods &= ~((1 << 14) | (1 << 15));
                         c.pvpVer = 2;
                     }
+                    if (c.pvpVer < 4) {
+                        c.circleColor = 0;           // alte Farben "immer grün/rot" gibt es nicht mehr
+                    }
                     if (c.pvpVer < 3) {
                         c.pvpMods &= ~(1 << 18);
                         c.pvpVer = 3;
                     }
+                    if (c.pvpVer < 4) c.pvpVer = 4;
                     return c;
                 }
             }

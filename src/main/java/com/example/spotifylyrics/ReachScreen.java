@@ -40,7 +40,7 @@ public class ReachScreen extends ItemScreen {
             again();
         }));
         row(X("Radius: 3.3 Blöcke (normale Reichweite, fest)"));
-        row(G("Farbe: " + PvpHud.colorName(c.circleColor) + " ›", () -> {
+        row(G("Stil: " + PvpHud.colorName(c.circleColor) + " ›", () -> {
             c.circleColor = (c.circleColor + 1) % PvpHud.COLOR_NAMES.length;
             c.save();
             again();

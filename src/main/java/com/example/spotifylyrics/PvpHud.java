@@ -51,7 +51,7 @@ final class PvpHud {
         "Todespunkt", "Kampf-Timer"};
     /** Verschiebbare Anzeigen (ihre Nummer ist zugleich das Bit, das sie einschaltet). */
     static final int[] HUD_IDS = {INFO, CPS, COMBO, EFFECTS, ARMOR, STOCK, TARGET, BAR, REACH, NEAR, STATS, CRIT, TOTEM, COOLDOWN, DEATH, COMBAT};
-    static final String[] COLOR_NAMES = {"Rot, grün bei Gegner", "Immer grün", "Immer rot"};
+    static final String[] COLOR_NAMES = {"Schlicht (rot, grün bei Gegner)", "LED (leuchtend)"};
 
     static boolean on(int bit) {
         return ((Config.INSTANCE.pvpMods >> bit) & 1) != 0;
@@ -727,9 +727,11 @@ final class PvpHud {
             double dx = o.getX() - p.getX(), dz = o.getZ() - p.getZ();
             if (Math.sqrt(dx * dx + dz * dz) <= r && Math.abs(o.getY() - p.getY()) < 3.0) in.add(o);
         }
-        // Farbe: 0 = rot, gruen sobald ein Spieler im Kreis ist; 1 = immer gruen; 2 = immer rot
-        boolean green = c.circleColor == 1 || (c.circleColor == 0 && !in.isEmpty());
+        // Farbe: rot, gruen sobald ein Spieler im Kreis ist. Stil 0 = schlichte Linie, 1 = LED (leuchtend)
+        boolean led = c.circleColor == 1;
+        boolean green = !in.isEmpty();
         int rgb = green ? 0x22B14C : 0xED1C24;   // schlichtes Paint-Gruen / Paint-Rot
+        int ledCore = green ? 0xC8FFD8 : 0xFFD6D6, ledGlow = green ? 0x22FF66 : 0xFF2020;
         int th = Math.max(1, Math.min(3, c.circleThick));
 
         double gy = feet.y + 0.03;
@@ -738,13 +740,17 @@ final class PvpHud {
         for (int i = 0; i <= n; i++) {
             double a = 2 * Math.PI * i / n;
             double[] cur = Overlay3D.view(feet.x + Math.cos(a) * r, gy, feet.z + Math.sin(a) * r);
-            if (prev != null) Overlay3D.line(ctx, prev, cur, rgb, 255, th);
+            if (prev != null) {
+                if (led) Overlay3D.beam(ctx, prev, cur, ledCore, ledGlow, th, 1f);
+                else Overlay3D.line(ctx, prev, cur, rgb, 255, th);
+            }
             prev = cur;
         }
 
         // Markierung: Kasten um jeden Spieler im Kreis (immer gleiche Farbe wie der Kreis, bei "rot" gelb damit man es sieht)
         if (c.circleMark) {
             int mRgb = green ? 0x22B14C : 0xFFF200;
+            int mCore = 0xFFFFFF, mGlow = green ? 0x22FF66 : 0xFFE600;
             for (PlayerEntity o : in) {
                 Vec3d q = o.getLerpedPos(td);
                 double hw = 0.35, h = o.getHeight() + 0.1;
@@ -757,9 +763,15 @@ final class PvpHud {
                 }
                 for (int i = 0; i < 4; i++) {
                     int j = (i + 1) % 4;
-                    Overlay3D.line(ctx, bot[i], bot[j], mRgb, 255, 1);
-                    Overlay3D.line(ctx, top[i], top[j], mRgb, 255, 1);
-                    Overlay3D.line(ctx, bot[i], top[i], mRgb, 255, 1);
+                    if (led) {
+                        Overlay3D.beam(ctx, bot[i], bot[j], mCore, mGlow, 1, 1f);
+                        Overlay3D.beam(ctx, top[i], top[j], mCore, mGlow, 1, 1f);
+                        Overlay3D.beam(ctx, bot[i], top[i], mCore, mGlow, 1, 1f);
+                    } else {
+                        Overlay3D.line(ctx, bot[i], bot[j], mRgb, 255, 1);
+                        Overlay3D.line(ctx, top[i], top[j], mRgb, 255, 1);
+                        Overlay3D.line(ctx, bot[i], top[i], mRgb, 255, 1);
+                    }
                 }
             }
         }

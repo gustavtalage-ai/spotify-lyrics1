@@ -47,12 +47,13 @@ public class PvpScreen extends ItemScreen {
 
     @Override
     protected void build() {
-        row(tab("Kampf", 0), tab("HUD", 1), tab("Visuell", 2), tab("Extras", 3));
+        row(tab("Kampf", 0), tab("HUD", 1), tab("Visuell", 2), tab("Extras", 3), tab("Packs", 4));
         gap(4);
         if (page == 0) buildFight();
         else if (page == 1) buildHud();
         else if (page == 2) buildVisual();
-        else buildExtras();
+        else if (page == 3) buildExtras();
+        else buildPacks();
     }
 
     private void buildFight() {
@@ -69,24 +70,10 @@ public class PvpScreen extends ItemScreen {
             again();
         }));
         text("Zu früh geklickt: Schlag kommt bei voller Leiste.", 0xFF8B92A5);
-        sec("Gilt für diese Waffen");
-        for (int i = 0; i < 5; i += 2) {
-            final int a = i, b = i + 1;
-            Cell ca = T(HitAssist.NAMES[a], ((c.hitWeapons >> a) & 1) != 0, () -> {
-                c.hitWeapons ^= 1 << a;
-                c.save();
-                again();
-            });
-            if (b < 5) {
-                row(ca, T(HitAssist.NAMES[b], ((c.hitWeapons >> b) & 1) != 0, () -> {
-                    c.hitWeapons ^= 1 << b;
-                    c.save();
-                    again();
-                }));
-            } else {
-                row(ca);
-            }
-        }
+        gap(2);
+        sec("Gilt für diese Waffen (blau = an)");
+        row(weapon(0), weapon(1), weapon(2));
+        row(weapon(3), weapon(4));
         stepper("Aufladung ab: " + c.hitAssistMin + " %", () -> {
             c.hitAssistMin = Math.max(50, c.hitAssistMin - 5);
             c.save();
@@ -96,7 +83,21 @@ public class PvpScreen extends ItemScreen {
             c.save();
             again();
         });
-        gap(2);
+    }
+
+    /** Waffen-Knopf: blau = an, grau = aus. */
+    private Cell weapon(int i) {
+        Config c = Config.INSTANCE;
+        boolean on = ((c.hitWeapons >> i) & 1) != 0;
+        Runnable r = () -> {
+            c.hitWeapons ^= 1 << i;
+            c.save();
+            again();
+        };
+        return on ? B(HitAssist.NAMES[i], r) : G(HitAssist.NAMES[i], r);
+    }
+
+    private void buildPacks() {
         sec("Schnell-Packs");
         List<String> labels = new ArrayList<>();
         List<ResourcePackProfile> profs = new ArrayList<>();

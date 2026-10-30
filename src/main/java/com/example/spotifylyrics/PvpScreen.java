@@ -12,7 +12,7 @@ import net.minecraft.text.Text;
 public class PvpScreen extends Screen {
     private static final int HEAD = 28;
     private int px0, px1, py0, py1, cx, cw;
-    private int yHit, yHint, yWeap, yW0, yMin, yGfx, yFire, yFireHint;
+    private int yHit, yHint, yQueue, yWeap, yW0, yMin, yGfx, yFire, yFireHint;
 
     public PvpScreen() {
         super(Text.literal("PvP"));
@@ -29,7 +29,7 @@ public class PvpScreen extends Screen {
     @Override
     protected void init() {
         int panelW = Math.min(320, this.width - 20);
-        int panelH = 262;
+        int panelH = 290;
         px0 = (this.width - panelW) / 2;
         px1 = px0 + panelW;
         py0 = Math.max(4, (this.height - panelH) / 2);
@@ -39,7 +39,8 @@ public class PvpScreen extends Screen {
 
         yHit = py0 + HEAD + 8;           // Überschrift
         yHint = yHit + 14;               // Schalter
-        yWeap = yHint + 38;              // "Waffen"
+        yQueue = yHint + 26;             // Klick merken
+        yWeap = yQueue + 38;              // "Waffen"
         yW0 = yWeap + 13;                // 3 Reihen à 22
         yMin = yW0 + 3 * 22 + 4;         // Aufladung
         yGfx = yMin + 30;                // "Grafik"
@@ -51,6 +52,11 @@ public class PvpScreen extends Screen {
 
         invisible(cx, yHint, cw, 22, () -> {
             c.hitAssist = !c.hitAssist;
+            c.save();
+            reopen();
+        });
+        invisible(cx, yQueue, cw, 22, () -> {
+            c.hitQueue = !c.hitQueue;
             c.save();
             reopen();
         });
@@ -99,7 +105,8 @@ public class PvpScreen extends Screen {
 
         Ui.section(ctx, tr, cx, yHit, "Hit-Assistent", cw);
         Ui.toggle(ctx, tr, cx, yHint, cx + cw, yHint + 22, "Hit-Assistent", c.hitAssist, Ui.in(mouseX, mouseY, cx, yHint, cx + cw, yHint + 22));
-        ctx.drawTextWithShadow(tr, "Schlagen geht nur, wenn die Leiste voll ist.", cx + 2, yHint + 26, 0xFF7E8494);
+        Ui.toggle(ctx, tr, cx, yQueue, cx + cw, yQueue + 22, "Klick merken (perfekter Schlag)", c.hitQueue, Ui.in(mouseX, mouseY, cx, yQueue, cx + cw, yQueue + 22));
+        ctx.drawTextWithShadow(tr, "Zu früh geklickt: Schlag kommt bei voller Leiste.", cx + 2, yQueue + 26, 0xFF7E8494);
 
         Ui.section(ctx, tr, cx, yWeap, "Gilt für diese Waffen", cw);
         int half = (cw - 6) / 2;

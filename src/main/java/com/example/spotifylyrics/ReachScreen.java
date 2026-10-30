@@ -62,6 +62,11 @@ public class ReachScreen extends ItemScreen {
             c.save();
             again();
         });
+        row(T("Spieler im Kreis markieren", c.circleMark, () -> {
+            c.circleMark = !c.circleMark;
+            c.save();
+            again();
+        }));
         row(T("Nur mit Waffe in der Hand", c.circleWeapon, () -> {
             c.circleWeapon = !c.circleWeapon;
             c.save();

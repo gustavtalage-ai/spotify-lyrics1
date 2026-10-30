@@ -596,19 +596,15 @@ final class PvpHud {
         Vec3d feet = p.getLerpedPos(td);
         double r = Math.max(1.0, c.circleR / 10.0);
 
-        // Farbe: 0 = rot, gruen sobald ein Spieler im Kreis ist; 1 = immer gruen; 2 = immer rot
-        boolean inside = false;
-        if (c.circleColor == 0) {
-            for (PlayerEntity o : mc.world.getPlayers()) {
-                if (o == p || o.isSpectator()) continue;
-                double dx = o.getX() - p.getX(), dz = o.getZ() - p.getZ();
-                if (Math.sqrt(dx * dx + dz * dz) <= r && Math.abs(o.getY() - p.getY()) < 3.0) {
-                    inside = true;
-                    break;
-                }
-            }
+        // Spieler im Kreis sammeln
+        java.util.List<PlayerEntity> in = new java.util.ArrayList<>();
+        for (PlayerEntity o : mc.world.getPlayers()) {
+            if (o == p || o.isSpectator() || o.isInvisible()) continue;
+            double dx = o.getX() - p.getX(), dz = o.getZ() - p.getZ();
+            if (Math.sqrt(dx * dx + dz * dz) <= r && Math.abs(o.getY() - p.getY()) < 3.0) in.add(o);
         }
-        boolean green = c.circleColor == 1 || (c.circleColor == 0 && inside);
+        // Farbe: 0 = rot, gruen sobald ein Spieler im Kreis ist; 1 = immer gruen; 2 = immer rot
+        boolean green = c.circleColor == 1 || (c.circleColor == 0 && !in.isEmpty());
         int core = green ? 0x9BFFB8 : 0xFF9A9A;
         int glow = green ? 0x4ADE80 : 0xFF4A4A;
         int th = Math.max(1, Math.min(3, c.circleThick));
@@ -621,6 +617,29 @@ final class PvpHud {
             double[] cur = Overlay3D.view(feet.x + Math.cos(a) * r, gy, feet.z + Math.sin(a) * r);
             if (prev != null) Overlay3D.beam(ctx, prev, cur, core, glow, th, 0.9f);
             prev = cur;
+        }
+
+        // Markierung: Kasten um jeden Spieler im Kreis (immer gleiche Farbe wie der Kreis, bei "rot" gelb damit man es sieht)
+        if (c.circleMark) {
+            int mCore = green ? core : 0xFFE08A;
+            int mGlow = green ? glow : 0xFFB020;
+            for (PlayerEntity o : in) {
+                Vec3d q = o.getLerpedPos(td);
+                double hw = 0.35, h = o.getHeight() + 0.1;
+                double[][] bot = new double[4][];
+                double[][] top = new double[4][];
+                double[] cx = {-hw, hw, hw, -hw}, cz = {-hw, -hw, hw, hw};
+                for (int i = 0; i < 4; i++) {
+                    bot[i] = Overlay3D.view(q.x + cx[i], q.y, q.z + cz[i]);
+                    top[i] = Overlay3D.view(q.x + cx[i], q.y + h, q.z + cz[i]);
+                }
+                for (int i = 0; i < 4; i++) {
+                    int j = (i + 1) % 4;
+                    Overlay3D.beam(ctx, bot[i], bot[j], mCore, mGlow, 1, 0.8f);
+                    Overlay3D.beam(ctx, top[i], top[j], mCore, mGlow, 1, 0.8f);
+                    Overlay3D.beam(ctx, bot[i], top[i], mCore, mGlow, 1, 0.8f);
+                }
+            }
         }
     }
 

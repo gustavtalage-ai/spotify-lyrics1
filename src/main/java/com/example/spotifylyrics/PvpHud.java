@@ -1,13 +1,10 @@
 package com.example.spotifylyrics;
 
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
-import net.fabricmc.fabric.api.event.client.player.ClientPreAttackCallback;
-import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
+import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.network.PlayerListEntry;
 import net.minecraft.client.render.RenderTickCounter;
 import net.minecraft.client.sound.PositionedSoundInstance;
@@ -19,31 +16,39 @@ import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
+import net.minecraft.screen.slot.SlotActionType;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.Vec3d;
+import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 
 /**
- * PvP-Client: kleine Anzeigen und Helfer. Alle einzeln schaltbar (Bits in Config.pvpMods).
- * Alles läuft nur im eigenen Spiel auf deinem Rechner (nur Anzeige bzw. normale Tasten).
+ * PvP-Client: kleine Anzeigen und Helfer. Alle einzeln schaltbar (Bits in Config.pvpMods),
+ * alle Anzeigen frei verschiebbar (Config.hudPos). Läuft nur lokal bei dir (Anzeige bzw. normale Tasten).
  */
 final class PvpHud {
     private PvpHud() {}
 
     static final int CPS = 0, COMBO = 1, ARMOR = 2, EFFECTS = 3, KEYS = 4, INFO = 5, STOCK = 6, TARGET = 7,
-        BAR = 8, REACH = 9, HITSOUND = 10, TOTEM = 11, LOWHP = 12, SPRINT = 13, ZOOM = 14, FRIENDS = 15;
+        BAR = 8, REACH = 9, HITSOUND = 10, TOTEM = 11, LOWHP = 12, SPRINT = 13, NEAR = 14, STATS = 15,
+        CRIT = 16, CIRCLE = 17, AUTOTOTEM = 18, ARMORWARN = 19;
     /** Anzeigenamen in derselben Reihenfolge wie die Bits. */
-    static final String[] NAMES = {"CPS", "Combo", "Rüstung", "Effekte", "Tasten", "Info (FPS, Ping, XYZ)", "Vorrat",
-        "Ziel-HUD", "Angriffs-Balken", "Reichweite", "Treffer-Sound", "Totem-Warnung", "Leben-Warnung", "Auto-Sprint",
-        "Zoom (Taste Z)", "Freunde schützen"};
-    static final int HUD_COUNT = 10;
+    static final String[] NAMES = {"CPS", "Combo", "Rüstung", "Effekte", "Tasten", "Info (FPS, XYZ)", "Vorrat",
+        "Ziel-HUD", "Angriffs-Balken", "Reichweite", "Treffer-Sound", "Totem-Hinweis", "Leben-Warnung", "Auto-Sprint",
+        "Spieler-Liste", "Statistik", "Crit-Anzeige", "Reichweiten-Kreis", "Totem nachlegen (Auto)", "Rüstung-Warnung"};
+    /** Verschiebbare Anzeigen (ihre Nummer ist zugleich das Bit, das sie einschaltet). */
+    static final int[] HUD_IDS = {INFO, CPS, COMBO, EFFECTS, KEYS, ARMOR, STOCK, TARGET, BAR, REACH, NEAR, STATS, CRIT, TOTEM};
+    static final String[] COLOR_NAMES = {"Weiß", "Rot", "Grün", "Blau", "Lila", "Gelb"};
+    private static final int[] COLORS = {0xFFFFFFFF, 0xFFFF5A5A, 0xFF4ADE80, 0xFF3B82F6, 0xFFC77DFF, 0xFFFFD166};
 
     static boolean on(int bit) {
         return ((Config.INSTANCE.pvpMods >> bit) & 1) != 0;
@@ -54,11 +59,61 @@ final class PvpHud {
         Config.INSTANCE.save();
     }
 
-    static void setAll(int fromBit, int toBitExcl, boolean value) {
-        for (int b = fromBit; b < toBitExcl; b++) {
+    static void setAll(int[] bits, boolean value) {
+        for (int b : bits) {
             if (value) Config.INSTANCE.pvpMods |= (1 << b);
             else Config.INSTANCE.pvpMods &= ~(1 << b);
         }
+        Config.INSTANCE.save();
+    }
+
+    static boolean enabled(int id) {
+        return id == TOTEM ? (on(TOTEM) || on(ARMORWARN)) : on(id);
+    }
+
+    static String elemName(int id) {
+        return id == TOTEM ? "Hinweise" : NAMES[id];
+    }
+
+    // ---------- Positionen ----------
+
+    private static int[] defPos(int id, int sw, int sh) {
+        int bw = Math.max(10, Config.INSTANCE.barW);
+        return switch (id) {
+            case INFO -> new int[] {4, 4};
+            case CPS -> new int[] {4, 34};
+            case COMBO -> new int[] {4, 50};
+            case EFFECTS -> new int[] {4, 68};
+            case KEYS -> new int[] {4, sh / 2 + 14};
+            case ARMOR -> new int[] {sw - 66, sh / 2 - 54};
+            case STOCK -> new int[] {sw - 66, sh / 2 + 46};
+            case TARGET -> new int[] {sw / 2 - 62, sh / 2 + 34};
+            case BAR -> new int[] {sw / 2 - bw / 2, sh / 2 + 9};
+            case REACH -> new int[] {sw / 2 - 14, sh / 2 + 17};
+            case NEAR -> new int[] {4, sh / 2 + 96};
+            case STATS -> new int[] {sw / 2 - 70, 22};
+            case CRIT -> new int[] {sw / 2 - 14, sh / 2 - 20};
+            default -> new int[] {sw / 2 - 50, sh / 2 - 62};
+        };
+    }
+
+    static int[] pos(int id, int sw, int sh) {
+        int[] hp = Config.INSTANCE.hudPos;
+        if (hp[2 * id] >= 0 && hp[2 * id + 1] >= 0) {
+            return new int[] {hp[2 * id] * sw / 1000, hp[2 * id + 1] * sh / 1000};
+        }
+        return defPos(id, sw, sh);
+    }
+
+    static void setPos(int id, int x, int y, int sw, int sh) {
+        x = Math.max(0, Math.min(sw - 6, x));
+        y = Math.max(0, Math.min(sh - 6, y));
+        Config.INSTANCE.hudPos[2 * id] = x * 1000 / Math.max(1, sw);
+        Config.INSTANCE.hudPos[2 * id + 1] = y * 1000 / Math.max(1, sh);
+    }
+
+    static void resetPositions() {
+        java.util.Arrays.fill(Config.INSTANCE.hudPos, -1);
         Config.INSTANCE.save();
     }
 
@@ -68,45 +123,38 @@ final class PvpHud {
     private static final ArrayDeque<Long> RIGHT = new ArrayDeque<>();
     private static boolean lDown, rDown;
     private static LivingEntity lastTarget;
-    private static long lastAttackTick = -1000, lastHitTick = -1000;
+    private static long lastAttackTick = -1000, lastHitTick = -1000, lastDmgTick = -1000;
     private static int prevTargetHurt, prevSelfHurt;
-    private static int combo = 0;
+    private static float prevTargetHp, lastDmg;
+    private static boolean killCounted = false;
+    private static int combo = 0, swings = 0, hits = 0, kills = 0;
     private static boolean sprintForced = false;
-    private static boolean zoomed = false;
-    private static int origFov = 70;
+    private static int prevTotal = -1;
+    private static boolean prevOffTotem = false, popped = false;
+    private static long popTick = -1000, lastSwapTick = -1000;
+    private static boolean armorLow = false;
+
+    static void resetStats() {
+        swings = 0;
+        hits = 0;
+        kills = 0;
+        combo = 0;
+    }
 
     static void register() {
-        // Freunde nicht schlagen + Ziel merken (läuft nach dem Hit-Assistenten, der zu frühe Schläge schon abgefangen hat)
+        // Ziel merken und Schläge zählen (läuft nach dem Hit-Assistenten, der zu frühe Schläge schon abgefangen hat)
         AttackEntityCallback.EVENT.register((player, world, hand, entity, hit) -> {
             if (!world.isClient()) return ActionResult.PASS;
-            if (on(FRIENDS) && entity instanceof PlayerEntity pe && isFriend(pe)) return ActionResult.FAIL;
             if (entity instanceof LivingEntity le) {
                 lastTarget = le;
                 lastAttackTick = tickN;
                 prevTargetHurt = le.hurtTime;
+                prevTargetHp = le.getHealth();
+                killCounted = false;
+                swings++;
             }
             return ActionResult.PASS;
         });
-        // Auch das Schwingen bei einem Freund verhindern
-        ClientPreAttackCallback.EVENT.register((client, player, clickCount) -> {
-            if (!on(FRIENDS) || client.currentScreen != null) return false;
-            return client.crosshairTarget instanceof EntityHitResult eh && eh.getEntity() instanceof PlayerEntity pe && isFriend(pe);
-        });
-        ClientLifecycleEvents.CLIENT_STOPPING.register(PvpHud::resetZoom);
-    }
-
-    static boolean isFriend(PlayerEntity p) {
-        return Config.INSTANCE.friends.contains(p.getName().getString().toLowerCase(Locale.ROOT));
-    }
-
-    private static void resetZoom(MinecraftClient mc) {
-        if (zoomed) {
-            try {
-                mc.options.getFov().setValue(origFov);
-            } catch (Throwable ignored) {
-            }
-            zoomed = false;
-        }
     }
 
     // ---------- Tick ----------
@@ -115,9 +163,10 @@ final class PvpHud {
         ClientPlayerEntity p = mc.player;
         long win = GLFW.glfwGetCurrentContext();
         if (p == null || mc.world == null || win == 0) {
-            resetZoom(mc);
             combo = 0;
             lastTarget = null;
+            prevTotal = -1;
+            popped = false;
             if (sprintForced) {
                 mc.options.sprintKey.setPressed(false);
                 sprintForced = false;
@@ -137,14 +186,25 @@ final class PvpHud {
         prune(LEFT, now);
         prune(RIGHT, now);
 
-        // Treffer erkennen: das Ziel wurde kurz nach deinem Schlag "verletzt"
+        // Treffer, Schaden und Kills erkennen
         if (lastTarget != null) {
+            if (!lastTarget.isAlive() && !killCounted && tickN - lastHitTick <= 40) {
+                kills++;
+                killCounted = true;
+            }
             if (tickN - lastAttackTick > 100 || !lastTarget.isAlive()) {
                 lastTarget = null;
             } else {
                 int h = lastTarget.hurtTime;
+                float hpNow = lastTarget.getHealth();
+                if (hpNow < prevTargetHp - 0.01f && tickN - lastAttackTick <= 15) {
+                    lastDmg = prevTargetHp - hpNow;
+                    lastDmgTick = tickN;
+                }
+                prevTargetHp = hpNow;
                 if (tickN - lastAttackTick <= 10 && h > prevTargetHurt && h > 0) {
                     combo++;
+                    hits++;
                     lastHitTick = tickN;
                     if (on(HITSOUND)) {
                         try {
@@ -171,17 +231,38 @@ final class PvpHud {
             sprintForced = false;
         }
 
-        // Zoom: Taste Z halten
-        boolean zd = on(ZOOM) && free && GLFW.glfwGetKey(win, GLFW.GLFW_KEY_Z) == GLFW.GLFW_PRESS;
-        if (zd) {
-            if (!zoomed) {
-                origFov = mc.options.getFov().getValue();
-                zoomed = true;
+        // Rüstung fast kaputt?
+        boolean low = false;
+        EquipmentSlot[] aslots = {EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET};
+        for (EquipmentSlot sl : aslots) {
+            ItemStack as = p.getEquippedStack(sl);
+            if (as.isEmpty() || !as.isDamageable()) continue;
+            int amax = Math.max(1, as.getMaxDamage());
+            if ((amax - as.getDamage()) * 100 / amax <= 15) low = true;
+        }
+        armorLow = low;
+
+        // Totem gepoppt? (in der Hand war eins, jetzt eins weniger im ganzen Inventar)
+        Item[] totem = {Items.TOTEM_OF_UNDYING};
+        int total = count(p, totem);
+        boolean offT = p.getOffHandStack().isOf(Items.TOTEM_OF_UNDYING);
+        if (prevTotal >= 0 && prevOffTotem && !offT && total < prevTotal) {
+            popped = true;
+            popTick = tickN;
+        }
+        if (offT || total == 0) popped = false;
+        prevTotal = total;
+        prevOffTotem = offT;
+        if (on(AUTOTOTEM) && popped && tickN - popTick >= 3 && tickN - lastSwapTick >= 4 && mc.interactionManager != null) {
+            PlayerInventory inv = p.getInventory();
+            for (int i = 0; i < 36; i++) {
+                if (inv.getStack(i).isOf(Items.TOTEM_OF_UNDYING)) {
+                    int slot = i < 9 ? 36 + i : i;
+                    mc.interactionManager.clickSlot(p.playerScreenHandler.syncId, slot, 40, SlotActionType.SWAP, p);
+                    lastSwapTick = tickN;
+                    break;
+                }
             }
-            int target = Math.max(30, Math.min(110, Config.INSTANCE.zoomFov));
-            if (mc.options.getFov().getValue() != target) mc.options.getFov().setValue(target);
-        } else if (zoomed) {
-            resetZoom(mc);
         }
     }
 
@@ -192,117 +273,33 @@ final class PvpHud {
     // ---------- Zeichnen ----------
     static void render(DrawContext ctx, RenderTickCounter tickCounter) {
         try {
-            draw(ctx);
+            draw(ctx, tickCounter.getTickProgress(false));
         } catch (Exception e) {
             SpotifyLyricsClient.LOGGER.debug("PvP-HUD-Fehler", e);
         }
     }
 
-    private static int chip(DrawContext ctx, TextRenderer tr, int x, int y, String text, int color) {
-        int w = tr.getWidth(text) + 8;
-        Ui.round(ctx, x, y, x + w, y + 12, 0x90000000);
-        ctx.drawTextWithShadow(tr, text, x + 4, y + 2, color);
-        return y + 14;
+    private static int chipW(TextRenderer tr, String text) {
+        return tr.getWidth(text) + 8;
     }
 
-    private static void draw(DrawContext ctx) {
+    private static void chip(DrawContext ctx, TextRenderer tr, int x, int y, String text, int color) {
+        Ui.round(ctx, x, y, x + chipW(tr, text), y + 12, 0x90000000);
+        ctx.drawTextWithShadow(tr, text, x + 4, y + 2, color);
+    }
+
+    private static void draw(DrawContext ctx, float td) {
         MinecraftClient mc = MinecraftClient.getInstance();
         ClientPlayerEntity p = mc.player;
         if (p == null || mc.world == null || mc.options.hudHidden) return;
         if (Config.INSTANCE.pvpMods == 0) return;
-        TextRenderer tr = mc.textRenderer;
         int w = ctx.getScaledWindowWidth(), h = ctx.getScaledWindowHeight();
-        int cxm = w / 2, cym = h / 2;
 
-        // ----- links oben: Info, CPS, Combo, Effekte -----
-        int y = 4;
-        if (on(INFO)) {
-            ClientPlayNetworkHandler nh = mc.getNetworkHandler();
-            PlayerListEntry pe = nh == null ? null : nh.getPlayerListEntry(p.getUuid());
-            String ping = pe != null && pe.getLatency() > 0 ? " · " + pe.getLatency() + " ms" : "";
-            y = chip(ctx, tr, 4, y, "FPS " + mc.getCurrentFps() + ping, 0xFFFFFFFF);
-            y = chip(ctx, tr, 4, y, p.getBlockX() + " " + p.getBlockY() + " " + p.getBlockZ() + " · " + dirName(p.getHorizontalFacing()), 0xFFD6D9E0);
-        }
-        if (on(CPS)) y = chip(ctx, tr, 4, y, "CPS " + LEFT.size() + " | " + RIGHT.size(), 0xFFFFFFFF);
-        if (on(COMBO)) y = chip(ctx, tr, 4, y, "Combo " + combo, combo > 0 ? 0xFFFFD166 : 0xFF9AA0AE);
-        if (on(EFFECTS)) {
-            List<StatusEffectInstance> effs = new ArrayList<>(p.getStatusEffects());
-            for (StatusEffectInstance e : effs) {
-                String nm = e.getEffectType().value().getName().getString();
-                if (e.getAmplifier() > 0) nm += " " + (e.getAmplifier() + 1);
-                nm += " · " + (e.isInfinite() ? "∞" : mmss(e.getDuration() / 20));
-                y = chip(ctx, tr, 4, y, nm, e.getEffectType().value().isBeneficial() ? 0xFF7DF29E : 0xFFFF7A7A);
-            }
-        }
-
-        // ----- links Mitte: Tasten -----
-        if (on(KEYS)) drawKeys(ctx, tr, mc, 4, cym + 14);
-
-        // ----- rechts: Rüstung + Vorrat -----
-        int rx = w - 66;
-        int ry = cym - 54;
-        if (on(ARMOR)) {
-            EquipmentSlot[] slots = {EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET, EquipmentSlot.MAINHAND};
-            for (EquipmentSlot sl : slots) {
-                ItemStack st = p.getEquippedStack(sl);
-                if (st.isEmpty()) continue;
-                Ui.round(ctx, rx - 2, ry - 1, w - 3, ry + 17, 0x70000000);
-                ctx.drawItem(st, rx, ry);
-                if (st.isDamageable()) {
-                    int max = Math.max(1, st.getMaxDamage());
-                    int pct = Math.max(0, (max - st.getDamage()) * 100 / max);
-                    int col = pct > 50 ? 0xFF7DF29E : pct > 25 ? 0xFFFFD166 : 0xFFFF6A6A;
-                    ctx.drawTextWithShadow(tr, pct + "%", rx + 20, ry + 4, col);
-                } else if (st.getCount() > 1) {
-                    ctx.drawTextWithShadow(tr, "x" + st.getCount(), rx + 20, ry + 4, 0xFFD6D9E0);
-                }
-                ry += 19;
-            }
-            ry += 4;
-        }
-        if (on(STOCK)) {
-            Item[][] groups = {{Items.TOTEM_OF_UNDYING}, {Items.END_CRYSTAL}, {Items.OBSIDIAN},
-                {Items.GOLDEN_APPLE, Items.ENCHANTED_GOLDEN_APPLE}, {Items.ENDER_PEARL}};
-            for (int gi = 0; gi < groups.length; gi++) {
-                int n = count(p, groups[gi]);
-                if (n == 0 && gi != 0) continue;
-                Ui.round(ctx, rx - 2, ry - 1, w - 3, ry + 17, 0x70000000);
-                ctx.drawItem(new ItemStack(groups[gi][0]), rx, ry);
-                ctx.drawTextWithShadow(tr, "x" + n, rx + 20, ry + 4, n == 0 ? 0xFFFF6A6A : 0xFFFFFFFF);
-                ry += 19;
-            }
-        }
-
-        // ----- Mitte: Balken, Reichweite, Ziel, Warnungen -----
-        EntityHitResult eh = mc.crosshairTarget instanceof EntityHitResult e2 ? e2 : null;
-        if (on(BAR)) {
-            float prog = Math.max(0f, Math.min(1f, p.getAttackCooldownProgress(0.5f)));
-            float thr = Config.INSTANCE.hitAssist ? Math.max(0.5f, Config.INSTANCE.hitAssistMin / 100f) : 1f;
-            int col = prog >= thr - 0.001f ? 0xFF4ADE80 : prog >= 0.5f ? 0xFFFFD166 : 0xFFFF5A5A;
-            int bx = cxm - 20, by = cym + 12;
-            ctx.fill(bx - 1, by - 1, bx + 41, by + 4, 0x90000000);
-            ctx.fill(bx, by, bx + Math.round(40 * prog), by + 3, col);
-        }
-        if (on(REACH) && eh != null) {
-            double d = eh.getPos().distanceTo(p.getEyePos());
-            String t = String.format(Locale.ROOT, "%.2f", d);
-            ctx.drawTextWithShadow(tr, t, cxm - tr.getWidth(t) / 2, cym + 19, d <= 3.0 ? 0xFF7DF29E : 0xFFFFD166);
-        }
-        if (on(TARGET)) {
-            LivingEntity t = null;
-            if (eh != null && eh.getEntity() instanceof LivingEntity le) t = le;
-            else if (lastTarget != null && tickN - lastAttackTick < 100 && lastTarget.isAlive()) t = lastTarget;
-            if (t != null) drawTarget(ctx, tr, p, t, cxm, cym + 34);
-        }
-        if (on(TOTEM) && !p.isCreative() && !p.isSpectator()
-            && !p.getOffHandStack().isOf(Items.TOTEM_OF_UNDYING) && !p.getMainHandStack().isOf(Items.TOTEM_OF_UNDYING)) {
-            boolean has = count(p, new Item[] {Items.TOTEM_OF_UNDYING}) > 0;
-            if (!has || (tickN / 6) % 2 == 0) {
-                String msg = has ? "TOTEM IN DIE HAND!" : "KEINE TOTEMS!";
-                int mw = tr.getWidth(msg) + 10;
-                Ui.round(ctx, cxm - mw / 2, cym - 62, cxm + mw / 2, cym - 48, 0xA0000000);
-                ctx.drawTextWithShadow(tr, msg, cxm - tr.getWidth(msg) / 2, cym - 59, has ? 0xFFFF5A5A : 0xFFFFAA33);
-            }
+        if (on(CIRCLE)) drawCircle(ctx, mc, p, td, w, h);
+        for (int id : HUD_IDS) {
+            if (!enabled(id)) continue;
+            int[] pp = pos(id, w, h);
+            elem(id, ctx, pp[0], pp[1], false);
         }
         if (on(LOWHP) && p.getHealth() + p.getAbsorptionAmount() <= 6f && !p.isCreative() && !p.isSpectator()) {
             int pulse = (int) (24 * (0.5 + 0.5 * Math.sin(tickN / 4.0)));
@@ -317,45 +314,272 @@ final class PvpHud {
         }
     }
 
-    private static void drawTarget(DrawContext ctx, TextRenderer tr, ClientPlayerEntity p, LivingEntity t, int cx, int top) {
-        boolean anyGear = false;
-        EquipmentSlot[] slots = {EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET, EquipmentSlot.MAINHAND};
-        for (EquipmentSlot sl : slots) if (!t.getEquippedStack(sl).isEmpty()) anyGear = true;
-        int bw = 124, bh = anyGear ? 46 : 28;
-        int x0 = cx - bw / 2;
-        boolean hurt = t.hurtTime > 0;
-        Ui.round2(ctx, x0 - 1, top - 1, x0 + bw + 1, top + bh + 1, hurt ? 0xFFFF5A5A : 0xFF303546);
-        Ui.round2(ctx, x0, top, x0 + bw, top + bh, 0xD00F1117);
-        String name = tr.trimToWidth(t.getName().getString(), bw - 12);
-        ctx.drawTextWithShadow(tr, name, x0 + 6, top + 4, 0xFFFFFFFF);
-        float hp = Math.max(0f, t.getHealth());
-        float max = Math.max(1f, t.getMaxHealth());
-        float frac = Math.max(0f, Math.min(1f, hp / max));
-        int col = frac > 0.6f ? 0xFF4ADE80 : frac > 0.3f ? 0xFFFFD166 : 0xFFFF5A5A;
-        int barX = x0 + 6, barY = top + 16, barW = bw - 12;
-        ctx.fill(barX, barY, barX + barW, barY + 5, 0xFF2A2F3D);
-        ctx.fill(barX, barY, barX + Math.round(barW * frac), barY + 5, col);
-        float abs = t.getAbsorptionAmount();
-        String hs = String.format(Locale.ROOT, "%.1f", hp) + (abs > 0 ? " +" + String.format(Locale.ROOT, "%.1f", abs) : "");
-        ctx.drawTextWithShadow(tr, hs, x0 + bw - 6 - tr.getWidth(hs), top + 4, 0xFFD6D9E0);
-        if (anyGear) {
-            int ix = x0 + 6;
-            for (EquipmentSlot sl : slots) {
-                ItemStack st = t.getEquippedStack(sl);
-                if (!st.isEmpty()) ctx.drawItem(st, ix, top + 26);
-                ix += 18;
+    /** Zeichnet eine Anzeige an (x, y) und liefert ihre Größe {Breite, Höhe}; 0 = gerade nichts zu zeigen. demo = Beispieldaten für den Editor. */
+    static int[] elem(int id, DrawContext ctx, int x, int y, boolean demo) {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        ClientPlayerEntity p = mc.player;
+        TextRenderer tr = mc.textRenderer;
+        if (p == null) return new int[] {0, 0};
+        switch (id) {
+            case INFO: {
+                String a, b;
+                if (demo) {
+                    a = "FPS 144 · 23 ms";
+                    b = "120 64 -30 · N";
+                } else {
+                    ClientPlayNetworkHandler nh = mc.getNetworkHandler();
+                    PlayerListEntry pe = nh == null ? null : nh.getPlayerListEntry(p.getUuid());
+                    String ping = pe != null && pe.getLatency() > 0 ? " · " + pe.getLatency() + " ms" : "";
+                    a = "FPS " + mc.getCurrentFps() + ping;
+                    b = p.getBlockX() + " " + p.getBlockY() + " " + p.getBlockZ() + " · " + dirName(p.getHorizontalFacing());
+                }
+                chip(ctx, tr, x, y, a, 0xFFFFFFFF);
+                chip(ctx, tr, x, y + 14, b, 0xFFD6D9E0);
+                return new int[] {Math.max(chipW(tr, a), chipW(tr, b)), 26};
+            }
+            case CPS: {
+                String s = demo ? "CPS 7 | 3" : "CPS " + LEFT.size() + " | " + RIGHT.size();
+                chip(ctx, tr, x, y, s, 0xFFFFFFFF);
+                return new int[] {chipW(tr, s), 12};
+            }
+            case COMBO: {
+                int c = demo ? 5 : combo;
+                String s = "Combo " + c;
+                chip(ctx, tr, x, y, s, c > 0 ? 0xFFFFD166 : 0xFF9AA0AE);
+                return new int[] {chipW(tr, s), 12};
+            }
+            case EFFECTS: {
+                List<String> txt = new ArrayList<>();
+                List<Integer> cols = new ArrayList<>();
+                if (demo) {
+                    txt.add("Speed II · 1:23");
+                    cols.add(0xFF7DF29E);
+                    txt.add("Weakness · 0:40");
+                    cols.add(0xFFFF7A7A);
+                } else {
+                    for (StatusEffectInstance e : new ArrayList<>(p.getStatusEffects())) {
+                        String nm = e.getEffectType().value().getName().getString();
+                        if (e.getAmplifier() > 0) nm += " " + (e.getAmplifier() + 1);
+                        nm += " · " + (e.isInfinite() ? "∞" : mmss(e.getDuration() / 20));
+                        txt.add(nm);
+                        cols.add(e.getEffectType().value().isBeneficial() ? 0xFF7DF29E : 0xFFFF7A7A);
+                    }
+                }
+                int mw = 0, yy = y;
+                for (int i = 0; i < txt.size(); i++) {
+                    chip(ctx, tr, x, yy, txt.get(i), cols.get(i));
+                    mw = Math.max(mw, chipW(tr, txt.get(i)));
+                    yy += 14;
+                }
+                return new int[] {mw, yy - y};
+            }
+            case KEYS: {
+                boolean wD = demo || mc.options.forwardKey.isPressed();
+                key(ctx, tr, x + 22, y, 20, 20, "W", wD);
+                key(ctx, tr, x, y + 22, 20, 20, "A", !demo && mc.options.leftKey.isPressed());
+                key(ctx, tr, x + 22, y + 22, 20, 20, "S", !demo && mc.options.backKey.isPressed());
+                key(ctx, tr, x + 44, y + 22, 20, 20, "D", !demo && mc.options.rightKey.isPressed());
+                key(ctx, tr, x, y + 44, 31, 20, "L " + (demo ? 7 : LEFT.size()), !demo && (lDown || mc.options.attackKey.isPressed()));
+                key(ctx, tr, x + 33, y + 44, 31, 20, "R " + (demo ? 3 : RIGHT.size()), !demo && (rDown || mc.options.useKey.isPressed()));
+                key(ctx, tr, x, y + 66, 64, 10, "", !demo && mc.options.jumpKey.isPressed());
+                return new int[] {64, 76};
+            }
+            case ARMOR: {
+                List<ItemStack> st = new ArrayList<>();
+                List<String> txt = new ArrayList<>();
+                List<Integer> cols = new ArrayList<>();
+                if (demo) {
+                    Item[] it = {Items.NETHERITE_HELMET, Items.NETHERITE_CHESTPLATE, Items.NETHERITE_LEGGINGS, Items.NETHERITE_BOOTS, Items.NETHERITE_SWORD};
+                    String[] pc = {"100%", "87%", "62%", "40%", "73%"};
+                    int[] cc = {0xFF7DF29E, 0xFF7DF29E, 0xFF7DF29E, 0xFFFFD166, 0xFF7DF29E};
+                    for (int i = 0; i < it.length; i++) {
+                        st.add(new ItemStack(it[i]));
+                        txt.add(pc[i]);
+                        cols.add(cc[i]);
+                    }
+                } else {
+                    EquipmentSlot[] slots = {EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET, EquipmentSlot.MAINHAND};
+                    for (EquipmentSlot sl : slots) {
+                        ItemStack s = p.getEquippedStack(sl);
+                        if (s.isEmpty()) continue;
+                        String t = "";
+                        int col = 0xFFD6D9E0;
+                        if (s.isDamageable()) {
+                            int max = Math.max(1, s.getMaxDamage());
+                            int pct = Math.max(0, (max - s.getDamage()) * 100 / max);
+                            t = pct + "%";
+                            col = pct > 50 ? 0xFF7DF29E : pct > 25 ? 0xFFFFD166 : 0xFFFF6A6A;
+                        } else if (s.getCount() > 1) {
+                            t = "x" + s.getCount();
+                        }
+                        st.add(s);
+                        txt.add(t);
+                        cols.add(col);
+                    }
+                }
+                int yy = y;
+                for (int i = 0; i < st.size(); i++) {
+                    Ui.round(ctx, x - 2, yy - 1, x + 60, yy + 17, 0x70000000);
+                    ctx.drawItem(st.get(i), x, yy);
+                    ctx.drawTextWithShadow(tr, txt.get(i), x + 20, yy + 4, cols.get(i));
+                    yy += 19;
+                }
+                return new int[] {62, yy - y};
+            }
+            case STOCK: {
+                Item[][] groups = {{Items.TOTEM_OF_UNDYING}, {Items.END_CRYSTAL}, {Items.OBSIDIAN},
+                    {Items.GOLDEN_APPLE, Items.ENCHANTED_GOLDEN_APPLE}, {Items.ENDER_PEARL}};
+                int[] demoN = {3, 32, 16, 8, 6};
+                int yy = y;
+                for (int gi = 0; gi < groups.length; gi++) {
+                    int n = demo ? demoN[gi] : count(p, groups[gi]);
+                    if (n == 0) continue;
+                    Ui.round(ctx, x - 2, yy - 1, x + 60, yy + 17, 0x70000000);
+                    ctx.drawItem(new ItemStack(groups[gi][0]), x, yy);
+                    ctx.drawTextWithShadow(tr, "x" + n, x + 20, yy + 4, 0xFFFFFFFF);
+                    yy += 19;
+                }
+                return new int[] {62, yy - y};
+            }
+            case TARGET: {
+                if (demo) {
+                    ItemStack[] g = {new ItemStack(Items.NETHERITE_HELMET), new ItemStack(Items.NETHERITE_CHESTPLATE),
+                        new ItemStack(Items.NETHERITE_LEGGINGS), new ItemStack(Items.NETHERITE_BOOTS), new ItemStack(Items.NETHERITE_SWORD)};
+                    return drawTarget(ctx, tr, x, y, "Gegner", 14.5f, 20f, 0f, g, false, "-6.5");
+                }
+                EntityHitResult eh = mc.crosshairTarget instanceof EntityHitResult e2 ? e2 : null;
+                LivingEntity t = null;
+                if (eh != null && eh.getEntity() instanceof LivingEntity le) t = le;
+                else if (lastTarget != null && tickN - lastAttackTick < 100 && lastTarget.isAlive()) t = lastTarget;
+                if (t == null) return new int[] {0, 0};
+                EquipmentSlot[] slots = {EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET, EquipmentSlot.MAINHAND};
+                ItemStack[] g = new ItemStack[5];
+                for (int i = 0; i < 5; i++) g[i] = t.getEquippedStack(slots[i]);
+                String dmg = (t == lastTarget && tickN - lastDmgTick < 40) ? String.format(Locale.ROOT, "-%.1f", lastDmg) : null;
+                return drawTarget(ctx, tr, x, y, t.getName().getString(), t.getHealth(), t.getMaxHealth(), t.getAbsorptionAmount(), g, t.hurtTime > 0, dmg);
+            }
+            case BAR: {
+                Config c = Config.INSTANCE;
+                float prog = demo ? 0.6f : Math.max(0f, Math.min(1f, p.getAttackCooldownProgress(0.5f)));
+                int bw = Math.max(10, c.barW), bh = Math.max(1, c.barH);
+                if (!demo && c.barOnly && prog >= 0.999f) return new int[] {0, 0};
+                float thr = c.hitAssist ? Math.max(0.5f, c.hitAssistMin / 100f) : 1f;
+                int col = prog >= thr - 0.001f ? 0xE04ADE80 : 0xD0FFFFFF;
+                ctx.fill(x, y, x + bw, y + bh, 0x50000000);
+                ctx.fill(x, y, x + Math.round(bw * prog), y + bh, col);
+                return new int[] {bw, bh};
+            }
+            case REACH: {
+                double d;
+                if (demo) {
+                    d = 3.04;
+                } else {
+                    if (!(mc.crosshairTarget instanceof EntityHitResult eh2)) return new int[] {0, 0};
+                    d = eh2.getPos().distanceTo(p.getEyePos());
+                }
+                String t = String.format(Locale.ROOT, "%.2f", d);
+                ctx.drawTextWithShadow(tr, t, x, y, d <= 3.0 ? 0xFF7DF29E : 0xFFFFD166);
+                return new int[] {tr.getWidth(t), 9};
+            }
+            case NEAR: {
+                List<String> txt = new ArrayList<>();
+                List<Integer> cols = new ArrayList<>();
+                if (demo) {
+                    txt.add("Steve · 4 m · 20 HP");
+                    cols.add(0xFFFF7A7A);
+                    txt.add("Alex · 18 m · 12 HP");
+                    cols.add(0xFFFFFFFF);
+                } else if (mc.world != null) {
+                    List<PlayerEntity> ps = new ArrayList<>();
+                    for (PlayerEntity o : mc.world.getPlayers()) {
+                        if (o == p || o.isSpectator()) continue;
+                        ps.add(o);
+                    }
+                    ps.sort(Comparator.comparingDouble(o -> o.squaredDistanceTo(p)));
+                    for (int i = 0; i < Math.min(4, ps.size()); i++) {
+                        PlayerEntity o = ps.get(i);
+                        double d = Math.sqrt(o.squaredDistanceTo(p));
+                        txt.add(o.getName().getString() + " · " + Math.round(d) + " m · " + Math.round(o.getHealth()) + " HP");
+                        cols.add(d <= 6 ? 0xFFFF7A7A : 0xFFFFFFFF);
+                    }
+                }
+                int mw = 0, yy = y;
+                for (int i = 0; i < txt.size(); i++) {
+                    chip(ctx, tr, x, yy, txt.get(i), cols.get(i));
+                    mw = Math.max(mw, chipW(tr, txt.get(i)));
+                    yy += 14;
+                }
+                return new int[] {mw, yy - y};
+            }
+            case STATS: {
+                int s = demo ? 12 : swings, hh = demo ? 7 : hits, k = demo ? 2 : kills;
+                int pct = s == 0 ? 0 : hh * 100 / s;
+                String txt = "Treffer " + hh + "/" + s + " · " + pct + "% · Kills " + k;
+                chip(ctx, tr, x, y, txt, 0xFFFFFFFF);
+                return new int[] {chipW(tr, txt), 12};
+            }
+            case CRIT: {
+                boolean ok = demo || (p.fallDistance > 0.0 && !p.isOnGround() && !p.isClimbing() && !p.isTouchingWater()
+                    && !p.hasVehicle() && !p.isSprinting() && p.getAttackCooldownProgress(0.5f) > 0.9f);
+                if (!ok) return new int[] {0, 0};
+                chip(ctx, tr, x, y, "CRIT", 0xFF7DF29E);
+                return new int[] {chipW(tr, "CRIT"), 12};
+            }
+            default: {
+                List<String> txt = new ArrayList<>();
+                List<Integer> cols = new ArrayList<>();
+                boolean blink = (tickN / 6) % 2 == 0;
+                if (demo) {
+                    txt.add("TOTEM NACHLEGEN!");
+                    cols.add(0xFFFF5A5A);
+                    txt.add("RÜSTUNG KAPUTT!");
+                    cols.add(0xFFFFAA33);
+                } else {
+                    if (on(TOTEM) && popped && !p.getOffHandStack().isOf(Items.TOTEM_OF_UNDYING) && tickN - popTick < 200 && blink) {
+                        txt.add("TOTEM NACHLEGEN!");
+                        cols.add(0xFFFF5A5A);
+                    }
+                    if (on(ARMORWARN) && armorLow && blink) {
+                        txt.add("RÜSTUNG KAPUTT!");
+                        cols.add(0xFFFFAA33);
+                    }
+                }
+                int mw = 0, yy = y;
+                for (int i = 0; i < txt.size(); i++) {
+                    chip(ctx, tr, x, yy, txt.get(i), cols.get(i));
+                    mw = Math.max(mw, chipW(tr, txt.get(i)));
+                    yy += 14;
+                }
+                return new int[] {mw, yy - y};
             }
         }
     }
 
-    private static void drawKeys(DrawContext ctx, TextRenderer tr, MinecraftClient mc, int x, int y) {
-        key(ctx, tr, x + 22, y, 20, 20, "W", mc.options.forwardKey.isPressed());
-        key(ctx, tr, x, y + 22, 20, 20, "A", mc.options.leftKey.isPressed());
-        key(ctx, tr, x + 22, y + 22, 20, 20, "S", mc.options.backKey.isPressed());
-        key(ctx, tr, x + 44, y + 22, 20, 20, "D", mc.options.rightKey.isPressed());
-        key(ctx, tr, x, y + 44, 31, 20, "L " + LEFT.size(), lDown || mc.options.attackKey.isPressed());
-        key(ctx, tr, x + 33, y + 44, 31, 20, "R " + RIGHT.size(), rDown || mc.options.useKey.isPressed());
-        key(ctx, tr, x, y + 66, 64, 10, "", mc.options.jumpKey.isPressed());
+    private static int[] drawTarget(DrawContext ctx, TextRenderer tr, int x0, int top, String name, float hp, float max, float abs,
+                                    ItemStack[] gear, boolean hurt, String dmg) {
+        boolean anyGear = false;
+        for (ItemStack s : gear) if (!s.isEmpty()) anyGear = true;
+        int bw = 124, bh = (anyGear || dmg != null) ? 46 : 28;
+        Ui.round2(ctx, x0 - 1, top - 1, x0 + bw + 1, top + bh + 1, hurt ? 0xFFFF5A5A : 0xFF303546);
+        Ui.round2(ctx, x0, top, x0 + bw, top + bh, 0xD00F1117);
+        ctx.drawTextWithShadow(tr, tr.trimToWidth(name, bw - 50), x0 + 6, top + 4, 0xFFFFFFFF);
+        float h = Math.max(0f, hp);
+        float frac = Math.max(0f, Math.min(1f, h / Math.max(1f, max)));
+        int col = frac > 0.6f ? 0xFF4ADE80 : frac > 0.3f ? 0xFFFFD166 : 0xFFFF5A5A;
+        int barX = x0 + 6, barY = top + 16, barW = bw - 12;
+        ctx.fill(barX, barY, barX + barW, barY + 5, 0xFF2A2F3D);
+        ctx.fill(barX, barY, barX + Math.round(barW * frac), barY + 5, col);
+        String hs = String.format(Locale.ROOT, "%.1f", h) + (abs > 0 ? " +" + String.format(Locale.ROOT, "%.1f", abs) : "");
+        ctx.drawTextWithShadow(tr, hs, x0 + bw - 6 - tr.getWidth(hs), top + 4, 0xFFD6D9E0);
+        if (anyGear) {
+            int ix = x0 + 6;
+            for (ItemStack s : gear) {
+                if (!s.isEmpty()) ctx.drawItem(s, ix, top + 26);
+                ix += 18;
+            }
+        }
+        if (dmg != null) ctx.drawTextWithShadow(tr, dmg, x0 + bw - 6 - tr.getWidth(dmg), top + 31, 0xFFFF7A7A);
+        return new int[] {bw, bh};
     }
 
     private static void key(DrawContext ctx, TextRenderer tr, int x, int y, int w, int h, String label, boolean down) {
@@ -363,6 +587,44 @@ final class PvpHud {
         if (!label.isEmpty()) {
             ctx.drawTextWithShadow(tr, label, x + (w - tr.getWidth(label)) / 2, y + (h - 8) / 2, down ? 0xFF111111 : 0xFFFFFFFF);
         }
+    }
+
+    /** Kreis um dich auf dem Boden (auf den Bildschirm projiziert), Radius = deine Reichweite. */
+    private static void drawCircle(DrawContext ctx, MinecraftClient mc, ClientPlayerEntity p, float td, int sw, int sh) {
+        Config c = Config.INSTANCE;
+        if (c.circleWeapon && HitAssist.kindOf(p.getMainHandStack()) < 0) return;
+        Vec3d eye = p.getCameraPosVec(td);
+        Vec3d feet = p.getLerpedPos(td);
+        double yr = Math.toRadians(p.getYaw(td)), pr = Math.toRadians(p.getPitch(td));
+        double fx = -Math.sin(yr) * Math.cos(pr), fy = -Math.sin(pr), fz = Math.cos(yr) * Math.cos(pr);
+        double rx = -Math.cos(yr), rz = -Math.sin(yr);
+        // oben = rechts x vorwaerts
+        double ux = -rz * fy, uy = rz * fx - rx * fz, uz = rx * fy;
+        double tanHalf = Math.tan(Math.toRadians(mc.options.getFov().getValue()) / 2.0);
+        double aspect = (double) sw / Math.max(1, sh);
+        double r = Math.max(1.0, c.circleR / 10.0);
+        int n = Math.max(24, Math.min(180, c.circleDots));
+        int col = COLORS[Math.floorMod(c.circleColor, COLORS.length)];
+        col = (col & 0x00FFFFFF) | 0xD0000000;
+        double gy = feet.y + 0.02;
+        for (int i = 0; i < n; i++) {
+            double a = 2 * Math.PI * i / n;
+            double dx = feet.x + Math.cos(a) * r - eye.x;
+            double dy = gy - eye.y;
+            double dz = feet.z + Math.sin(a) * r - eye.z;
+            double zc = dx * fx + dy * fy + dz * fz;
+            if (zc < 0.1) continue;
+            double xc = dx * rx + dz * rz;
+            double yc = dx * ux + dy * uy + dz * uz;
+            int px = (int) Math.round(sw / 2.0 + (xc / (zc * tanHalf * aspect)) * sw / 2.0);
+            int py = (int) Math.round(sh / 2.0 - (yc / (zc * tanHalf)) * sh / 2.0);
+            if (px < 0 || py < 0 || px >= sw - 1 || py >= sh - 1) continue;
+            ctx.fill(px, py, px + 2, py + 2, col);
+        }
+    }
+
+    static String colorName(int idx) {
+        return COLOR_NAMES[Math.floorMod(idx, COLOR_NAMES.length)];
     }
 
     private static int count(PlayerEntity p, Item[] items) {

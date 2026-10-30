@@ -61,6 +61,26 @@ public class Config {
     /** Freunde, die nicht geschlagen werden (kleingeschrieben). */
     public java.util.List<String> friends = new java.util.ArrayList<>();
 
+    /** Version der PvP-Einstellungen (für Aufräumen alter Bits). */
+    public int pvpVer = 0;
+    /** Positionen der Anzeigen: je Anzeige x und y in Promille der Bildschirmgröße (-1 = Standard). */
+    public int[] hudPos = posInit();
+    /** Angriffs-Balken: Breite, Dicke, nur beim Laden zeigen. */
+    public int barW = 24;
+    public int barH = 1;
+    public boolean barOnly = true;
+    /** Reichweiten-Kreis: Radius in Zehntel-Blöcken, Farbe, nur mit Waffe, Punkte. */
+    public int circleR = 33;
+    public int circleColor = 0;
+    public boolean circleWeapon = false;
+    public int circleDots = 72;
+
+    private static int[] posInit() {
+        int[] a = new int[48];
+        java.util.Arrays.fill(a, -1);
+        return a;
+    }
+
     /** Auto-Klick: 0 = im Abstand, 1 = Taste gedrückt halten. */
     public int autoMode = 0;
     /** Auto-Klick: 0 = Angriff (links), 1 = Benutzen (rechts). */
@@ -83,6 +103,11 @@ public class Config {
                 Config c = GSON.fromJson(Files.readString(FILE), Config.class);
                 if (c != null) {
                     if (c.clientId == null || c.clientId.isBlank()) c.clientId = "e99a8703feb94217839c96299a537b19";
+                    if (c.hudPos == null || c.hudPos.length < 48) c.hudPos = posInit();
+                    if (c.pvpVer < 2) {
+                        c.pvpMods &= ~((1 << 14) | (1 << 15));
+                        c.pvpVer = 2;
+                    }
                     return c;
                 }
             }

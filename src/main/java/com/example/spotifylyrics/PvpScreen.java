@@ -128,41 +128,38 @@ public class PvpScreen extends ItemScreen {
 
     private void buildHud() {
         sec("Auf dem Bildschirm");
-        for (int i = 0; i < PvpHud.HUD_COUNT; i += 2) row(mod(i), mod(i + 1));
+        int[][] pairs = {{PvpHud.INFO, PvpHud.CPS}, {PvpHud.COMBO, PvpHud.EFFECTS}, {PvpHud.KEYS, PvpHud.ARMOR},
+            {PvpHud.STOCK, PvpHud.TARGET}, {PvpHud.NEAR, PvpHud.STATS}, {PvpHud.CRIT, PvpHud.TOTEM}};
+        for (int[] pr : pairs) row(mod(pr[0]), mod(pr[1]));
+        row(mod(PvpHud.BAR).w(4), G("Einstellungen \u203a", () -> MinecraftClient.getInstance().setScreen(new BarScreen())).w(3));
+        row(mod(PvpHud.REACH).w(4), G("Einstellungen \u203a", () -> MinecraftClient.getInstance().setScreen(new ReachScreen())).w(3));
         gap(2);
-        row(B("Alle an", () -> {
-            PvpHud.setAll(0, PvpHud.HUD_COUNT, true);
+        row(B("Anzeigen verschieben \u203a", () -> MinecraftClient.getInstance().setScreen(new HudEditScreen())));
+        row(G("Alle an", () -> {
+            PvpHud.setAll(PvpHud.HUD_IDS, true);
             again();
         }), G("Alle aus", () -> {
-            PvpHud.setAll(0, PvpHud.HUD_COUNT, false);
+            PvpHud.setAll(PvpHud.HUD_IDS, false);
             again();
         }));
-        gap(2);
-        text("Links oben: Info, CPS, Combo, Effekte. Links Mitte: Tasten.", 0xFF7E8494);
-        text("Rechts: Rüstung und Vorrat. Mitte: Balken, Reichweite, Ziel.", 0xFF7E8494);
     }
 
     private void buildExtras() {
-        Config c = Config.INSTANCE;
         sec("Kampf-Hilfen");
-        row(mod(PvpHud.HITSOUND), mod(PvpHud.TOTEM));
-        row(mod(PvpHud.LOWHP), mod(PvpHud.SPRINT));
+        row(mod(PvpHud.HITSOUND), mod(PvpHud.LOWHP));
+        row(mod(PvpHud.SPRINT), mod(PvpHud.ARMORWARN));
         gap(2);
-        sec("Zoom");
-        row(mod(PvpHud.ZOOM));
-        stepper("Zoom-Stärke: Sichtfeld " + c.zoomFov, () -> {
-            c.zoomFov = Math.max(30, c.zoomFov - 5);
-            c.save();
-            again();
-        }, () -> {
-            c.zoomFov = Math.min(110, c.zoomFov + 5);
-            c.save();
-            again();
-        });
-        text("Im Spiel Taste Z halten. Kleiner Wert = stärker.", 0xFF7E8494);
+        sec("Totem");
+        row(mod(PvpHud.TOTEM));
+        row(mod(PvpHud.AUTOTOTEM));
+        text("Hinweis kommt, wenn ein Totem gepoppt ist.", 0xFF7E8494);
+        text("Auto nachlegen kann auf Servern als Cheat gelten.", 0xFFFFAA33);
         gap(2);
-        sec("Freunde");
-        row(mod(PvpHud.FRIENDS), B("Freunde wählen ›", () -> MinecraftClient.getInstance().setScreen(new FriendsScreen())));
-        text("Freunde nicht schlagen: Klicks auf sie werden ignoriert.", 0xFF7E8494);
+        sec("Kreis und Statistik");
+        row(mod(PvpHud.CIRCLE), G("Kreis-Einstellungen \u203a", () -> MinecraftClient.getInstance().setScreen(new ReachScreen())));
+        row(G("Statistik zur\u00fccksetzen", () -> {
+            PvpHud.resetStats();
+            again();
+        }));
     }
 }

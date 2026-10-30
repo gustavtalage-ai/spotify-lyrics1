@@ -46,9 +46,8 @@ final class PvpHud {
         "Ziel-HUD", "Angriffs-Balken", "Reichweite", "Treffer-Sound", "Totem-Hinweis", "Leben-Warnung", "Auto-Sprint",
         "Spieler-Liste", "Statistik", "Crit-Anzeige", "Reichweiten-Kreis", "Totem nachlegen (Auto)", "Rüstung-Warnung"};
     /** Verschiebbare Anzeigen (ihre Nummer ist zugleich das Bit, das sie einschaltet). */
-    static final int[] HUD_IDS = {INFO, CPS, COMBO, EFFECTS, KEYS, ARMOR, STOCK, TARGET, BAR, REACH, NEAR, STATS, CRIT, TOTEM};
-    static final String[] COLOR_NAMES = {"Weiß", "Rot", "Grün", "Blau", "Lila", "Gelb"};
-    private static final int[] COLORS = {0xFFFFFFFF, 0xFFFF5A5A, 0xFF4ADE80, 0xFF3B82F6, 0xFFC77DFF, 0xFFFFD166};
+    static final int[] HUD_IDS = {INFO, CPS, COMBO, EFFECTS, ARMOR, STOCK, TARGET, BAR, REACH, NEAR, STATS, CRIT, TOTEM};
+    static final String[] COLOR_NAMES = {"Rot, grün bei Gegner", "Immer grün", "Immer rot"};
 
     static boolean on(int bit) {
         return ((Config.INSTANCE.pvpMods >> bit) & 1) != 0;
@@ -589,7 +588,7 @@ final class PvpHud {
         }
     }
 
-    /** Kreis um dich auf dem Boden (auf den Bildschirm projiziert), Radius = deine Reichweite. */
+    /** Kreis um dich auf dem Boden (auf den Bildschirm projiziert), Radius = deine Reichweite. Durchgehende Linie. */
     private static void drawCircle(DrawContext ctx, MinecraftClient mc, ClientPlayerEntity p, float td, int sw, int sh) {
         Config c = Config.INSTANCE;
         if (c.circleWeapon && HitAssist.kindOf(p.getMainHandStack()) < 0) return;
@@ -603,23 +602,58 @@ final class PvpHud {
         double tanHalf = Math.tan(Math.toRadians(mc.options.getFov().getValue()) / 2.0);
         double aspect = (double) sw / Math.max(1, sh);
         double r = Math.max(1.0, c.circleR / 10.0);
-        int n = Math.max(24, Math.min(180, c.circleDots));
-        int col = COLORS[Math.floorMod(c.circleColor, COLORS.length)];
-        col = (col & 0x00FFFFFF) | 0xD0000000;
+
+        // Farbe: 0 = rot, gruen sobald ein Spieler im Kreis ist; 1 = immer gruen; 2 = immer rot
+        boolean inside = false;
+        if (c.circleColor == 0) {
+            for (PlayerEntity o : mc.world.getPlayers()) {
+                if (o == p || o.isSpectator()) continue;
+                double dx = o.getX() - p.getX(), dz = o.getZ() - p.getZ();
+                if (Math.sqrt(dx * dx + dz * dz) <= r && Math.abs(o.getY() - p.getY()) < 3.0) {
+                    inside = true;
+                    break;
+                }
+            }
+        }
+        int rgb = c.circleColor == 1 || (c.circleColor == 0 && inside) ? 0x4ADE80 : 0xFF5A5A;
+        int col = 0xE0000000 | rgb;
+        int th = Math.max(1, Math.min(3, c.circleThick));
+
         double gy = feet.y + 0.02;
-        for (int i = 0; i < n; i++) {
+        int n = 120;
+        int lx = 0, ly = 0;
+        boolean have = false;
+        for (int i = 0; i <= n; i++) {
             double a = 2 * Math.PI * i / n;
             double dx = feet.x + Math.cos(a) * r - eye.x;
             double dy = gy - eye.y;
             double dz = feet.z + Math.sin(a) * r - eye.z;
             double zc = dx * fx + dy * fy + dz * fz;
-            if (zc < 0.1) continue;
+            if (zc < 0.1) {
+                have = false;
+                continue;
+            }
             double xc = dx * rx + dz * rz;
             double yc = dx * ux + dy * uy + dz * uz;
             int px = (int) Math.round(sw / 2.0 + (xc / (zc * tanHalf * aspect)) * sw / 2.0);
             int py = (int) Math.round(sh / 2.0 - (yc / (zc * tanHalf)) * sh / 2.0);
-            if (px < 0 || py < 0 || px >= sw - 1 || py >= sh - 1) continue;
-            ctx.fill(px, py, px + 2, py + 2, col);
+            if (have) line(ctx, lx, ly, px, py, th, col, sw, sh);
+            lx = px;
+            ly = py;
+            have = true;
+        }
+    }
+
+    /** Durchgehende Linie zwischen zwei Bildschirmpunkten. */
+    private static void line(DrawContext ctx, int x0, int y0, int x1, int y1, int th, int col, int sw, int sh) {
+        int dx = x1 - x0, dy = y1 - y0;
+        int steps = Math.max(Math.abs(dx), Math.abs(dy));
+        if (steps > 4000) return;
+        if (steps == 0) steps = 1;
+        for (int i = 0; i <= steps; i++) {
+            int x = x0 + dx * i / steps, y = y0 + dy * i / steps;
+            if (x < 0 || y < 0 || x >= sw - th || y >= sh - th) continue;
+            ctx.fill(x, y, x + th, y + th, col);
         }
     }
 

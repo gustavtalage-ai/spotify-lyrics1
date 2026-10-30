@@ -128,9 +128,10 @@ public class PvpScreen extends ItemScreen {
 
     private void buildHud() {
         sec("Auf dem Bildschirm");
-        int[][] pairs = {{PvpHud.INFO, PvpHud.CPS}, {PvpHud.COMBO, PvpHud.EFFECTS}, {PvpHud.KEYS, PvpHud.ARMOR},
-            {PvpHud.STOCK, PvpHud.TARGET}, {PvpHud.NEAR, PvpHud.STATS}, {PvpHud.CRIT, PvpHud.TOTEM}};
+        int[][] pairs = {{PvpHud.INFO, PvpHud.CPS}, {PvpHud.COMBO, PvpHud.EFFECTS}, {PvpHud.ARMOR, PvpHud.STOCK},
+            {PvpHud.TARGET, PvpHud.NEAR}, {PvpHud.STATS, PvpHud.CRIT}};
         for (int[] pr : pairs) row(mod(pr[0]), mod(pr[1]));
+        row(mod(PvpHud.TOTEM));
         row(mod(PvpHud.BAR).w(4), G("Einstellungen \u203a", () -> MinecraftClient.getInstance().setScreen(new BarScreen())).w(3));
         row(mod(PvpHud.REACH).w(4), G("Einstellungen \u203a", () -> MinecraftClient.getInstance().setScreen(new ReachScreen())).w(3));
         gap(2);

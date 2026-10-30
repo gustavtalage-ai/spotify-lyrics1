@@ -53,12 +53,12 @@ public class ReachScreen extends ItemScreen {
             c.save();
             again();
         }));
-        stepper("Punkte: " + c.circleDots, () -> {
-            c.circleDots = Math.max(24, c.circleDots - 12);
+        stepper("Dicke: " + c.circleThick, () -> {
+            c.circleThick = Math.max(1, c.circleThick - 1);
             c.save();
             again();
         }, () -> {
-            c.circleDots = Math.min(180, c.circleDots + 12);
+            c.circleThick = Math.min(3, c.circleThick + 1);
             c.save();
             again();
         });

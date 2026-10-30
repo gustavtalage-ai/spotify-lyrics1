@@ -74,6 +74,8 @@ public class Config {
     public int circleColor = 0;
     public boolean circleWeapon = false;
     public int circleDots = 72;
+    /** Kreis-Linie: Dicke in GUI-Pixeln. */
+    public int circleThick = 1;
 
     private static int[] posInit() {
         int[] a = new int[48];

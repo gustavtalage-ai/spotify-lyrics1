@@ -66,4 +66,17 @@ final class Ui {
         int lx = x + tr.getWidth(text) + 6;
         c.fill(lx, y + 4, x + width - 4, y + 5, 0x22FFFFFF);
     }
+
+    /** Dunkler Hintergrund mit Panel, Leuchtrand und Kopfzeile (für alle Menüs gleich). */
+    static void panel(DrawContext c, int sw, int sh, int px0, int py0, int px1, int py1, int head) {
+        c.fill(0, 0, sw, sh, 0xB0050609);
+        round2(c, px0 - 5, py0 - 5, px1 + 5, py1 + 5, 0x20AA00FF);
+        round2(c, px0 - 3, py0 - 3, px1 + 3, py1 + 3, 0x28AA00FF);
+        round2(c, px0 - 1, py0 - 1, px1 + 1, py1 + 1, 0xFFAA00FF);
+        round2(c, px0, py0, px1, py1, 0xFF0F1117);
+        round2(c, px0, py0, px1, py0 + head, 0xFF181B24);
+        c.fill(px0, py0 + head - 4, px1, py0 + head, 0xFF181B24);
+        c.fill(px0 + 1, py0 + head, px1 - 1, py0 + head + 1, 0xFFAA00FF);
+        c.fill(px0 + 1, py0 + head + 1, px1 - 1, py0 + head + 3, 0x20AA00FF);
+    }
 }

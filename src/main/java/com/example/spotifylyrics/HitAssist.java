@@ -15,7 +15,7 @@ final class HitAssist {
     static void register() {
         AttackEntityCallback.EVENT.register((player, world, hand, entity, hit) -> {
             Config c = Config.INSTANCE;
-            if (!c.hitAssist || !world.isClient) return ActionResult.PASS;
+            if (!c.hitAssist || !world.isClient()) return ActionResult.PASS;
             if (!(entity instanceof LivingEntity)) return ActionResult.PASS;
             int kind = kindOf(player.getMainHandStack());
             if (kind < 0 || ((c.hitWeapons >> kind) & 1) == 0) return ActionResult.PASS;

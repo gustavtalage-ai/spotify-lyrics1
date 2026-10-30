@@ -38,6 +38,7 @@ public class SpotifyLyricsClient implements ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(Lightshow::tick);
         ClientTickEvents.END_CLIENT_TICK.register(PlaceHelper::tick);
         ClientTickEvents.END_CLIENT_TICK.register(InventoryFilter::tick);
+        HitAssist.register();
         // Server/Welt verlassen oder Spiel beenden: Spotify pausieren
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> SpotifyControl.pauseAndWait());
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> SpotifyControl.pauseAndWait());

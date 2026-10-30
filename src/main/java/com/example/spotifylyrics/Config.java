@@ -77,9 +77,21 @@ public class Config {
     /** Kreis-Linie: Dicke in GUI-Pixeln. */
     public int circleThick = 1;
     public boolean circleMark = true;
+    /** Fadenkreuz: Stil, Größe, Lücke, Dicke, Farbe. */
+    public int crossStyle = 0;
+    public int crossSize = 5;
+    public int crossGap = 2;
+    public int crossThick = 1;
+    public int crossColor = 4;
+    /** Kampf-Timer: Sekunden nach dem letzten Kampf. */
+    public int combatSecs = 15;
+    /** Letzter Todespunkt. */
+    public boolean hasDeath = false;
+    public double deathX, deathY, deathZ;
+    public String deathDim = "";
 
     private static int[] posInit() {
-        int[] a = new int[48];
+        int[] a = new int[64];
         java.util.Arrays.fill(a, -1);
         return a;
     }
@@ -106,7 +118,14 @@ public class Config {
                 Config c = GSON.fromJson(Files.readString(FILE), Config.class);
                 if (c != null) {
                     if (c.clientId == null || c.clientId.isBlank()) c.clientId = "e99a8703feb94217839c96299a537b19";
-                    if (c.hudPos == null || c.hudPos.length < 48) c.hudPos = posInit();
+                    if (c.hudPos == null) {
+                        c.hudPos = posInit();
+                    } else if (c.hudPos.length < 64) {
+                        int[] np = posInit();
+                        System.arraycopy(c.hudPos, 0, np, 0, c.hudPos.length);
+                        c.hudPos = np;
+                    }
+                    if (c.deathDim == null) c.deathDim = "";
                     if (c.pvpVer < 2) {
                         c.pvpMods &= ~((1 << 14) | (1 << 15));
                         c.pvpVer = 2;

@@ -2,10 +2,58 @@ package com.example.spotifylyrics;
 
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.text.OrderedText;
+import net.minecraft.text.Text;
 
-/** Kleine Zeichenhelfer für das Design (nur einfache Rechtecke, darum in jeder Version sicher). */
+/**
+ * Design-System der Mod: eine Farbwelt (dunkles Anthrazit mit hellem Cyan-Akzent), flache Flächen,
+ * feine Ränder, weiche Schatten. Nur einfache Rechtecke, darum in jeder Version sicher.
+ */
 final class Ui {
     private Ui() {}
+
+    // ---------- Farben ----------
+    static final int ACCENT = 0xFF38BDF8;
+    static final int ACCENT_LIGHT = 0xFF7DD3FC;
+    static final int ACCENT_DIM = 0xFF123A55;
+    static final int ACCENT_DIM_HOV = 0xFF1A4E73;
+
+    static final int BG = 0xFF0E1015;
+    static final int HEAD_BG = 0xFF14171E;
+    static final int SURFACE = 0xFF1A1E27;
+    static final int SURFACE_HOV = 0xFF252B38;
+    static final int BORDER = 0xFF2B3140;
+    static final int DIM = 0xB006080C;
+
+    static final int TEXT = 0xFFE8EAF0;
+    static final int MUTED = 0xFF8B92A5;
+    static final int GREEN = 0xFF4ADE80;
+    static final int RED = 0xFFFB7185;
+    static final int AMBER = 0xFFFBBF24;
+
+    // ---------- Text (flach, ohne Schatten) ----------
+    static void txt(DrawContext c, TextRenderer tr, String s, int x, int y, int color) {
+        c.drawText(tr, s, x, y, color, false);
+    }
+
+    static void txt(DrawContext c, TextRenderer tr, Text s, int x, int y, int color) {
+        c.drawText(tr, s, x, y, color, false);
+    }
+
+    static void txt(DrawContext c, TextRenderer tr, OrderedText s, int x, int y, int color) {
+        c.drawText(tr, s, x, y, color, false);
+    }
+
+    /** Zwei Farben (ARGB) mischen, t = Anteil von b. */
+    static int mix(int a, int b, float t) {
+        int al = (int) (((a >>> 24) & 0xFF) * (1 - t) + ((b >>> 24) & 0xFF) * t);
+        int r = (int) (((a >> 16) & 0xFF) * (1 - t) + ((b >> 16) & 0xFF) * t);
+        int g = (int) (((a >> 8) & 0xFF) * (1 - t) + ((b >> 8) & 0xFF) * t);
+        int bl = (int) ((a & 0xFF) * (1 - t) + (b & 0xFF) * t);
+        return (al << 24) | (r << 16) | (g << 8) | bl;
+    }
+
+    // ---------- Formen ----------
 
     /** Rechteck mit abgerundeten Ecken (1 Pixel). Die Teile überlappen nicht, darum sehen auch durchsichtige Farben gleichmäßig aus. */
     static void round(DrawContext c, int x0, int y0, int x1, int y1, int color) {
@@ -31,52 +79,71 @@ final class Ui {
         c.fill(x0 + 2, y1 - 1, x1 - 2, y1, color);
     }
 
-    /** Abgerundetes Feld mit Rand. */
+    /** Abgerundetes Feld mit 1 Pixel Rand. */
     static void card(DrawContext c, int x0, int y0, int x1, int y1, int border, int fill) {
-        round(c, x0, y0, x1, y1, border);
-        round(c, x0 + 1, y0 + 1, x1 - 1, y1 - 1, fill);
+        round2(c, x0, y0, x1, y1, border);
+        round2(c, x0 + 1, y0 + 1, x1 - 1, y1 - 1, fill);
     }
 
     static boolean in(int mx, int my, int x0, int y0, int x1, int y1) {
         return mx >= x0 && mx < x1 && my >= y0 && my < y1;
     }
 
-    /** Moderner Knopf: abgerundet, Text mittig. Deckt den normalen Knopf darunter komplett ab. */
+    /** Weicher Schatten unter einer Fläche. */
+    static void shadow(DrawContext c, int x0, int y0, int x1, int y1) {
+        round2(c, x0 - 4, y0 - 2, x1 + 4, y1 + 6, 0x12000000);
+        round2(c, x0 - 3, y0 - 1, x1 + 3, y1 + 4, 0x1A000000);
+        round2(c, x0 - 2, y0, x1 + 2, y1 + 3, 0x22000000);
+    }
+
+    // ---------- Bausteine ----------
+
+    /** Moderner Knopf: flach, feiner Rand, Text mittig. Deckt den normalen Knopf darunter komplett ab. */
     static void btn(DrawContext c, TextRenderer tr, int x0, int y0, int x1, int y1, String label, boolean hov, int bg, int bgHov, int fg) {
-        c.fill(x0, y0, x1, y1, 0xFF0F1117);
-        round2(c, x0, y0, x1, y1, hov ? bgHov : bg);
+        c.fill(x0, y0, x1, y1, BG);
+        int base = hov ? bgHov : bg;
+        round2(c, x0, y0, x1, y1, mix(base, 0xFFFFFFFF, hov ? 0.22f : 0.08f));
+        round2(c, x0 + 1, y0 + 1, x1 - 1, y1 - 1, base);
         String t = tr.trimToWidth(label, Math.max(4, x1 - x0 - 8));
-        c.drawTextWithShadow(tr, t, x0 + (x1 - x0 - tr.getWidth(t)) / 2, y0 + (y1 - y0 - 8) / 2, fg);
+        txt(c, tr, t, x0 + (x1 - x0 - tr.getWidth(t)) / 2, y0 + (y1 - y0 - 8) / 2, fg);
     }
 
     /** Schalter mit Name links und kleinem Ein/Aus-Schieber rechts. */
     static void toggle(DrawContext c, TextRenderer tr, int x0, int y0, int x1, int y1, String label, boolean on, boolean hov) {
-        c.fill(x0, y0, x1, y1, 0xFF0F1117);
-        round2(c, x0, y0, x1, y1, hov ? 0xFF2A3040 : 0xFF1F232E);
-        c.drawTextWithShadow(tr, tr.trimToWidth(label, Math.max(4, x1 - x0 - 44)), x0 + 8, y0 + (y1 - y0 - 8) / 2, on ? 0xFFFFFFFF : 0xFF9AA0AE);
-        int sx1 = x1 - 8, sx0 = sx1 - 22, sy0 = y0 + (y1 - y0 - 10) / 2;
-        round(c, sx0, sy0, sx1, sy0 + 10, on ? 0xFF4ADE80 : 0xFF3A3F50);
-        int kx = on ? sx1 - 9 : sx0 + 1;
-        round(c, kx, sy0 + 1, kx + 8, sy0 + 9, 0xFFFFFFFF);
+        c.fill(x0, y0, x1, y1, BG);
+        int base = hov ? SURFACE_HOV : SURFACE;
+        round2(c, x0, y0, x1, y1, mix(base, 0xFFFFFFFF, hov ? 0.18f : 0.06f));
+        round2(c, x0 + 1, y0 + 1, x1 - 1, y1 - 1, base);
+        txt(c, tr, tr.trimToWidth(label, Math.max(4, x1 - x0 - 50)), x0 + 9, y0 + (y1 - y0 - 8) / 2, on ? TEXT : MUTED);
+        int sx1 = x1 - 9, sx0 = sx1 - 24, sy0 = y0 + (y1 - y0 - 12) / 2;
+        round2(c, sx0, sy0, sx1, sy0 + 12, on ? ACCENT : 0xFF333A4A);
+        int kx = on ? sx1 - 10 : sx0 + 2;
+        round(c, kx, sy0 + 2, kx + 8, sy0 + 10, on ? 0xFF04121B : 0xFFE8EAF0);
     }
 
-    /** Abschnitts-Ueberschrift mit feiner Linie. */
+    /** Abschnitts-Überschrift mit Akzent-Strich und feiner Linie. */
     static void section(DrawContext c, TextRenderer tr, int x, int y, String text, int width) {
-        c.drawTextWithShadow(tr, text, x, y, 0xFFC77DFF);
-        int lx = x + tr.getWidth(text) + 6;
-        c.fill(lx, y + 4, x + width - 4, y + 5, 0x22FFFFFF);
+        c.fill(x, y + 1, x + 2, y + 9, ACCENT);
+        txt(c, tr, text, x + 6, y, ACCENT_LIGHT);
+        int lx = x + 6 + tr.getWidth(text) + 6;
+        c.fill(lx, y + 4, x + width - 4, y + 5, 0x1CFFFFFF);
     }
 
-    /** Dunkler Hintergrund mit Panel, Leuchtrand und Kopfzeile (für alle Menüs gleich). */
+    /** Dunkler Hintergrund mit Panel, Schatten, feinem Rand und Kopfzeile (für alle Menüs gleich). */
     static void panel(DrawContext c, int sw, int sh, int px0, int py0, int px1, int py1, int head) {
-        c.fill(0, 0, sw, sh, 0xB0050609);
-        round2(c, px0 - 5, py0 - 5, px1 + 5, py1 + 5, 0x20AA00FF);
-        round2(c, px0 - 3, py0 - 3, px1 + 3, py1 + 3, 0x28AA00FF);
-        round2(c, px0 - 1, py0 - 1, px1 + 1, py1 + 1, 0xFFAA00FF);
-        round2(c, px0, py0, px1, py1, 0xFF0F1117);
-        round2(c, px0, py0, px1, py0 + head, 0xFF181B24);
-        c.fill(px0, py0 + head - 4, px1, py0 + head, 0xFF181B24);
-        c.fill(px0 + 1, py0 + head, px1 - 1, py0 + head + 1, 0xFFAA00FF);
-        c.fill(px0 + 1, py0 + head + 1, px1 - 1, py0 + head + 3, 0x20AA00FF);
+        c.fill(0, 0, sw, sh, DIM);
+        shadow(c, px0, py0, px1, py1);
+        round2(c, px0 - 1, py0 - 1, px1 + 1, py1 + 1, BORDER);
+        round2(c, px0, py0, px1, py1, BG);
+        round2(c, px0, py0, px1, py0 + head, HEAD_BG);
+        c.fill(px0, py0 + head - 4, px1, py0 + head, HEAD_BG);
+        c.fill(px0 + 1, py0 + head, px1 - 1, py0 + head + 1, 0xFF232834);
+        c.fill(px0 + 10, py0 + head - 1, px0 + 36, py0 + head + 1, ACCENT);
+    }
+
+    /** Kleine Anzeige-Fläche für HUD-Elemente (halbdurchsichtig, abgerundet, mit schmalem Akzentstrich). */
+    static void hudBox(DrawContext c, int x0, int y0, int x1, int y1, int accent) {
+        round(c, x0, y0, x1, y1, 0xA8101319);
+        c.fill(x0, y0 + 2, x0 + 1, y1 - 2, accent);
     }
 }

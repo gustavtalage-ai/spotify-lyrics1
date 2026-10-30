@@ -22,10 +22,10 @@ public class FilterScreen extends Screen {
     private static final int ROWS = 4;
     private static final int HEAD = 28;
     private static final int PANEL_H = 293;
-    private static final int ACCENT = 0xFFAA00FF;
-    private static final int PANEL = 0xFF0F1117;
-    private static final int HEADER = 0xFF181B24;
-    private static final int GREEN = 0xFF4ADE80;
+    private static final int ACCENT = Ui.ACCENT;
+    private static final int PANEL = Ui.BG;
+    private static final int HEADER = Ui.HEAD_BG;
+    private static final int GREEN = Ui.GREEN;
 
     private static String search = "";
     private static String selected = "";
@@ -209,15 +209,7 @@ public class FilterScreen extends Screen {
 
     // Absichtlich ohne @Override, wie im Soundboard-Menü.
     public void renderBackground(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        ctx.fill(0, 0, this.width, this.height, 0xB0050609);
-        Ui.round2(ctx, px0 - 5, py0 - 5, px1 + 5, py1 + 5, 0x20AA00FF);
-        Ui.round2(ctx, px0 - 3, py0 - 3, px1 + 3, py1 + 3, 0x28AA00FF);
-        Ui.round2(ctx, px0 - 1, py0 - 1, px1 + 1, py1 + 1, ACCENT);
-        Ui.round2(ctx, px0, py0, px1, py1, PANEL);
-        Ui.round2(ctx, px0, py0, px1, py0 + HEAD, HEADER);
-        ctx.fill(px0, py0 + HEAD - 4, px1, py0 + HEAD, HEADER);
-        ctx.fill(px0 + 1, py0 + HEAD, px1 - 1, py0 + HEAD + 1, ACCENT);
-        ctx.fill(px0 + 1, py0 + HEAD + 1, px1 - 1, py0 + HEAD + 3, 0x20AA00FF);
+        Ui.panel(ctx, this.width, this.height, px0, py0, px1, py1, HEAD);
     }
 
     // Absichtlich ohne @Override, wie im Soundboard-Menü.
@@ -228,15 +220,15 @@ public class FilterScreen extends Screen {
         Config cfg = Config.INSTANCE;
 
         // Kopf
-        ctx.drawTextWithShadow(tr, "Item-Filter", px0 + 10, py0 + 6, 0xFFFFFFFF);
+        Ui.txt(ctx, tr, "Item-Filter", px0 + 10, py0 + 6, 0xFFFFFFFF);
         if (cfg.filterStrict) {
-            ctx.drawTextWithShadow(tr, "Nur-diese-Modus: Rest wird weggeworfen!", px0 + 10, py0 + 17, 0xFFFF6A6A);
+            Ui.txt(ctx, tr, "Nur-diese-Modus: Rest wird weggeworfen!", px0 + 10, py0 + 17, 0xFFFF6A6A);
         } else {
-            ctx.drawTextWithShadow(tr, cfg.filterRules.size() + " Regeln · Filter " + (cfg.filterOn ? "an" : "aus"), px0 + 10, py0 + 17, 0xFF7E8494);
+            Ui.txt(ctx, tr, cfg.filterRules.size() + " Regeln · Filter " + (cfg.filterOn ? "an" : "aus"), px0 + 10, py0 + 17, 0xFF8B92A5);
         }
-        Ui.btn(ctx, tr, px1 - 10 - 64, py0 + 5, px1 - 10, py0 + 23, "Zurück", Ui.in(mouseX, mouseY, px1 - 10 - 64, py0 + 5, px1 - 10, py0 + 23), 0xFF1F232E, 0xFF2A3040, 0xFFD6D9E0);
+        Ui.btn(ctx, tr, px1 - 10 - 64, py0 + 5, px1 - 10, py0 + 23, "Zurück", Ui.in(mouseX, mouseY, px1 - 10 - 64, py0 + 5, px1 - 10, py0 + 23), 0xFF1A1E27, 0xFF252B38, 0xFFD6D9E0);
 
-        if (search.isEmpty()) ctx.drawTextWithShadow(tr, "Item suchen (z.B. Schwert, Brot) …", cx + 5, searchY + 5, 0xFF6F7380);
+        if (search.isEmpty()) Ui.txt(ctx, tr, "Item suchen (z.B. Schwert, Brot) …", cx + 5, searchY + 5, 0xFF6F7380);
 
         // Treffer
         for (int i = 0; i < found.size(); i++) {
@@ -245,21 +237,21 @@ public class FilterScreen extends Screen {
             boolean isSel = Registries.ITEM.getId(it).toString().equals(selected);
             boolean hov = Ui.in(mouseX, mouseY, cx, ry, cx + cw, ry + 18);
             ctx.fill(cx, ry, cx + cw, ry + 18, PANEL);
-            Ui.round2(ctx, cx, ry, cx + cw, ry + 18, isSel ? 0xFF15301F : (hov ? 0xFF232736 : 0xFF1A1D26));
+            Ui.round2(ctx, cx, ry, cx + cw, ry + 18, isSel ? 0xFF15301F : (hov ? 0xFF222733 : 0xFF161A22));
             if (isSel) ctx.fill(cx, ry + 4, cx + 2, ry + 14, GREEN);
             ctx.drawItem(new ItemStack(it), cx + 5, ry + 1);
-            ctx.drawTextWithShadow(tr, tr.trimToWidth(it.getName().getString(), cw - 34), cx + 26, ry + 5, isSel ? 0xFFFFFFFF : 0xFFE4E7EE);
+            Ui.txt(ctx, tr, tr.trimToWidth(it.getName().getString(), cw - 34), cx + 26, ry + 5, isSel ? 0xFFFFFFFF : 0xFFE4E7EE);
         }
         if (found.isEmpty()) {
-            ctx.drawTextWithShadow(tr, "Tippe oben ein Item ein.", cx + 4, rowsY + 6, 0xFF9AA0AE);
+            Ui.txt(ctx, tr, "Tippe oben ein Item ein.", cx + 4, rowsY + 6, 0xFF9AA0AE);
         }
 
         // Gewähltes Item
         Item chosen = selected.isEmpty() ? null : itemOf(selected);
         if (chosen != null) {
-            ctx.drawTextWithShadow(tr, tr.trimToWidth("Gewählt: " + chosen.getName().getString() + " · grüne Slots = hier darf es liegen", cw), cx, infoY + 4, 0xFF4ADE80);
+            Ui.txt(ctx, tr, tr.trimToWidth("Gewählt: " + chosen.getName().getString() + " · grüne Slots = hier darf es liegen", cw), cx, infoY + 4, 0xFF4ADE80);
         } else {
-            ctx.drawTextWithShadow(tr, "Wähle oben ein Item, dann die Slots anklicken.", cx, infoY + 4, 0xFFFFAA00);
+            Ui.txt(ctx, tr, "Wähle oben ein Item, dann die Slots anklicken.", cx, infoY + 4, 0xFFFFAA00);
         }
 
         // Slot-Raster
@@ -270,7 +262,7 @@ public class FilterScreen extends Screen {
                 boolean on = ((mask >> idx) & 1L) != 0;
                 boolean hov = Ui.in(mouseX, mouseY, x, y, x + 18, y + 18);
                 ctx.fill(x, y, x + 18, y + 18, PANEL);
-                Ui.round(ctx, x, y, x + 18, y + 18, on ? 0xFF1F5A35 : (hov ? 0xFF2A3040 : 0xFF1A1D26));
+                Ui.round(ctx, x, y, x + 18, y + 18, on ? 0xFF1F5A35 : (hov ? 0xFF252B38 : 0xFF161A22));
                 if (on) {
                     ctx.fill(x, y + 2, x + 1, y + 16, GREEN);
                     ctx.fill(x + 17, y + 2, x + 18, y + 16, GREEN);
@@ -288,13 +280,13 @@ public class FilterScreen extends Screen {
         String[] q = {"Alle Slots", "Keine", "Nur freie", "Nur Hotbar"};
         for (int i = 0; i < 4; i++) {
             int y = gy + i * 21;
-            Ui.btn(ctx, tr, qx, y, qx + qw, y + 19, q[i], Ui.in(mouseX, mouseY, qx, y, qx + qw, y + 19), 0xFF1F232E, 0xFF2A3040, 0xFFD6D9E0);
+            Ui.btn(ctx, tr, qx, y, qx + qw, y + 19, q[i], Ui.in(mouseX, mouseY, qx, y, qx + qw, y + 19), 0xFF1A1E27, 0xFF252B38, 0xFFD6D9E0);
         }
 
         // Unten
         int hw = (cw - 4) / 2;
-        Ui.btn(ctx, tr, cx, botY, cx + hw, botY + 20, "Speichern", Ui.in(mouseX, mouseY, cx, botY, cx + hw, botY + 20), 0xFF3A1A5C, 0xFF4B2373, 0xFFFFFFFF);
-        Ui.btn(ctx, tr, cx + hw + 4, botY, cx + cw, botY + 20, "Regel löschen", Ui.in(mouseX, mouseY, cx + hw + 4, botY, cx + cw, botY + 20), 0xFF3B1A22, 0xFF53222D, 0xFFFF9A9A);
+        Ui.btn(ctx, tr, cx, botY, cx + hw, botY + 20, "Speichern", Ui.in(mouseX, mouseY, cx, botY, cx + hw, botY + 20), 0xFF123A55, 0xFF1A4E73, 0xFFFFFFFF);
+        Ui.btn(ctx, tr, cx + hw + 4, botY, cx + cw, botY + 20, "Regel löschen", Ui.in(mouseX, mouseY, cx + hw + 4, botY, cx + cw, botY + 20), 0xFF2A141B, 0xFF3D1C26, 0xFFFF9FB0);
         Ui.toggle(ctx, tr, cx, bot2Y, cx + hw, bot2Y + 20, "Filter an", cfg.filterOn, Ui.in(mouseX, mouseY, cx, bot2Y, cx + hw, bot2Y + 20));
         Ui.toggle(ctx, tr, cx + hw + 4, bot2Y, cx + cw, bot2Y + 20, "Nur diese behalten", cfg.filterStrict, Ui.in(mouseX, mouseY, cx + hw + 4, bot2Y, cx + cw, bot2Y + 20));
     }

@@ -232,7 +232,7 @@ public class LyricsHud {
 
         // Kopf: Note, Name, kleine Balken
         ctx.drawTextWithShadow(tr, "♪", x + PAD, y + PAD, argb(acc1, ga));
-        ctx.drawTextWithShadow(tr, hdr, x + PAD + 11, y + PAD, argb(0xF1EEFF, ga));
+        ctx.drawTextWithShadow(tr, hdr, x + PAD + 11, y + PAD, argb(0xEAF4FF, ga));
         int bx = x + W - PAD - 11;
         for (int i = 0; i < 3; i++) {
             float hh = playing ? 2f + 5f * (0.5f + 0.5f * (float) Math.sin(t * (7f + i * 2.3f) + i * 1.7f)) : 2f;
@@ -251,7 +251,7 @@ public class LyricsHud {
             boolean emph = a.e > 0.55f;
             Text styled = emph ? Text.literal(a.text).formatted(Formatting.BOLD) : Text.literal(a.text);
             if (emph) {
-                ctx.drawTextWithShadow(tr, styled, tx, ty, argb(0xB4AECB, al * 0.62f));       // noch nicht gesungen: gedimmt
+                ctx.drawTextWithShadow(tr, styled, tx, ty, argb(0xAEBBCB, al * 0.62f));       // noch nicht gesungen: gedimmt
                 if (a.fill > 0.01f) {
                     int w = tr.getWidth(styled);
                     if (a.fill >= 0.995f) {
@@ -263,7 +263,7 @@ public class LyricsHud {
                     }
                 }
             } else {
-                ctx.drawTextWithShadow(tr, styled, tx, ty, argb(0xDCD8EE, al));
+                ctx.drawTextWithShadow(tr, styled, tx, ty, argb(0xD6E4F2, al));
             }
         }
 

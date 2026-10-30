@@ -73,7 +73,7 @@ public class ReachScreen extends ItemScreen {
             again();
         }));
         gap(2);
-        text("Der Kreis liegt am Boden und reicht bis zur Mitte des Gegners.", 0xFF7E8494);
-        text("3.3 = Angriffsreichweite 3 plus halbe Gegner-Breite.", 0xFF7E8494);
+        text("Der Kreis liegt am Boden und reicht bis zur Mitte des Gegners.", 0xFF8B92A5);
+        text("3.3 = Angriffsreichweite 3 plus halbe Gegner-Breite.", 0xFF8B92A5);
     }
 }

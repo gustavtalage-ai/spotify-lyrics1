@@ -12,6 +12,7 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
+import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.text.ClickEvent;
 import net.minecraft.text.Style;
@@ -44,6 +45,10 @@ public class SpotifyLyricsClient implements ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(PvpHud::tick);
         ClientTickEvents.END_CLIENT_TICK.register(AutoClick::tick);
         HudElementRegistry.addLast(Identifier.of("spotifylyrics", "pvphud"), PvpHud::render);
+        // Eigenes Fadenkreuz ersetzt das normale (nur wenn eingeschaltet)
+        HudElementRegistry.replaceElement(VanillaHudElements.CROSSHAIR, original -> (ctx, tc) -> {
+            if (!PvpHud.hideVanillaCrosshair()) original.render(ctx, tc);
+        });
         HudElementRegistry.addLast(Identifier.of("spotifylyrics", "autoclick"), AutoClick::render);
         // Server/Welt verlassen oder Spiel beenden: Spotify pausieren
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> SpotifyControl.pauseAndWait());

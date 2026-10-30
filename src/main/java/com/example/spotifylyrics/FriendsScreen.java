@@ -73,7 +73,7 @@ public class FriendsScreen extends ItemScreen {
             }));
         }
         gap(2);
-        text(names.size() > ROWS ? "Mausrad = weiter scrollen (" + names.size() + " Namen)" : "Gespeicherte Freunde bleiben in der Liste.", 0xFF7E8494);
-        text("Gilt nur, wenn \"Freunde schützen\" unter Extras an ist.", 0xFF7E8494);
+        text(names.size() > ROWS ? "Mausrad = weiter scrollen (" + names.size() + " Namen)" : "Gespeicherte Freunde bleiben in der Liste.", 0xFF8B92A5);
+        text("Gilt nur, wenn \"Freunde schützen\" unter Extras an ist.", 0xFF8B92A5);
     }
 }

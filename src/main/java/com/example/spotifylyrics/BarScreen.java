@@ -55,6 +55,6 @@ public class BarScreen extends ItemScreen {
             again();
         }));
         gap(2);
-        text("Grün = bereit. Position: Anzeigen verschieben.", 0xFF7E8494);
+        text("Grün = bereit. Position: Anzeigen verschieben.", 0xFF8B92A5);
     }
 }

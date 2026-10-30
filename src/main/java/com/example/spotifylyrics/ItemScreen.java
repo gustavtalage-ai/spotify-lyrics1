@@ -50,27 +50,27 @@ abstract class ItemScreen extends Screen {
 
     /** Lila Knopf. */
     static Cell B(String label, Runnable r) {
-        return new Cell(K_BTN, label, false, r, 0xFF3A1A5C, 0xFF4B2373, 0xFFFFFFFF);
+        return new Cell(K_BTN, label, false, r, Ui.ACCENT_DIM, Ui.ACCENT_DIM_HOV, 0xFFD6F0FF);
     }
 
     /** Grauer Knopf. */
     static Cell G(String label, Runnable r) {
-        return new Cell(K_BTN, label, false, r, 0xFF1F232E, 0xFF2A3040, 0xFFD6D9E0);
+        return new Cell(K_BTN, label, false, r, Ui.SURFACE, Ui.SURFACE_HOV, 0xFFD6D9E0);
     }
 
     /** Roter Knopf. */
     static Cell R(String label, Runnable r) {
-        return new Cell(K_BTN, label, false, r, 0xFF3B1A22, 0xFF53222D, 0xFFFF9A9A);
+        return new Cell(K_BTN, label, false, r, 0xFF2A141B, 0xFF3D1C26, 0xFFFF9FB0);
     }
 
     /** Gewählter Reiter (nicht klickbar). */
     static Cell S(String label) {
-        return new Cell(K_BTN, label, false, null, 0xFF5B2A8C, 0xFF5B2A8C, 0xFFFFFFFF);
+        return new Cell(K_BTN, label, false, null, Ui.ACCENT, Ui.ACCENT, 0xFF04121B);
     }
 
     /** Reiner Text-Kasten. */
     static Cell X(String label) {
-        return new Cell(K_LABEL, label, false, null, 0xFF171A22, 0xFF171A22, 0xFFD6D9E0);
+        return new Cell(K_LABEL, label, false, null, 0xFF12151B, 0xFF12151B, 0xFFD6D9E0);
     }
 
     private static final class It {
@@ -219,12 +219,12 @@ abstract class ItemScreen extends Screen {
         super.render(ctx, mouseX, mouseY, delta);
         TextRenderer tr = MinecraftClient.getInstance().textRenderer;
 
-        ctx.drawTextWithShadow(tr, head, px0 + 10, py0 + 6, 0xFFFFFFFF);
-        ctx.drawTextWithShadow(tr, tr.trimToWidth(sub, px1 - px0 - 110), px0 + 10, py0 + 17, 0xFF7E8494);
+        Ui.txt(ctx, tr, head, px0 + 10, py0 + 6, Ui.TEXT);
+        Ui.txt(ctx, tr, tr.trimToWidth(sub, px1 - px0 - 110), px0 + 10, py0 + 17, 0xFF8B92A5);
         if (hasBack) {
             int bx0 = px1 - 10 - 72, by0 = py0 + 5;
             Ui.btn(ctx, tr, bx0, by0, bx0 + 72, by0 + 18, backLabel(), Ui.in(mouseX, mouseY, bx0, by0, bx0 + 72, by0 + 18),
-                0xFF1F232E, 0xFF2A3040, 0xFFD6D9E0);
+                0xFF1A1E27, 0xFF252B38, 0xFFD6D9E0);
         }
         for (It it : items) {
             boolean hov = it.act != null && Ui.in(mouseX, mouseY, it.x, it.y, it.x + it.w, it.y + it.h);
@@ -232,7 +232,7 @@ abstract class ItemScreen extends Screen {
                 case K_TOGGLE -> Ui.toggle(ctx, tr, it.x, it.y, it.x + it.w, it.y + it.h, it.s, it.on, hov);
                 case K_BTN, K_LABEL -> Ui.btn(ctx, tr, it.x, it.y, it.x + it.w, it.y + it.h, it.s, hov, it.c1, it.c2, it.fg);
                 case K_SECTION -> Ui.section(ctx, tr, it.x + 2, it.y, it.s, it.w);
-                default -> ctx.drawTextWithShadow(tr, tr.trimToWidth(it.s, it.w - 2), it.x + 2, it.y, it.fg);
+                default -> Ui.txt(ctx, tr, tr.trimToWidth(it.s, it.w - 2), it.x + 2, it.y, it.fg);
             }
         }
     }

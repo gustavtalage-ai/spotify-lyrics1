@@ -27,10 +27,10 @@ public class SoundboardScreen extends Screen {
     private static final int SLIDER_W = 72;
     private static final int SELF_W = 118;
 
-    private static final int ACCENT = 0xFFAA00FF;
-    private static final int PANEL = 0xFF0F1117;
-    private static final int HEADER = 0xFF181B24;
-    private static final int GREEN = 0xFF4ADE80;
+    private static final int ACCENT = Ui.ACCENT;
+    private static final int PANEL = Ui.BG;
+    private static final int HEADER = Ui.HEAD_BG;
+    private static final int GREEN = Ui.GREEN;
 
     /** Suchtext; bleibt beim Neuaufbau des Menüs erhalten. */
     private static String searchText = "";
@@ -275,21 +275,21 @@ public class SoundboardScreen extends Screen {
         }
         String msg = SpotifyControl.message;
         // Aktueller Song mit Fortschrittsbalken
-        Ui.round2(ctx, x0, y0, x0 + w, y0 + 34, 0xFF1A1D26);
+        Ui.round2(ctx, x0, y0, x0 + w, y0 + 34, 0xFF161A22);
         SpotifyApi.State st = SpotifyApi.state;
         String playingId = "";
         if (st != null) {
             playingId = st.track().id();
-            ctx.drawTextWithShadow(tr, "♪", x0 + 8, y0 + 11, 0xFF1ED760);
-            ctx.drawTextWithShadow(tr, tr.trimToWidth(st.track().title(), w - 112), x0 + 22, y0 + 5, 0xFFFFFFFF);
+            Ui.txt(ctx, tr, "♪", x0 + 8, y0 + 11, 0xFF1ED760);
+            Ui.txt(ctx, tr, tr.trimToWidth(st.track().title(), w - 112), x0 + 22, y0 + 5, 0xFFFFFFFF);
             long dur = Math.max(1, st.track().durationMs());
             double frac = nowMs < seekHold ? seekVal : Math.min(1.0, st.position() / (double) dur);
             long posMs = (long) (frac * dur);
             String time = mmss(posMs) + " / " + mmss(dur);
             int timeW = tr.getWidth(time);
-            if (msg.isEmpty()) ctx.drawTextWithShadow(tr, tr.trimToWidth(st.track().artist(), w - 40 - timeW), x0 + 22, y0 + 16, 0xFF9AA0AE);
-            else ctx.drawTextWithShadow(tr, tr.trimToWidth(msg, w - 34), x0 + 22, y0 + 16, 0xFFFFAA00);
-            if (msg.isEmpty()) ctx.drawTextWithShadow(tr, time, x0 + w - 10 - timeW, y0 + 16, 0xFF7E8494);
+            if (msg.isEmpty()) Ui.txt(ctx, tr, tr.trimToWidth(st.track().artist(), w - 40 - timeW), x0 + 22, y0 + 16, 0xFF9AA0AE);
+            else Ui.txt(ctx, tr, tr.trimToWidth(msg, w - 34), x0 + 22, y0 + 16, 0xFFFFAA00);
+            if (msg.isEmpty()) Ui.txt(ctx, tr, time, x0 + w - 10 - timeW, y0 + 16, 0xFF8B92A5);
             boolean sh = Ui.in(mouseX, mouseY, x0 + 10, y0 + 21, x0 + w - 10, y0 + 33);
             int bar = (int) ((w - 20) * Math.max(0.0, Math.min(1.0, frac)));
             int by0 = sh ? y0 + 26 : y0 + 27, by1 = sh ? y0 + 31 : y0 + 30;
@@ -297,18 +297,18 @@ public class SoundboardScreen extends Screen {
             if (bar > 0) Ui.round(ctx, x0 + 10, by0, x0 + 10 + bar, by1, 0xFF1ED760);
             Ui.round(ctx, x0 + 10 + bar - 2, y0 + 25, x0 + 10 + bar + 3, y0 + 32, sh ? 0xFFFFFFFF : 0xFFE4E7EE);
         } else {
-            ctx.drawTextWithShadow(tr, "Es läuft nichts", x0 + 10, y0 + 7, 0xFFFFFFFF);
-            if (msg.isEmpty()) ctx.drawTextWithShadow(tr, tr.trimToWidth("Spotify ist noch nicht verbunden.", w - 20), x0 + 10, y0 + 19, 0xFF9AA0AE);
-            else ctx.drawTextWithShadow(tr, tr.trimToWidth(msg, w - 20), x0 + 10, y0 + 19, 0xFFFFAA00);
+            Ui.txt(ctx, tr, "Es läuft nichts", x0 + 10, y0 + 7, 0xFFFFFFFF);
+            if (msg.isEmpty()) Ui.txt(ctx, tr, tr.trimToWidth("Spotify ist noch nicht verbunden.", w - 20), x0 + 10, y0 + 19, 0xFF9AA0AE);
+            else Ui.txt(ctx, tr, tr.trimToWidth(msg, w - 20), x0 + 10, y0 + 19, 0xFFFFAA00);
         }
 
         // Neu verbinden (klein, oben rechts im Statusfeld)
         if (playerConnected) {
             int rx = x0 + w - 76;
             boolean hr = Ui.in(mouseX, mouseY, rx, y0 + 3, rx + 72, y0 + 16);
-            Ui.round2(ctx, rx, y0 + 3, rx + 72, y0 + 16, hr ? 0xFF2A3040 : 0xFF232736);
+            Ui.round2(ctx, rx, y0 + 3, rx + 72, y0 + 16, hr ? 0xFF252B38 : 0xFF222733);
             String rt = "Neu verbinden";
-            ctx.drawTextWithShadow(tr, rt, rx + (72 - tr.getWidth(rt)) / 2, y0 + 6, hr ? 0xFF1ED760 : 0xFF9AA0AE);
+            Ui.txt(ctx, tr, rt, rx + (72 - tr.getWidth(rt)) / 2, y0 + 6, hr ? 0xFF1ED760 : 0xFF9AA0AE);
         }
 
         // Steuerung
@@ -318,13 +318,13 @@ public class SoundboardScreen extends Screen {
             boolean hc = Ui.in(mouseX, mouseY, x0, y0 + 38, x0 + w, y0 + 60);
             Ui.round2(ctx, x0, y0 + 38, x0 + w, y0 + 60, hc ? 0xFF1FB455 : 0xFF1ED760);
             String lt = "Mit Spotify verbinden";
-            ctx.drawTextWithShadow(tr, lt, x0 + (w - tr.getWidth(lt)) / 2, y0 + 45, 0xFF06140B);
+            Ui.txt(ctx, tr, lt, x0 + (w - tr.getWidth(lt)) / 2, y0 + 45, 0xFF06140B);
         }
         for (int i = 0; i < 3 && playerConnected; i++) {
             int bx = x0 + i * (bw + 4);
             boolean h = Ui.in(mouseX, mouseY, bx, y0 + 38, bx + bw, y0 + 60);
-            Ui.round2(ctx, bx, y0 + 38, bx + bw, y0 + 60, i == 1 ? (h ? 0xFF1FB455 : 0xFF1ED760) : (h ? 0xFF2A3040 : 0xFF1F232E));
-            ctx.drawTextWithShadow(tr, labels[i], bx + (bw - tr.getWidth(labels[i])) / 2, y0 + 45, i == 1 ? 0xFF06140B : 0xFFD6D9E0);
+            Ui.round2(ctx, bx, y0 + 38, bx + bw, y0 + 60, i == 1 ? (h ? 0xFF1FB455 : 0xFF1ED760) : (h ? 0xFF252B38 : 0xFF1A1E27));
+            Ui.txt(ctx, tr, labels[i], bx + (bw - tr.getWidth(labels[i])) / 2, y0 + 45, i == 1 ? 0xFF06140B : 0xFFD6D9E0);
         }
 
         // Lautstärke: [-] Balken [+]
@@ -334,37 +334,37 @@ public class SoundboardScreen extends Screen {
             ctx.fill(x0, vy, x0 + w, vy + 16, PANEL);   // Standard-Regler darunter verdecken
             boolean hm = Ui.in(mouseX, mouseY, x0, vy, x0 + 22, vy + 16);
             boolean hp = Ui.in(mouseX, mouseY, x0 + w - 22, vy, x0 + w, vy + 16);
-            Ui.round2(ctx, x0, vy, x0 + 22, vy + 16, hm ? 0xFF2A3040 : 0xFF1F232E);
-            Ui.round2(ctx, x0 + w - 22, vy, x0 + w, vy + 16, hp ? 0xFF2A3040 : 0xFF1F232E);
+            Ui.round2(ctx, x0, vy, x0 + 22, vy + 16, hm ? 0xFF252B38 : 0xFF1A1E27);
+            Ui.round2(ctx, x0 + w - 22, vy, x0 + w, vy + 16, hp ? 0xFF252B38 : 0xFF1A1E27);
             ctx.fill(x0 + 7, vy + 7, x0 + 15, vy + 9, hm ? 0xFFFFFFFF : 0xFFD6D9E0);
             ctx.fill(x0 + w - 15, vy + 7, x0 + w - 7, vy + 9, hp ? 0xFFFFFFFF : 0xFFD6D9E0);
             ctx.fill(x0 + w - 12, vy + 4, x0 + w - 10, vy + 12, hp ? 0xFFFFFFFF : 0xFFD6D9E0);
             int tx0 = x0 + 28 + 3, tx1 = x0 + w - 56 - 3;
             int ty = vy + 6;
-            Ui.round(ctx, tx0, ty, tx1, ty + 4, 0xFF2C3040);
+            Ui.round(ctx, tx0, ty, tx1, ty + 4, 0xFF2B3140);
             int fx = tx0 + (int) Math.round((tx1 - tx0) * vol / 100.0);
             if (fx > tx0) Ui.round(ctx, tx0, ty, fx, ty + 4, 0xFF1ED760);
             boolean vh = Ui.in(mouseX, mouseY, x0 + 28, vy, x0 + w - 56, vy + 16);
             Ui.round(ctx, fx - 2, ty - 3, fx + 3, ty + 7, vh ? 0xFFFFFFFF : 0xFFE4E7EE);
             String vt = vol + " %";
-            ctx.drawTextWithShadow(tr, vt, x0 + w - 26 - tr.getWidth(vt), vy + 4, 0xFF9AA0AE);
+            Ui.txt(ctx, tr, vt, x0 + w - 26 - tr.getWidth(vt), vy + 4, 0xFF9AA0AE);
         }
 
         // Ergebnisse
         List<SpotifyApi.Track> res = SpotifyControl.results;
         if (res.isEmpty()) {
             String hint = songText.isBlank() ? "Tippe oben einen Song oder Künstler" : (SpotifyControl.busy ? "Suche..." : "");
-            if (!hint.isEmpty()) ctx.drawTextWithShadow(tr, hint, x0 + 4, y0 + 116, 0xFF7E8494);
+            if (!hint.isEmpty()) Ui.txt(ctx, tr, hint, x0 + 4, y0 + 116, 0xFF8B92A5);
         }
         for (int i = 0; i < DEV_SLOTS && i < res.size(); i++) {
             SpotifyApi.Track t = res.get(i);
             int ry = y0 + 110 + i * 22;
             boolean h = Ui.in(mouseX, mouseY, x0, ry, x0 + w, ry + 20);
             boolean cur = t.id().equals(playingId);
-            Ui.round2(ctx, x0, ry, x0 + w, ry + 20, cur ? 0xFF15301F : (h ? 0xFF232736 : 0xFF1A1D26));
+            Ui.round2(ctx, x0, ry, x0 + w, ry + 20, cur ? 0xFF15301F : (h ? 0xFF222733 : 0xFF161A22));
             if (cur) ctx.fill(x0, ry + 4, x0 + 2, ry + 16, GREEN);
-            ctx.drawTextWithShadow(tr, ">", x0 + 7, ry + 6, h ? 0xFF1ED760 : 0xFF5A5F6E);
-            ctx.drawTextWithShadow(tr, tr.trimToWidth(t.title() + " · " + t.artist(), w - 28), x0 + 18, ry + 6, cur ? 0xFFFFFFFF : 0xFFE4E7EE);
+            Ui.txt(ctx, tr, ">", x0 + 7, ry + 6, h ? 0xFF1ED760 : 0xFF5A5F6E);
+            Ui.txt(ctx, tr, tr.trimToWidth(t.title() + " · " + t.artist(), w - 28), x0 + 18, ry + 6, cur ? 0xFFFFFFFF : 0xFFE4E7EE);
         }
 
         // Fußzeile: Lichtshow
@@ -373,12 +373,12 @@ public class SoundboardScreen extends Screen {
         int x1 = px0 + 8, x2 = px0 + 16 + half;
         boolean h1 = Ui.in(mouseX, mouseY, x1, fy, x1 + half, fy + 20);
         boolean h2 = Ui.in(mouseX, mouseY, x2, fy, x2 + half, fy + 20);
-        Ui.round2(ctx, x1, fy, x1 + half, fy + 20, h1 ? 0xFF2A3040 : 0xFF1F232E);
+        Ui.round2(ctx, x1, fy, x1 + half, fy + 20, h1 ? 0xFF252B38 : 0xFF1A1E27);
         Ui.round(ctx, x1 + 8, fy + 7, x1 + 14, fy + 13, on ? GREEN : 0xFF5A5F6E);
-        ctx.drawTextWithShadow(tr, tr.trimToWidth("Lichtshow", half - 24), x1 + 20, fy + 6, on ? 0xFFFFFFFF : 0xFF9AA0AE);
-        Ui.round2(ctx, x2, fy, x2 + half, fy + 20, h2 ? 0xFF2A3040 : 0xFF1F232E);
+        Ui.txt(ctx, tr, tr.trimToWidth("Lichtshow", half - 24), x1 + 20, fy + 6, on ? 0xFFFFFFFF : 0xFF9AA0AE);
+        Ui.round2(ctx, x2, fy, x2 + half, fy + 20, h2 ? 0xFF252B38 : 0xFF1A1E27);
         String mode = "Farbe: " + Lightshow.MODES[Config.INSTANCE.lightMode % Lightshow.MODES.length];
-        ctx.drawTextWithShadow(tr, tr.trimToWidth(mode, half - 8), x2 + Math.max(4, (half - tr.getWidth(mode)) / 2), fy + 6, 0xFFD6D9E0);
+        Ui.txt(ctx, tr, tr.trimToWidth(mode, half - 8), x2 + Math.max(4, (half - tr.getWidth(mode)) / 2), fy + 6, 0xFFD6D9E0);
     }
 
     private void reopenTools() {
@@ -480,40 +480,40 @@ public class SoundboardScreen extends Screen {
         String info = tr.trimToWidth(PlaceHelper.describe(), sw - 90);
         int iw = tr.getWidth(info);
         Ui.section(ctx, tr, xl + 2, tlY(0), "Platzhilfe", sw - iw - 8);
-        ctx.drawTextWithShadow(tr, info, px1 - 12 - iw, tlY(0), 0xFF7E8494);
+        Ui.txt(ctx, tr, info, px1 - 12 - iw, tlY(0), 0xFF8B92A5);
         Ui.toggle(ctx, tr, xl, tlY(R1), xl + hw, tlY(R1) + 20, "Platzhilfe", cfg.placeHelper, Ui.in(mx, my, xl, tlY(R1), xl + hw, tlY(R1) + 20));
-        Ui.btn(ctx, tr, xr, tlY(R1), xr + hw, tlY(R1) + 20, "Startpunkt setzen", Ui.in(mx, my, xr, tlY(R1), xr + hw, tlY(R1) + 20), 0xFF3A1A5C, 0xFF4B2373, 0xFFFFFFFF);
+        Ui.btn(ctx, tr, xr, tlY(R1), xr + hw, tlY(R1) + 20, "Startpunkt setzen", Ui.in(mx, my, xr, tlY(R1), xr + hw, tlY(R1) + 20), 0xFF123A55, 0xFF1A4E73, 0xFFFFFFFF);
 
         boolean hm = Ui.in(mx, my, xl, tlY(R2), xl + 24, tlY(R2) + 20);
         boolean hp = Ui.in(mx, my, xl + w - 24, tlY(R2), xl + w, tlY(R2) + 20);
-        Ui.btn(ctx, tr, xl, tlY(R2), xl + 24, tlY(R2) + 20, "-", hm, 0xFF1F232E, 0xFF2A3040, 0xFFFFFFFF);
-        Ui.btn(ctx, tr, xl + w - 24, tlY(R2), xl + w, tlY(R2) + 20, "+", hp, 0xFF1F232E, 0xFF2A3040, 0xFFFFFFFF);
-        Ui.btn(ctx, tr, xl + 28, tlY(R2), xl + w - 28, tlY(R2) + 20, "Abstand: jeder " + cfg.placeSpacing + ". Block", false, 0xFF171A22, 0xFF171A22, 0xFFD6D9E0);
+        Ui.btn(ctx, tr, xl, tlY(R2), xl + 24, tlY(R2) + 20, "-", hm, 0xFF1A1E27, 0xFF252B38, 0xFFFFFFFF);
+        Ui.btn(ctx, tr, xl + w - 24, tlY(R2), xl + w, tlY(R2) + 20, "+", hp, 0xFF1A1E27, 0xFF252B38, 0xFFFFFFFF);
+        Ui.btn(ctx, tr, xl + 28, tlY(R2), xl + w - 28, tlY(R2) + 20, "Abstand: jeder " + cfg.placeSpacing + ". Block", false, 0xFF13161D, 0xFF13161D, 0xFFD6D9E0);
 
         String dn = cfg.placeDir < 0 || cfg.placeDir >= PlaceHelper.DIR_NAMES.length ? "Blickrichtung" : PlaceHelper.DIR_NAMES[cfg.placeDir];
-        Ui.btn(ctx, tr, xl, tlY(R3), xl + hw, tlY(R3) + 20, "Richtung: " + dn, Ui.in(mx, my, xl, tlY(R3), xl + hw, tlY(R3) + 20), 0xFF1F232E, 0xFF2A3040, 0xFFD6D9E0);
-        Ui.btn(ctx, tr, xr, tlY(R3), xr + hw, tlY(R3) + 20, "Markierung löschen", Ui.in(mx, my, xr, tlY(R3), xr + hw, tlY(R3) + 20), 0xFF3B1A22, 0xFF53222D, 0xFFFF9A9A);
+        Ui.btn(ctx, tr, xl, tlY(R3), xl + hw, tlY(R3) + 20, "Richtung: " + dn, Ui.in(mx, my, xl, tlY(R3), xl + hw, tlY(R3) + 20), 0xFF1A1E27, 0xFF252B38, 0xFFD6D9E0);
+        Ui.btn(ctx, tr, xr, tlY(R3), xr + hw, tlY(R3) + 20, "Markierung löschen", Ui.in(mx, my, xr, tlY(R3), xr + hw, tlY(R3) + 20), 0xFF2A141B, 0xFF3D1C26, 0xFFFF9FB0);
 
         Ui.section(ctx, tr, xl + 2, tlY(84), "Inventar", sw);
-        Ui.btn(ctx, tr, xl, tlY(R4), xl + hw, tlY(R4) + 20, "Filter einrichten (" + cfg.filterRules.size() + ")", Ui.in(mx, my, xl, tlY(R4), xl + hw, tlY(R4) + 20), 0xFF3A1A5C, 0xFF4B2373, 0xFFFFFFFF);
+        Ui.btn(ctx, tr, xl, tlY(R4), xl + hw, tlY(R4) + 20, "Filter einrichten (" + cfg.filterRules.size() + ")", Ui.in(mx, my, xl, tlY(R4), xl + hw, tlY(R4) + 20), 0xFF123A55, 0xFF1A4E73, 0xFFFFFFFF);
         Ui.toggle(ctx, tr, xr, tlY(R4), xr + hw, tlY(R4) + 20, "Item-Filter", cfg.filterOn, Ui.in(mx, my, xr, tlY(R4), xr + hw, tlY(R4) + 20));
 
         Ui.section(ctx, tr, xl + 2, tlY(124), "Lichtshow", sw);
         Ui.toggle(ctx, tr, xl, tlY(R5), xl + hw, tlY(R5) + 20, "Lichtshow", cfg.lightshow, Ui.in(mx, my, xl, tlY(R5), xl + hw, tlY(R5) + 20));
-        Ui.btn(ctx, tr, xr, tlY(R5), xr + hw, tlY(R5) + 20, "Farbe: " + Lightshow.MODES[cfg.lightMode % Lightshow.MODES.length], Ui.in(mx, my, xr, tlY(R5), xr + hw, tlY(R5) + 20), 0xFF1F232E, 0xFF2A3040, 0xFFD6D9E0);
-        Ui.btn(ctx, tr, xl, tlY(R6), xl + hw, tlY(R6) + 20, "Testen (20 s)", Ui.in(mx, my, xl, tlY(R6), xl + hw, tlY(R6) + 20), 0xFF3A1A5C, 0xFF4B2373, 0xFFFFFFFF);
+        Ui.btn(ctx, tr, xr, tlY(R5), xr + hw, tlY(R5) + 20, "Farbe: " + Lightshow.MODES[cfg.lightMode % Lightshow.MODES.length], Ui.in(mx, my, xr, tlY(R5), xr + hw, tlY(R5) + 20), 0xFF1A1E27, 0xFF252B38, 0xFFD6D9E0);
+        Ui.btn(ctx, tr, xl, tlY(R6), xl + hw, tlY(R6) + 20, "Testen (20 s)", Ui.in(mx, my, xl, tlY(R6), xl + hw, tlY(R6) + 20), 0xFF123A55, 0xFF1A4E73, 0xFFFFFFFF);
         String ls = Lightshow.status();
-        ctx.drawTextWithShadow(tr, tr.trimToWidth(ls, hw - 4), xr + 4, tlY(R6) + 6, 0xFF7E8494);
+        Ui.txt(ctx, tr, tr.trimToWidth(ls, hw - 4), xr + 4, tlY(R6) + 6, 0xFF8B92A5);
 
         String ac = tr.trimToWidth(AutoClick.describe(), sw - 100);
         int acw = tr.getWidth(ac);
         Ui.section(ctx, tr, xl + 2, tlY(186), "Auto-Klick", sw - acw - 8);
-        ctx.drawTextWithShadow(tr, ac, px1 - 12 - acw, tlY(186), 0xFF7E8494);
+        Ui.txt(ctx, tr, ac, px1 - 12 - acw, tlY(186), 0xFF8B92A5);
         Ui.toggle(ctx, tr, xl, tlY(R7), xl + hw, tlY(R7) + 20, "Auto-Klick (Taste " + AutoClick.keyName() + ")", AutoClick.active, Ui.in(mx, my, xl, tlY(R7), xl + hw, tlY(R7) + 20));
-        Ui.btn(ctx, tr, xr, tlY(R7), xr + hw, tlY(R7) + 20, "Einstellungen \u203a", Ui.in(mx, my, xr, tlY(R7), xr + hw, tlY(R7) + 20), 0xFF3A1A5C, 0xFF4B2373, 0xFFFFFFFF);
+        Ui.btn(ctx, tr, xr, tlY(R7), xr + hw, tlY(R7) + 20, "Einstellungen \u203a", Ui.in(mx, my, xr, tlY(R7), xr + hw, tlY(R7) + 20), 0xFF123A55, 0xFF1A4E73, 0xFFFFFFFF);
 
-        ctx.drawTextWithShadow(tr, "Zielblock anschauen, dann Startpunkt setzen.", px0 + 10, py1 - FOOTER_H + 8, 0xFF9AA0AE);
-        ctx.drawTextWithShadow(tr, "Grün = Start, blau = jeder n-te Block.", px0 + 10, py1 - FOOTER_H + 20, 0xFF9AA0AE);
+        Ui.txt(ctx, tr, "Zielblock anschauen, dann Startpunkt setzen.", px0 + 10, py1 - FOOTER_H + 8, 0xFF9AA0AE);
+        Ui.txt(ctx, tr, "Grün = Start, blau = jeder n-te Block.", px0 + 10, py1 - FOOTER_H + 20, 0xFF9AA0AE);
     }
 
     private static String mmss(long ms) {
@@ -579,17 +579,9 @@ public class SoundboardScreen extends Screen {
     // Absichtlich ohne @Override: Passt die Signatur, ersetzt das den Standard-Hintergrund durch das dunkle Design.
     // Passt sie nicht, bleibt der normale Hintergrund und alles funktioniert trotzdem.
     public void renderBackground(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        ctx.fill(0, 0, this.width, this.height, 0xB0050609);
-        Ui.round2(ctx, px0 - 5, py0 - 5, px1 + 5, py1 + 5, 0x20AA00FF);   // Leuchten
-        Ui.round2(ctx, px0 - 3, py0 - 3, px1 + 3, py1 + 3, 0x28AA00FF);
-        Ui.round2(ctx, px0 - 1, py0 - 1, px1 + 1, py1 + 1, ACCENT);       // Rand
-        Ui.round2(ctx, px0, py0, px1, py1, PANEL);
-        Ui.round2(ctx, px0, py0, px1, py0 + HEADER_H, HEADER);
-        ctx.fill(px0, py0 + HEADER_H - 4, px1, py0 + HEADER_H, HEADER);
-        ctx.fill(px0 + 1, py0 + HEADER_H, px1 - 1, py0 + HEADER_H + 1, ACCENT);
-        ctx.fill(px0 + 1, py0 + HEADER_H + 1, px1 - 1, py0 + HEADER_H + 3, 0x20AA00FF);
+        Ui.panel(ctx, this.width, this.height, px0, py0, px1, py1, HEADER_H);
         ctx.fill(px0 + 1, py1 - FOOTER_H, px1 - 1, py1 - FOOTER_H + 1, 0x28FFFFFF);
-        ctx.fill(px0 + 1, py1 - FOOTER_H + 1, px1 - 1, py1 - 3, 0xFF0B0D12);
+        ctx.fill(px0 + 1, py1 - FOOTER_H + 1, px1 - 1, py1 - 3, 0xFF0B0D11);
 
         // Scrollbalken, nur wenn nicht alles auf einmal passt
         if (tab <= 1 && files.size() > shown) {
@@ -611,19 +603,19 @@ public class SoundboardScreen extends Screen {
         // Kopfzeile
         {
             boolean bh = Ui.in(mouseX, mouseY, px0 + 6, py0 + 8, px0 + 24, py0 + 26);
-            Ui.btn(ctx, tr, px0 + 6, py0 + 8, px0 + 24, py0 + 26, "‹", bh, 0xFF1F232E, 0xFF2A3040, 0xFFFFFFFF);
+            Ui.btn(ctx, tr, px0 + 6, py0 + 8, px0 + 24, py0 + 26, "‹", bh, 0xFF1A1E27, 0xFF252B38, 0xFFFFFFFF);
         }
-        ctx.drawTextWithShadow(tr, tab == 4 ? "◆" : "♪", px0 + 30, py0 + 11, 0xFFC77DFF);
-        ctx.drawTextWithShadow(tr, tab == 4 ? "Tools" : "Soundboard", px0 + 42, py0 + 7, 0xFFFFFFFF);
+        Ui.txt(ctx, tr, tab == 4 ? "◆" : "♪", px0 + 30, py0 + 11, 0xFF7DD3FC);
+        Ui.txt(ctx, tr, tab == 4 ? "Tools" : "Soundboard", px0 + 42, py0 + 7, 0xFFFFFFFF);
         if (tab <= 1) {
             String what = tab == 0 ? " Effekte · unter 30 Sek." : " Lieder · ab 30 Sek.";
-            ctx.drawTextWithShadow(tr, catTotal + what, px0 + 42, py0 + 19, 0xFF7E8494);
+            Ui.txt(ctx, tr, catTotal + what, px0 + 42, py0 + 19, 0xFF8B92A5);
         } else if (tab == 2) {
-            ctx.drawTextWithShadow(tr, "Verändert dein Mikrofon", px0 + 42, py0 + 19, 0xFF7E8494);
+            Ui.txt(ctx, tr, "Verändert dein Mikrofon", px0 + 42, py0 + 19, 0xFF8B92A5);
         } else if (tab == 3) {
-            ctx.drawTextWithShadow(tr, "Songs suchen und abspielen", px0 + 42, py0 + 19, 0xFF7E8494);
+            Ui.txt(ctx, tr, "Songs suchen und abspielen", px0 + 42, py0 + 19, 0xFF8B92A5);
         } else {
-            ctx.drawTextWithShadow(tr, "Platzhilfe und Item-Filter", px0 + 42, py0 + 19, 0xFF7E8494);
+            Ui.txt(ctx, tr, "Platzhilfe und Item-Filter", px0 + 42, py0 + 19, 0xFF8B92A5);
         }
 
         // Untertabs
@@ -632,10 +624,10 @@ public class SoundboardScreen extends Screen {
             int tx = tabX(i), ty = tabY();
             boolean sel = tab == i;
             boolean hov = Ui.in(mouseX, mouseY, tx, ty, tx + tabW, ty + 18);
-            Ui.round2(ctx, tx, ty, tx + tabW, ty + 18, sel ? 0xFF3A1A5C : (hov ? 0xFF232736 : 0xFF181B24));
+            Ui.round2(ctx, tx, ty, tx + tabW, ty + 18, sel ? 0xFF123A55 : (hov ? 0xFF222733 : 0xFF14171E));
             if (sel) ctx.fill(tx + 6, ty + 16, tx + tabW - 6, ty + 18, ACCENT);
             int tw = tr.getWidth(tabNames[i]);
-            ctx.drawTextWithShadow(tr, tabNames[i], tx + (tabW - tw) / 2, ty + 5, sel ? 0xFFFFFFFF : 0xFF9AA0AE);
+            Ui.txt(ctx, tr, tabNames[i], tx + (tabW - tw) / 2, ty + 5, sel ? 0xFFFFFFFF : 0xFF9AA0AE);
         }
 
         if (tab <= 1) renderSounds(ctx, tr, mouseX, mouseY); else if (tab == 2) renderVoice(ctx, tr, mouseX, mouseY); else if (tab == 3) renderPlayer(ctx, tr, mouseX, mouseY); else renderTools(ctx, tr, mouseX, mouseY);
@@ -647,20 +639,20 @@ public class SoundboardScreen extends Screen {
         String st = active == 0 ? "Aus" : "Aktiv: " + VoiceChanger.PRESETS[active].name();
         int sw = tr.getWidth(st) + 22;
         int sx0 = px1 - 8 - sw, sy0 = py0 + 7;
-        Ui.round2(ctx, sx0, sy0, sx0 + sw, sy0 + 20, 0xFF1F232E);
+        Ui.round2(ctx, sx0, sy0, sx0 + sw, sy0 + 20, 0xFF1A1E27);
         Ui.round(ctx, sx0 + 8, sy0 + 7, sx0 + 14, sy0 + 13, active == 0 ? 0xFF5A5F6E : GREEN);
-        ctx.drawTextWithShadow(tr, st, sx0 + 18, sy0 + 6, active == 0 ? 0xFF9AA0AE : 0xFFFFFFFF);
+        Ui.txt(ctx, tr, st, sx0 + 18, sy0 + 6, active == 0 ? 0xFF9AA0AE : 0xFFFFFFFF);
 
         for (int i = 0; i < VoiceChanger.PRESETS.length; i++) {
             VoiceChanger.Preset p = VoiceChanger.PRESETS[i];
             int cx = cardX(i), cy = cardY(i), cw = cardW();
             boolean sel = i == active;
             boolean hov = Ui.in(mouseX, mouseY, cx, cy, cx + cw, cy + CARD_H);
-            int bg = sel ? 0xFF3A1A5C : (hov ? 0xFF232736 : 0xFF1A1D26);
+            int bg = sel ? 0xFF123A55 : (hov ? 0xFF222733 : 0xFF161A22);
             Ui.round2(ctx, cx, cy, cx + cw, cy + CARD_H, bg);
             if (sel) ctx.fill(cx, cy + 5, cx + 2, cy + CARD_H - 5, GREEN);
-            ctx.drawTextWithShadow(tr, p.name(), cx + 9, cy + 6, sel ? 0xFFFFFFFF : 0xFFE4E7EE);
-            ctx.drawTextWithShadow(tr, tr.trimToWidth(p.desc(), cw - 16), cx + 9, cy + 18, sel ? 0xFFD9C2F5 : 0xFF7E8494);
+            Ui.txt(ctx, tr, p.name(), cx + 9, cy + 6, sel ? 0xFFFFFFFF : 0xFFE4E7EE);
+            Ui.txt(ctx, tr, tr.trimToWidth(p.desc(), cw - 16), cx + 9, cy + 18, sel ? 0xFFBFE9FF : 0xFF8B92A5);
         }
 
         // Fußzeile
@@ -669,12 +661,12 @@ public class SoundboardScreen extends Screen {
         boolean h1 = Ui.in(mouseX, mouseY, x1, fy, x1 + half, fy + 20);
         boolean h2 = Ui.in(mouseX, mouseY, x2, fy, x2 + half, fy + 20);
         boolean self = VoiceChanger.isSelfHear();
-        Ui.round2(ctx, x1, fy, x1 + half, fy + 20, h1 ? 0xFF2A3040 : 0xFF1F232E);
+        Ui.round2(ctx, x1, fy, x1 + half, fy + 20, h1 ? 0xFF252B38 : 0xFF1A1E27);
         Ui.round(ctx, x1 + 8, fy + 7, x1 + 14, fy + 13, self ? GREEN : 0xFF5A5F6E);
-        ctx.drawTextWithShadow(tr, tr.trimToWidth("Mich selbst hören", half - 24), x1 + 20, fy + 6, self ? 0xFFFFFFFF : 0xFF9AA0AE);
-        Ui.round2(ctx, x2, fy, x2 + half, fy + 20, h2 ? 0xFF53222D : 0xFF3B1A22);
+        Ui.txt(ctx, tr, tr.trimToWidth("Mich selbst hören", half - 24), x1 + 20, fy + 6, self ? 0xFFFFFFFF : 0xFF9AA0AE);
+        Ui.round2(ctx, x2, fy, x2 + half, fy + 20, h2 ? 0xFF3D1C26 : 0xFF2A141B);
         String off = "Voice Changer aus";
-        ctx.drawTextWithShadow(tr, tr.trimToWidth(off, half - 8), x2 + Math.max(4, (half - tr.getWidth(off)) / 2), fy + 6, 0xFFFF9A9A);
+        Ui.txt(ctx, tr, tr.trimToWidth(off, half - 8), x2 + Math.max(4, (half - tr.getWidth(off)) / 2), fy + 6, 0xFFFF9FB0);
     }
 
     private void renderSounds(DrawContext ctx, TextRenderer tr, int mouseX, int mouseY) {
@@ -682,17 +674,17 @@ public class SoundboardScreen extends Screen {
         boolean self = Soundboard.isListenSelf();
         int sx0 = px1 - 8 - SELF_W, sy0 = py0 + 7;
         boolean hov = Ui.in(mouseX, mouseY, sx0, sy0, sx0 + SELF_W, sy0 + 20);
-        Ui.round2(ctx, sx0, sy0, sx0 + SELF_W, sy0 + 20, hov ? 0xFF2A3040 : 0xFF1F232E);
+        Ui.round2(ctx, sx0, sy0, sx0 + SELF_W, sy0 + 20, hov ? 0xFF252B38 : 0xFF1A1E27);
         Ui.round(ctx, sx0 + 8, sy0 + 7, sx0 + 14, sy0 + 13, self ? GREEN : 0xFF5A5F6E);
-        ctx.drawTextWithShadow(tr, "Selbst hören", sx0 + 20, sy0 + 6, self ? 0xFFFFFFFF : 0xFF9AA0AE);
+        Ui.txt(ctx, tr, "Selbst hören", sx0 + 20, sy0 + 6, self ? 0xFFFFFFFF : 0xFF9AA0AE);
 
         // Suchleiste
         if (searchText.isEmpty()) {
-            ctx.drawTextWithShadow(tr, "Suchen …", px0 + 14, py0 + HEADER_H + TAB_H + 10, 0xFF6F7380);
+            Ui.txt(ctx, tr, "Suchen …", px0 + 14, py0 + HEADER_H + TAB_H + 10, 0xFF6F7380);
         }
         if (files.isEmpty()) {
             int cy = rowY0 + 6;
-            Ui.round2(ctx, px0 + 20, cy, px1 - 20, cy + 54, 0xFF171A22);
+            Ui.round2(ctx, px0 + 20, cy, px1 - 20, cy + 54, 0xFF13161D);
             if (!searchText.isEmpty()) {
                 centered(ctx, tr, "Nichts gefunden", cy + 12, 0xFFFFFFFF);
                 centered(ctx, tr, "für \"" + tr.trimToWidth(searchText, 160) + "\"", cy + 27, 0xFFFFAA00);
@@ -716,28 +708,28 @@ public class SoundboardScreen extends Screen {
             boolean playing = f.equals(Soundboard.nowPlaying);
             int rx0 = px0 + 6, rx1 = px1 - 12;
             boolean rowHov = Ui.in(mouseX, mouseY, rx0, ry, rx1, ry + ROW_H - 1);
-            int bg = playing ? 0xFF15301F : (rowHov ? 0xFF232736 : (v % 2 == 0 ? 0xFF1A1D26 : 0xFF171A22));
+            int bg = playing ? 0xFF15301F : (rowHov ? 0xFF222733 : (v % 2 == 0 ? 0xFF161A22 : 0xFF13161D));
             Ui.round2(ctx, rx0, ry, rx1, ry + ROW_H - 1, bg);
             if (playing) ctx.fill(rx0, ry + 4, rx0 + 2, ry + ROW_H - 5, GREEN);
 
             // Play-Knopf (rund)
             int bx = px0 + 9, by = ry + 2;
             boolean bHov = Ui.in(mouseX, mouseY, bx, by, bx + 20, by + 20);
-            Ui.round2(ctx, bx, by, bx + 20, by + 20, playing ? GREEN : (bHov ? 0xFF4A5068 : 0xFF2C3040));
+            Ui.round2(ctx, bx, by, bx + 20, by + 20, playing ? GREEN : (bHov ? 0xFF4A5068 : 0xFF2B3140));
             if (playing) ctx.fill(bx + 6, by + 6, bx + 14, by + 14, 0xFF0B1A10);
             else playTriangle(ctx, bx, by, bHov ? 0xFFFFFFFF : 0xFFE4E7EE);
 
-            ctx.drawTextWithShadow(tr, tr.trimToWidth(shortName(f), nameMax), nameX, ry + 8, playing ? 0xFFFFFFFF : 0xFFD6D9E0);
+            Ui.txt(ctx, tr, tr.trimToWidth(shortName(f), nameMax), nameX, ry + 8, playing ? 0xFFFFFFFF : 0xFFD6D9E0);
 
             // Lautstärke: Prozent und Balken
             double vol = Soundboard.getVolume(f);
             int pct = (int) Math.round(vol * 100);
             String ps = pct + " %";
             int vx = sliderX();
-            ctx.drawTextWithShadow(tr, ps, vx - 6 - tr.getWidth(ps), ry + 8, vol > 1.0 ? 0xFFFFAA00 : 0xFF9AA0AE);
+            Ui.txt(ctx, tr, ps, vx - 6 - tr.getWidth(ps), ry + 8, vol > 1.0 ? 0xFFFFAA00 : 0xFF9AA0AE);
             Ui.round(ctx, vx, ry + 2, vx + SLIDER_W, ry + 22, bg);                       // alten Regler verdecken
             int tx0 = vx + 3, tx1 = vx + SLIDER_W - 3, ty = ry + 10;
-            Ui.round(ctx, tx0, ty, tx1, ty + 4, 0xFF2C3040);                              // Schiene
+            Ui.round(ctx, tx0, ty, tx1, ty + 4, 0xFF2B3140);                              // Schiene
             int fillX = tx0 + (int) Math.round((tx1 - tx0) * Math.max(0, Math.min(2.0, vol)) / 2.0);
             if (fillX > tx0) Ui.round(ctx, tx0, ty, fillX, ty + 4, vol > 1.0 ? 0xFFFFAA00 : ACCENT);
             ctx.fill((tx0 + tx1) / 2, ty - 1, (tx0 + tx1) / 2 + 1, ty + 5, 0x60FFFFFF);   // Marke bei 100 %
@@ -750,12 +742,12 @@ public class SoundboardScreen extends Screen {
         int x1 = px0 + 8, x2 = px0 + 16 + half;
         boolean h1 = Ui.in(mouseX, mouseY, x1, fy, x1 + half, fy + 20);
         boolean h2 = Ui.in(mouseX, mouseY, x2, fy, x2 + half, fy + 20);
-        Ui.round2(ctx, x1, fy, x1 + half, fy + 20, h1 ? 0xFF53222D : 0xFF3B1A22);
+        Ui.round2(ctx, x1, fy, x1 + half, fy + 20, h1 ? 0xFF3D1C26 : 0xFF2A141B);
         ctx.fill(x1 + half / 2 - 22, fy + 7, x1 + half / 2 - 16, fy + 13, 0xFFFF8A8A);
-        ctx.drawTextWithShadow(tr, "Stopp", x1 + half / 2 - 10, fy + 6, 0xFFFF9A9A);
-        Ui.round2(ctx, x2, fy, x2 + half, fy + 20, h2 ? 0xFF2A3040 : 0xFF1F232E);
+        Ui.txt(ctx, tr, "Stopp", x1 + half / 2 - 10, fy + 6, 0xFFFF9FB0);
+        Ui.round2(ctx, x2, fy, x2 + half, fy + 20, h2 ? 0xFF252B38 : 0xFF1A1E27);
         String ot = "Ordner öffnen";
-        ctx.drawTextWithShadow(tr, ot, x2 + (half - tr.getWidth(ot)) / 2, fy + 6, 0xFFD6D9E0);
+        Ui.txt(ctx, tr, ot, x2 + (half - tr.getWidth(ot)) / 2, fy + 6, 0xFFD6D9E0);
     }
 
     /** Kleine tanzende Balken bei dem Sound, der gerade läuft. */
@@ -838,7 +830,7 @@ public class SoundboardScreen extends Screen {
     }
 
     private void centered(DrawContext ctx, TextRenderer tr, String s, int y, int color) {
-        ctx.drawTextWithShadow(tr, s, (this.width - tr.getWidth(s)) / 2, y, color);
+        Ui.txt(ctx, tr, s, (this.width - tr.getWidth(s)) / 2, y, color);
     }
 
     /** Lautstärkeregler für einen Sound: 0 bis 200 %, in 5-%-Schritten, wird gespeichert. */

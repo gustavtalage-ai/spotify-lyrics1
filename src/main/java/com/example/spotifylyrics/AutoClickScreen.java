@@ -36,7 +36,7 @@ public class AutoClickScreen extends ItemScreen {
             AutoClick.setActive(true);
             MinecraftClient.getInstance().setScreen(null);
         }));
-        text("Im Spiel: Taste " + AutoClick.keyName() + " = Start / Stopp. Menü offen = Pause.", 0xFF7E8494);
+        text("Im Spiel: Taste " + AutoClick.keyName() + " = Start / Stopp. Menü offen = Pause.", 0xFF8B92A5);
         gap(4);
 
         sec("Was soll geklickt werden?");

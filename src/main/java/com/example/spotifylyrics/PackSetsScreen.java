@@ -70,7 +70,7 @@ public class PackSetsScreen extends ItemScreen {
                 c.save();
                 again();
             }).w(1));
-            text(names.isEmpty() ? "Noch nichts gespeichert." : String.join(", ", names), 0xFF7E8494);
+            text(names.isEmpty() ? "Noch nichts gespeichert." : String.join(", ", names), 0xFF8B92A5);
         }
         gap(2);
         sec("Schnell");
@@ -82,6 +82,6 @@ public class PackSetsScreen extends ItemScreen {
             again();
         }));
         row(G("Alle Packs einzeln ›", () -> MinecraftClient.getInstance().setScreen(new TexturePacksScreen())));
-        text("Speichern merkt, welche Packs an sind (mit Reihenfolge).", 0xFF7E8494);
+        text("Speichern merkt, welche Packs an sind (mit Reihenfolge).", 0xFF8B92A5);
     }
 }

@@ -74,6 +74,12 @@ final class Overlay3D {
         return new double[] {dx * rx + dy * ry + dz * rz, dx * ux + dy * uy + dz * uz, dx * fx + dy * fy + dz * fz};
     }
 
+    /** Kamera-Punkt auf Bildschirm-Koordinaten {x, y} (GUI-Pixel); null = liegt hinter der Kamera. */
+    static double[] screen(double[] v) {
+        if (v[2] < 0.1) return null;
+        return new double[] {halfW + v[0] / v[2] * focal, halfH - v[1] / v[2] * focal};
+    }
+
     private static double[] lerp(double[] a, double[] b, double t) {
         return new double[] {a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t};
     }

@@ -83,13 +83,13 @@ public class TexturePacksScreen extends Screen {
         super.render(ctx, mouseX, mouseY, delta);
         TextRenderer tr = MinecraftClient.getInstance().textRenderer;
 
-        ctx.drawTextWithShadow(tr, "Texture Packs", px0 + 10, py0 + 6, 0xFFFFFFFF);
-        ctx.drawTextWithShadow(tr, packs.size() + " Packs · " + Packs.activeCount() + " aktiv", px0 + 10, py0 + 17, 0xFF7E8494);
+        Ui.txt(ctx, tr, "Texture Packs", px0 + 10, py0 + 6, 0xFFFFFFFF);
+        Ui.txt(ctx, tr, packs.size() + " Packs · " + Packs.activeCount() + " aktiv", px0 + 10, py0 + 17, 0xFF8B92A5);
         Ui.btn(ctx, tr, px1 - 10 - 64, py0 + 5, px1 - 10, py0 + 23, "‹ Sets",
-            Ui.in(mouseX, mouseY, px1 - 10 - 64, py0 + 5, px1 - 10, py0 + 23), 0xFF1F232E, 0xFF2A3040, 0xFFD6D9E0);
+            Ui.in(mouseX, mouseY, px1 - 10 - 64, py0 + 5, px1 - 10, py0 + 23), 0xFF1A1E27, 0xFF252B38, 0xFFD6D9E0);
 
         if (packs.isEmpty()) {
-            ctx.drawTextWithShadow(tr, "Keine Packs gefunden (Ordner resourcepacks).", cx + 2, rowsY + 6, 0xFFFFAA00);
+            Ui.txt(ctx, tr, "Keine Packs gefunden (Ordner resourcepacks).", cx + 2, rowsY + 6, 0xFFFFAA00);
             return;
         }
         for (int v = 0; v < shown && scrollPos + v < packs.size(); v++) {
@@ -98,6 +98,6 @@ public class TexturePacksScreen extends Screen {
             Ui.toggle(ctx, tr, cx, y, cx + cw - 8, y + ROW - 3, p.getDisplayName().getString(), Packs.isOn(p),
                 Ui.in(mouseX, mouseY, cx, y, cx + cw - 8, y + ROW - 3));
         }
-        ctx.drawTextWithShadow(tr, "Klick = an/aus · Texturen laden danach neu", cx + 2, py1 - 14, 0xFF7E8494);
+        Ui.txt(ctx, tr, "Klick = an/aus · Texturen laden danach neu", cx + 2, py1 - 14, 0xFF8B92A5);
     }
 }

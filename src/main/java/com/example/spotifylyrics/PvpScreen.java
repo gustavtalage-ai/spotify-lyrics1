@@ -47,10 +47,11 @@ public class PvpScreen extends ItemScreen {
 
     @Override
     protected void build() {
-        row(tab("Kampf", 0), tab("Anzeigen", 1), tab("Extras", 2));
+        row(tab("Kampf", 0), tab("HUD", 1), tab("Visuell", 2), tab("Extras", 3));
         gap(4);
         if (page == 0) buildFight();
         else if (page == 1) buildHud();
+        else if (page == 2) buildVisual();
         else buildExtras();
     }
 
@@ -67,7 +68,7 @@ public class PvpScreen extends ItemScreen {
             c.save();
             again();
         }));
-        text("Zu früh geklickt: Schlag kommt bei voller Leiste.", 0xFF7E8494);
+        text("Zu früh geklickt: Schlag kommt bei voller Leiste.", 0xFF8B92A5);
         sec("Gilt für diese Waffen");
         for (int i = 0; i < 5; i += 2) {
             final int a = i, b = i + 1;
@@ -127,13 +128,11 @@ public class PvpScreen extends ItemScreen {
     }
 
     private void buildHud() {
-        sec("Auf dem Bildschirm");
+        sec("Anzeigen auf dem Bildschirm");
         int[][] pairs = {{PvpHud.INFO, PvpHud.CPS}, {PvpHud.COMBO, PvpHud.EFFECTS}, {PvpHud.ARMOR, PvpHud.STOCK},
-            {PvpHud.TARGET, PvpHud.NEAR}, {PvpHud.STATS, PvpHud.CRIT}};
+            {PvpHud.TARGET, PvpHud.NEAR}, {PvpHud.STATS, PvpHud.CRIT}, {PvpHud.COOLDOWN, PvpHud.COMBAT}};
         for (int[] pr : pairs) row(mod(pr[0]), mod(pr[1]));
-        row(mod(PvpHud.TOTEM));
-        row(mod(PvpHud.BAR).w(4), G("Einstellungen \u203a", () -> MinecraftClient.getInstance().setScreen(new BarScreen())).w(3));
-        row(mod(PvpHud.REACH).w(4), G("Einstellungen \u203a", () -> MinecraftClient.getInstance().setScreen(new ReachScreen())).w(3));
+        row(mod(PvpHud.DEATH), mod(PvpHud.TOTEM));
         gap(2);
         row(B("Anzeigen verschieben \u203a", () -> MinecraftClient.getInstance().setScreen(new HudEditScreen())));
         row(G("Alle an", () -> {
@@ -145,19 +144,41 @@ public class PvpScreen extends ItemScreen {
         }));
     }
 
+    private void buildVisual() {
+        sec("Fadenkreuz");
+        row(mod(PvpHud.CROSS).w(4), G("Einstellungen \u203a", () -> MinecraftClient.getInstance().setScreen(new CrosshairScreen())).w(3));
+        gap(2);
+        sec("Reichweite");
+        row(mod(PvpHud.REACH).w(4), G("Einstellungen \u203a", () -> MinecraftClient.getInstance().setScreen(new ReachScreen())).w(3));
+        row(mod(PvpHud.CIRCLE).w(4), G("Einstellungen \u203a", () -> MinecraftClient.getInstance().setScreen(new ReachScreen())).w(3));
+        gap(2);
+        sec("Im Spiel");
+        row(mod(PvpHud.BAR).w(4), G("Einstellungen \u203a", () -> MinecraftClient.getInstance().setScreen(new BarScreen())).w(3));
+        row(mod(PvpHud.DMGNUM), mod(PvpHud.LOWHP));
+    }
+
     private void buildExtras() {
+        Config c = Config.INSTANCE;
         sec("Kampf-Hilfen");
-        row(mod(PvpHud.HITSOUND), mod(PvpHud.LOWHP));
-        row(mod(PvpHud.SPRINT), mod(PvpHud.ARMORWARN));
+        row(mod(PvpHud.HITSOUND), mod(PvpHud.SPRINT));
+        row(mod(PvpHud.ARMORWARN));
         gap(2);
         sec("Totem");
         row(mod(PvpHud.TOTEM));
         row(mod(PvpHud.AUTOTOTEM));
-        text("Hinweis kommt, wenn ein Totem gepoppt ist.", 0xFF7E8494);
+        text("Hinweis kommt, wenn ein Totem gepoppt ist.", 0xFF8B92A5);
         text("Auto nachlegen kann auf Servern als Cheat gelten.", 0xFFFFAA33);
         gap(2);
-        sec("Kreis und Statistik");
-        row(mod(PvpHud.CIRCLE), G("Kreis-Einstellungen \u203a", () -> MinecraftClient.getInstance().setScreen(new ReachScreen())));
+        sec("Kampf-Timer und Statistik");
+        stepper("Kampf-Timer: " + c.combatSecs + " s", () -> {
+            c.combatSecs = Math.max(5, c.combatSecs - 5);
+            c.save();
+            again();
+        }, () -> {
+            c.combatSecs = Math.min(60, c.combatSecs + 5);
+            c.save();
+            again();
+        });
         row(G("Statistik zur\u00fccksetzen", () -> {
             PvpHud.resetStats();
             again();

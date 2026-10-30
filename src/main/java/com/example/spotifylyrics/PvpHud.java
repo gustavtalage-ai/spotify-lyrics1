@@ -23,11 +23,13 @@ import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
+import org.joml.Matrix3x2fStack;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 
@@ -40,13 +42,15 @@ final class PvpHud {
 
     static final int CPS = 0, COMBO = 1, ARMOR = 2, EFFECTS = 3, KEYS = 4, INFO = 5, STOCK = 6, TARGET = 7,
         BAR = 8, REACH = 9, HITSOUND = 10, TOTEM = 11, LOWHP = 12, SPRINT = 13, NEAR = 14, STATS = 15,
-        CRIT = 16, CIRCLE = 17, AUTOTOTEM = 18, ARMORWARN = 19;
+        CRIT = 16, CIRCLE = 17, AUTOTOTEM = 18, ARMORWARN = 19, CROSS = 20, COOLDOWN = 21, DMGNUM = 22,
+        DEATH = 23, COMBAT = 24;
     /** Anzeigenamen in derselben Reihenfolge wie die Bits. */
     static final String[] NAMES = {"CPS", "Combo", "Rüstung", "Effekte", "Tasten", "Info (FPS, XYZ)", "Vorrat",
         "Ziel-HUD", "Angriffs-Balken", "Reichweite", "Treffer-Sound", "Totem-Hinweis", "Leben-Warnung", "Auto-Sprint",
-        "Spieler-Liste", "Statistik", "Crit-Anzeige", "Reichweiten-Kreis", "Totem nachlegen (Auto)", "Rüstung-Warnung"};
+        "Spieler-Liste", "Statistik", "Crit-Anzeige", "Reichweiten-Kreis", "Totem nachlegen (Auto)", "Rüstung-Warnung", "Fadenkreuz", "Cooldowns", "Schadenszahlen",
+        "Todespunkt", "Kampf-Timer"};
     /** Verschiebbare Anzeigen (ihre Nummer ist zugleich das Bit, das sie einschaltet). */
-    static final int[] HUD_IDS = {INFO, CPS, COMBO, EFFECTS, ARMOR, STOCK, TARGET, BAR, REACH, NEAR, STATS, CRIT, TOTEM};
+    static final int[] HUD_IDS = {INFO, CPS, COMBO, EFFECTS, ARMOR, STOCK, TARGET, BAR, REACH, NEAR, STATS, CRIT, TOTEM, COOLDOWN, DEATH, COMBAT};
     static final String[] COLOR_NAMES = {"Rot, grün bei Gegner", "Immer grün", "Immer rot"};
 
     static boolean on(int bit) {
@@ -92,6 +96,9 @@ final class PvpHud {
             case NEAR -> new int[] {4, sh / 2 + 96};
             case STATS -> new int[] {sw / 2 - 70, 22};
             case CRIT -> new int[] {sw / 2 - 14, sh / 2 - 20};
+            case COOLDOWN -> new int[] {sw / 2 + 26, sh / 2 - 30};
+            case DEATH -> new int[] {sw / 2 - 70, 36};
+            case COMBAT -> new int[] {sw / 2 - 28, 52};
             default -> new int[] {sw / 2 - 50, sh / 2 - 62};
         };
     }
@@ -132,6 +139,53 @@ final class PvpHud {
     private static boolean prevOffTotem = false, popped = false;
     private static long popTick = -1000, lastSwapTick = -1000;
     private static boolean armorLow = false;
+    private static long lastCombatTick = -100000;
+    private static boolean deathRecorded = false;
+
+    /** Schadenszahl, die über dem Gegner nach oben schwebt. */
+    private static final class Pop {
+        double x, y, z;
+        String t;
+        long born;
+        int col;
+    }
+
+    private static final List<Pop> POPS = new ArrayList<>();
+    private static final java.util.Random RND = new java.util.Random();
+
+    private static void spawnPop(LivingEntity e, float dmg) {
+        Pop f = new Pop();
+        f.x = e.getX() + (RND.nextDouble() - 0.5) * 0.5;
+        f.y = e.getY() + e.getHeight() + 0.15;
+        f.z = e.getZ() + (RND.nextDouble() - 0.5) * 0.5;
+        f.t = String.format(Locale.ROOT, "-%.1f", dmg);
+        f.born = tickN;
+        f.col = dmg >= 6f ? 0xFBBF24 : 0xFF6B7D;
+        POPS.add(f);
+        while (POPS.size() > 12) POPS.remove(0);
+    }
+
+    private static String dimId(MinecraftClient mc) {
+        try {
+            return mc.world.getRegistryKey().getValue().getPath();
+        } catch (Throwable t) {
+            return "";
+        }
+    }
+
+    private static String dimName(String id) {
+        return switch (id) {
+            case "overworld" -> "Oberwelt";
+            case "the_nether" -> "Nether";
+            case "the_end" -> "End";
+            default -> id;
+        };
+    }
+
+    /** Das normale Minecraft-Fadenkreuz wird ausgeblendet, wenn das eigene an ist. */
+    static boolean hideVanillaCrosshair() {
+        return on(CROSS);
+    }
 
     static void resetStats() {
         swings = 0;
@@ -151,6 +205,7 @@ final class PvpHud {
                 prevTargetHp = le.getHealth();
                 killCounted = false;
                 swings++;
+                if (le instanceof PlayerEntity) lastCombatTick = tickN;
             }
             return ActionResult.PASS;
         });
@@ -171,6 +226,20 @@ final class PvpHud {
                 sprintForced = false;
             }
             return;
+        }
+        if (p.getHealth() <= 0f) {
+            if (!deathRecorded) {
+                Config dc = Config.INSTANCE;
+                dc.hasDeath = true;
+                dc.deathX = p.getX();
+                dc.deathY = p.getY();
+                dc.deathZ = p.getZ();
+                dc.deathDim = dimId(mc);
+                dc.save();
+                deathRecorded = true;
+            }
+        } else {
+            deathRecorded = false;
         }
         long now = System.currentTimeMillis();
         boolean free = mc.currentScreen == null;
@@ -199,12 +268,14 @@ final class PvpHud {
                 if (hpNow < prevTargetHp - 0.01f && tickN - lastAttackTick <= 15) {
                     lastDmg = prevTargetHp - hpNow;
                     lastDmgTick = tickN;
+                    if (on(DMGNUM)) spawnPop(lastTarget, lastDmg);
                 }
                 prevTargetHp = hpNow;
                 if (tickN - lastAttackTick <= 10 && h > prevTargetHurt && h > 0) {
                     combo++;
                     hits++;
                     lastHitTick = tickN;
+                    if (lastTarget instanceof PlayerEntity) lastCombatTick = tickN;
                     if (on(HITSOUND)) {
                         try {
                             mc.getSoundManager().play(PositionedSoundInstance.ui(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, 1.7f, 0.6f));
@@ -216,7 +287,10 @@ final class PvpHud {
             }
         }
         // Combo endet, wenn du getroffen wirst oder 4 Sekunden nichts passiert
-        if (p.hurtTime > prevSelfHurt && p.hurtTime > 0) combo = 0;
+        if (p.hurtTime > prevSelfHurt && p.hurtTime > 0) {
+            combo = 0;
+            if (p.getAttacker() instanceof PlayerEntity) lastCombatTick = tickN;
+        }
         prevSelfHurt = p.hurtTime;
         if (combo > 0 && tickN - lastHitTick > 80) combo = 0;
 
@@ -279,12 +353,12 @@ final class PvpHud {
     }
 
     private static int chipW(TextRenderer tr, String text) {
-        return tr.getWidth(text) + 8;
+        return tr.getWidth(text) + 9;
     }
 
     private static void chip(DrawContext ctx, TextRenderer tr, int x, int y, String text, int color) {
-        Ui.round(ctx, x, y, x + chipW(tr, text), y + 12, 0x90000000);
-        ctx.drawTextWithShadow(tr, text, x + 4, y + 2, color);
+        Ui.hudBox(ctx, x, y, x + chipW(tr, text), y + 12, Ui.ACCENT);
+        ctx.drawTextWithShadow(tr, text, x + 5, y + 2, color);
     }
 
     private static void draw(DrawContext ctx, float td) {
@@ -295,6 +369,9 @@ final class PvpHud {
         int w = ctx.getScaledWindowWidth(), h = ctx.getScaledWindowHeight();
 
         if (on(CIRCLE)) drawCircle(ctx, mc, p, td, w, h);
+        if (on(DEATH)) drawDeathBeam(ctx, mc, p, td);
+        if (on(DMGNUM)) drawPops(ctx, mc, td);
+        if (on(CROSS) && mc.currentScreen == null && mc.options.getPerspective().isFirstPerson()) drawCrosshair(ctx, mc, w / 2, h / 2, false);
         for (int id : HUD_IDS) {
             if (!enabled(id)) continue;
             int[] pp = pos(id, w, h);
@@ -418,7 +495,7 @@ final class PvpHud {
                 }
                 int yy = y;
                 for (int i = 0; i < st.size(); i++) {
-                    Ui.round(ctx, x - 2, yy - 1, x + 60, yy + 17, 0x70000000);
+                    Ui.hudBox(ctx, x - 2, yy - 1, x + 60, yy + 17, Ui.ACCENT);
                     ctx.drawItem(st.get(i), x, yy);
                     ctx.drawTextWithShadow(tr, txt.get(i), x + 20, yy + 4, cols.get(i));
                     yy += 19;
@@ -433,7 +510,7 @@ final class PvpHud {
                 for (int gi = 0; gi < groups.length; gi++) {
                     int n = demo ? demoN[gi] : count(p, groups[gi]);
                     if (n == 0) continue;
-                    Ui.round(ctx, x - 2, yy - 1, x + 60, yy + 17, 0x70000000);
+                    Ui.hudBox(ctx, x - 2, yy - 1, x + 60, yy + 17, Ui.ACCENT);
                     ctx.drawItem(new ItemStack(groups[gi][0]), x, yy);
                     ctx.drawTextWithShadow(tr, "x" + n, x + 20, yy + 4, 0xFFFFFFFF);
                     yy += 19;
@@ -517,6 +594,64 @@ final class PvpHud {
                 chip(ctx, tr, x, y, txt, 0xFFFFFFFF);
                 return new int[] {chipW(tr, txt), 12};
             }
+            case COOLDOWN: {
+                Item[] its = {Items.ENDER_PEARL, Items.WIND_CHARGE, Items.GOLDEN_APPLE, Items.ENCHANTED_GOLDEN_APPLE,
+                    Items.CHORUS_FRUIT, Items.SHIELD, Items.MACE};
+                int yy = y;
+                for (Item it : its) {
+                    ItemStack st;
+                    float pr;
+                    if (demo) {
+                        if (it != Items.ENDER_PEARL && it != Items.GOLDEN_APPLE) continue;
+                        st = new ItemStack(it);
+                        pr = it == Items.ENDER_PEARL ? 0.6f : 0.3f;
+                    } else {
+                        st = findStack(p, it);
+                        if (st == null) continue;
+                        pr = p.getItemCooldownManager().getCooldownProgress(st, 0f);
+                    }
+                    if (pr <= 0.001f) continue;
+                    Ui.hudBox(ctx, x - 2, yy - 1, x + 62, yy + 17, Ui.ACCENT);
+                    ctx.drawItem(st, x, yy);
+                    ctx.fill(x + 20, yy + 6, x + 58, yy + 10, 0x50FFFFFF);
+                    ctx.fill(x + 20, yy + 6, x + 20 + Math.round(38 * Math.min(1f, pr)), yy + 10, 0xFFFBBF24);
+                    yy += 19;
+                }
+                return new int[] {64, yy - y};
+            }
+            case DEATH: {
+                Config c = Config.INSTANCE;
+                if (!demo && !c.hasDeath) return new int[] {0, 0};
+                String s;
+                int col = 0xFFFF7A90;
+                if (demo) {
+                    s = "Tod: 120 64 -30 · 85 m";
+                } else {
+                    String dim = dimId(mc);
+                    if (!dim.equals(c.deathDim)) {
+                        s = "Tod in " + dimName(c.deathDim);
+                        col = 0xFFAEBBCB;
+                    } else {
+                        double dd = Math.sqrt(Math.pow(p.getX() - c.deathX, 2) + Math.pow(p.getY() - c.deathY, 2) + Math.pow(p.getZ() - c.deathZ, 2));
+                        s = "Tod: " + (int) Math.floor(c.deathX) + " " + (int) Math.floor(c.deathY) + " " + (int) Math.floor(c.deathZ) + " · " + Math.round(dd) + " m";
+                    }
+                }
+                chip(ctx, tr, x, y, s, col);
+                return new int[] {chipW(tr, s), 12};
+            }
+            case COMBAT: {
+                int total = Math.max(1, Config.INSTANCE.combatSecs) * 20;
+                long since = demo ? 120 : tickN - lastCombatTick;
+                if (since >= total) return new int[] {0, 0};
+                int secs = (int) Math.ceil((total - since) / 20.0);
+                String s = "Kampf " + secs + " s";
+                int col = secs > 5 ? 0xFFFF7A90 : 0xFFFBBF24;
+                chip(ctx, tr, x, y, s, col);
+                int cw = chipW(tr, s);
+                ctx.fill(x, y + 13, x + cw, y + 15, 0x50FFFFFF);
+                ctx.fill(x, y + 13, x + Math.round(cw * (float) (total - since) / total), y + 15, col);
+                return new int[] {cw, 15};
+            }
             case CRIT: {
                 boolean ok = demo || (p.fallDistance > 0.0 && !p.isOnGround() && !p.isClimbing() && !p.isTouchingWater()
                     && !p.hasVehicle() && !p.isSprinting() && p.getAttackCooldownProgress(0.5f) > 0.9f);
@@ -559,7 +694,7 @@ final class PvpHud {
         boolean anyGear = false;
         for (ItemStack s : gear) if (!s.isEmpty()) anyGear = true;
         int bw = 124, bh = (anyGear || dmg != null) ? 46 : 28;
-        Ui.round2(ctx, x0 - 1, top - 1, x0 + bw + 1, top + bh + 1, hurt ? 0xFFFF5A5A : 0xFF303546);
+        Ui.round2(ctx, x0 - 1, top - 1, x0 + bw + 1, top + bh + 1, hurt ? 0xFFFF5A5A : 0xFF2B3140);
         Ui.round2(ctx, x0, top, x0 + bw, top + bh, 0xD00F1117);
         ctx.drawTextWithShadow(tr, tr.trimToWidth(name, bw - 50), x0 + 6, top + 4, 0xFFFFFFFF);
         float h = Math.max(0f, hp);
@@ -639,6 +774,106 @@ final class PvpHud {
                     Overlay3D.beam(ctx, top[i], top[j], mCore, mGlow, 1, 0.8f);
                     Overlay3D.beam(ctx, bot[i], top[i], mCore, mGlow, 1, 0.8f);
                 }
+            }
+        }
+    }
+
+    private static ItemStack findStack(PlayerEntity p, Item item) {
+        PlayerInventory inv = p.getInventory();
+        for (int i = 0; i < inv.size(); i++) {
+            ItemStack st = inv.getStack(i);
+            if (!st.isEmpty() && st.isOf(item)) return st;
+        }
+        return null;
+    }
+
+    /** Schadenszahlen über dem Gegner. */
+    private static void drawPops(DrawContext ctx, MinecraftClient mc, float td) {
+        if (POPS.isEmpty()) return;
+        if (!Overlay3D.begin(mc, td)) return;
+        TextRenderer tr = mc.textRenderer;
+        for (Iterator<Pop> it = POPS.iterator(); it.hasNext(); ) {
+            Pop f = it.next();
+            double age = (tickN - f.born + td) / 20.0;
+            if (age > 1.2) {
+                it.remove();
+                continue;
+            }
+            double[] v = Overlay3D.view(f.x, f.y + age * 0.7, f.z);
+            double[] sc = Overlay3D.screen(v);
+            if (sc == null) continue;
+            float scale = (float) Math.max(0.8, Math.min(2.0, 2.6 / v[2]));
+            int alpha = (int) (255 * Math.min(1.0, (1.2 - age) / 0.4));
+            if (alpha < 12) continue;
+            Matrix3x2fStack m = ctx.getMatrices();
+            m.pushMatrix();
+            m.translate((float) sc[0], (float) sc[1]);
+            m.scale(scale, scale);
+            ctx.drawText(tr, f.t, -tr.getWidth(f.t) / 2, -4, (alpha << 24) | f.col, true);
+            m.popMatrix();
+        }
+    }
+
+    /** Lichtstrahl am Ort, an dem du zuletzt gestorben bist. */
+    private static void drawDeathBeam(DrawContext ctx, MinecraftClient mc, ClientPlayerEntity p, float td) {
+        Config c = Config.INSTANCE;
+        if (!c.hasDeath || !dimId(mc).equals(c.deathDim)) return;
+        double d = Math.sqrt(Math.pow(p.getX() - c.deathX, 2) + Math.pow(p.getZ() - c.deathZ, 2));
+        if (d < 4.0) return;
+        if (!Overlay3D.begin(mc, td)) return;
+        double[] a = Overlay3D.view(c.deathX, c.deathY, c.deathZ);
+        double[] b = Overlay3D.view(c.deathX, c.deathY + 6.0, c.deathZ);
+        Overlay3D.beam(ctx, a, b, 0xFFB4BE, 0xFB7185, 1, 0.9f);
+        double[] sc = Overlay3D.screen(b);
+        if (sc != null) {
+            TextRenderer tr = mc.textRenderer;
+            String s = "Todespunkt · " + Math.round(d) + " m";
+            ctx.drawText(tr, s, (int) sc[0] - tr.getWidth(s) / 2, (int) sc[1] - 12, 0xFFFFB4BE, true);
+        }
+    }
+
+    private static int crossColor(MinecraftClient mc) {
+        switch (Config.INSTANCE.crossColor) {
+            case 1: return Ui.ACCENT;
+            case 2: return Ui.GREEN;
+            case 3: return 0xFFFF5A6E;
+            case 4:
+                if (mc.crosshairTarget instanceof EntityHitResult eh && eh.getEntity() instanceof LivingEntity) return 0xFFFF4D5E;
+                return 0xFFFFFFFF;
+            default: return 0xFFFFFFFF;
+        }
+    }
+
+    static final String[] CROSS_STYLES = {"Kreuz", "Punkt", "Kreuz + Punkt", "T-Form"};
+    static final String[] CROSS_COLORS = {"Weiß", "Cyan", "Grün", "Rot", "Dynamisch"};
+
+    /** Eigenes Fadenkreuz mit Mitte (cx, cy). preview = im Menü (ohne Treffer-Blitz, feste Farbe). */
+    static void drawCrosshair(DrawContext ctx, MinecraftClient mc, int cx, int cy, boolean preview) {
+        Config c = Config.INSTANCE;
+        int col = preview ? (c.crossColor == 4 ? 0xFFFFFFFF : crossColor(mc)) : crossColor(mc);
+        if (!preview && c.crossColor == 4 && tickN - lastHitTick < 6) col = Ui.GREEN;
+        int s = Math.max(1, c.crossSize), g = Math.max(0, c.crossGap), t = Math.max(1, c.crossThick);
+        int lo = t / 2;
+        List<int[]> r = new ArrayList<>();
+        int style = c.crossStyle;
+        if (style == 0 || style == 2 || style == 3) {
+            if (style != 3) r.add(new int[] {cx - lo, cy - lo - g - s, cx - lo + t, cy - lo - g});
+            r.add(new int[] {cx - lo, cy - lo + t + g, cx - lo + t, cy - lo + t + g + s});
+            r.add(new int[] {cx - lo - g - s, cy - lo, cx - lo - g, cy - lo + t});
+            r.add(new int[] {cx - lo + t + g, cy - lo, cx - lo + t + g + s, cy - lo + t});
+        }
+        if (style == 1 || style == 2) {
+            int d = t + 1;
+            r.add(new int[] {cx - d / 2, cy - d / 2, cx - d / 2 + d, cy - d / 2 + d});
+        }
+        for (int[] q : r) ctx.fill(q[0] - 1, q[1] - 1, q[2] + 1, q[3] + 1, 0x90000000);
+        for (int[] q : r) ctx.fill(q[0], q[1], q[2], q[3], col);
+        if (!preview && tickN - lastHitTick < 6) {
+            for (int k = 4; k <= 8; k++) {
+                ctx.fill(cx - k, cy - k, cx - k + 1, cy - k + 1, 0xFFFF5A6E);
+                ctx.fill(cx + k, cy - k, cx + k + 1, cy - k + 1, 0xFFFF5A6E);
+                ctx.fill(cx - k, cy + k, cx - k + 1, cy + k + 1, 0xFFFF5A6E);
+                ctx.fill(cx + k, cy + k, cx + k + 1, cy + k + 1, 0xFFFF5A6E);
             }
         }
     }

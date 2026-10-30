@@ -43,7 +43,7 @@ public class TexturePacksScreen extends Screen {
         cw = panelW - 20;
         rowsY = py0 + HEAD + 8;
 
-        invisible(px1 - 10 - 64, py0 + 5, 64, 18, () -> MinecraftClient.getInstance().setScreen(new HubScreen()));
+        invisible(px1 - 10 - 64, py0 + 5, 64, 18, () -> MinecraftClient.getInstance().setScreen(new PackSetsScreen()));
         for (int v = 0; v < shown && scrollPos + v < packs.size(); v++) {
             final ResourcePackProfile p = packs.get(scrollPos + v);
             invisible(cx, rowsY + v * ROW, cw - 8, ROW - 3, () -> {
@@ -85,7 +85,7 @@ public class TexturePacksScreen extends Screen {
 
         ctx.drawTextWithShadow(tr, "Texture Packs", px0 + 10, py0 + 6, 0xFFFFFFFF);
         ctx.drawTextWithShadow(tr, packs.size() + " Packs · " + Packs.activeCount() + " aktiv", px0 + 10, py0 + 17, 0xFF7E8494);
-        Ui.btn(ctx, tr, px1 - 10 - 64, py0 + 5, px1 - 10, py0 + 23, "‹ Menü",
+        Ui.btn(ctx, tr, px1 - 10 - 64, py0 + 5, px1 - 10, py0 + 23, "‹ Sets",
             Ui.in(mouseX, mouseY, px1 - 10 - 64, py0 + 5, px1 - 10, py0 + 23), 0xFF1F232E, 0xFF2A3040, 0xFFD6D9E0);
 
         if (packs.isEmpty()) {

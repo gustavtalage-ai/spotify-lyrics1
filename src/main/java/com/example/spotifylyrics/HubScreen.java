@@ -48,7 +48,7 @@ public class HubScreen extends Screen {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (i == 0) mc.setScreen(SoundboardScreen.create(false));
         else if (i == 1) mc.setScreen(SoundboardScreen.create(true));
-        else if (i == 2) mc.setScreen(new TexturePacksScreen());
+        else if (i == 2) mc.setScreen(new PackSetsScreen());
         else mc.setScreen(new PvpScreen());
     }
 
@@ -66,8 +66,8 @@ public class HubScreen extends Screen {
 
         Config cfg = Config.INSTANCE;
         String[] names = {"Soundboard", "Tools", "Texture Packs", "PvP"};
-        String[] sub1 = {"Effekte · Musik", "Platzhilfe · Filter", "Packs an / aus", "Hit-Assistent"};
-        String[] sub2 = {"Voice · Spotify", "Lichtshow", Packs.activeCount() + " aktiv", "Low Fire: " + (Packs.lowFireOn() ? "an" : "aus")};
+        String[] sub1 = {"Effekte · Musik", "Auto-Klick · Filter", "Pack-Sets", "Hit-Assistent: aus"};
+        String[] sub2 = {"Voice · Spotify", AutoClick.active ? "Auto-Klick läuft" : "Platzhilfe · Licht", Packs.activeCount() + " aktiv", Integer.bitCount(cfg.pvpMods) + " Module an"};
         int[] accent = {0xFFAA00FF, 0xFF3B82F6, 0xFF4ADE80, 0xFFFF5A5A};
         ItemStack[] icons = {new ItemStack(Items.NOTE_BLOCK), new ItemStack(Items.IRON_PICKAXE),
             new ItemStack(Items.GRASS_BLOCK), new ItemStack(Items.DIAMOND_SWORD)};

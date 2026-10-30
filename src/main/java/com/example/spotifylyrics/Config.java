@@ -54,6 +54,25 @@ public class Config {
     /** Zu früh geklickt: Schlag merken und bei voller Leiste ausführen. */
     public boolean hitQueue = true;
 
+    /** PvP-Client: Module als Bits (siehe PvpHud.NAMES). */
+    public int pvpMods = 0;
+    /** Zoom (Taste Z): Sichtfeld beim Zoomen (30 bis 110). */
+    public int zoomFov = 30;
+    /** Freunde, die nicht geschlagen werden (kleingeschrieben). */
+    public java.util.List<String> friends = new java.util.ArrayList<>();
+
+    /** Auto-Klick: 0 = im Abstand, 1 = Taste gedrückt halten. */
+    public int autoMode = 0;
+    /** Auto-Klick: 0 = Angriff (links), 1 = Benutzen (rechts). */
+    public int autoButton = 0;
+    /** Auto-Klick: Abstand in Millisekunden (Modus "im Abstand"). */
+    public int autoIntervalMs = 3000;
+    /** Auto-Klick: Taste zum Starten/Stoppen (GLFW-Code, 74 = J). */
+    public int autoKey = 74;
+
+    /** Pack-Sets: bis zu 4 Plätze, je die Pack-IDs getrennt mit "|" (leer = frei). */
+    public java.util.List<String> packSets = new java.util.ArrayList<>();
+
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("spotifylyrics.json");
     public static final Config INSTANCE = load();

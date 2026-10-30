@@ -1,164 +1,168 @@
 package com.example.spotifylyrics;
 
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.font.TextRenderer;
-import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.resource.ResourcePackProfile;
-import net.minecraft.text.Text;
 
-/** PvP-Einstellungen: Hit-Assistent und Low Fire. */
-public class PvpScreen extends Screen {
-    private static final int HEAD = 28;
-    private int px0, px1, py0, py1, cx, cw;
-    private int yHit, yHint, yQueue, yWeap, yW0, yMin, yGfx, yQuick;
-    /** Schnellschalter: Anzeigename, danach Suchbegriffe (klein, ohne Leerzeichen) im Pack-Namen. */
-    private static final String[][] QUICK = {
-        {"Low Fire", "lowonfire", "lowfire"},
-        {"Low Shield", "lowshield"},
-        {"Schild + Totem klein", "smallshieldtotem"},
-        {"Totem-Pop klein", "smalltotempop"},
-        {"Kurze Schwerter", "shortswords", "shorterswords"},
-        {"Crystal PvP", "crystalvanilla"}
-    };
-    private final java.util.List<String> qLabel = new java.util.ArrayList<>();
-    private final java.util.List<ResourcePackProfile> qProf = new java.util.ArrayList<>();
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+/** PvP-Client: Kampf (Hit-Assistent, Schnell-Packs), Anzeigen (HUD-Module) und Extras. */
+public class PvpScreen extends ItemScreen {
+    private static int page = 0;
 
     public PvpScreen() {
-        super(Text.literal("PvP"));
-    }
-
-    private static void reopen() {
-        MinecraftClient.getInstance().setScreen(new PvpScreen());
-    }
-
-    private void invisible(int x, int y, int w, int h, Runnable r) {
-        addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> r.run()).dimensions(x, y, w, h).build());
+        super("PvP", "Dein Client im Client");
     }
 
     @Override
-    protected void init() {
-        int panelW = Math.min(320, this.width - 20);
-        qLabel.clear();
-        qProf.clear();
-        for (String[] q : QUICK) {
-            ResourcePackProfile f = Packs.find(java.util.Arrays.copyOfRange(q, 1, q.length));
-            if (f != null && !qProf.contains(f)) {
-                qLabel.add(q[0]);
-                qProf.add(f);
-            }
-        }
-        int panelH = 227 + 14 + Math.max(1, (qProf.size() + 1) / 2) * 22 + 14;
-        px0 = (this.width - panelW) / 2;
-        px1 = px0 + panelW;
-        py0 = Math.max(4, (this.height - panelH) / 2);
-        py1 = py0 + panelH;
-        cx = px0 + 10;
-        cw = panelW - 20;
+    protected ItemScreen fresh() {
+        return new PvpScreen();
+    }
 
-        yHit = py0 + HEAD + 8;           // Überschrift
-        yHint = yHit + 14;               // Schalter
-        yQueue = yHint + 26;             // Klick merken
-        yWeap = yQueue + 38;              // "Waffen"
-        yW0 = yWeap + 13;                // 3 Reihen à 22
-        yMin = yW0 + 3 * 22 + 4;         // Aufladung
-        yGfx = yMin + 30;                // "Packs"
-        yQuick = yGfx + 14;
+    @Override
+    protected Screen back() {
+        return new HubScreen();
+    }
 
+    @Override
+    protected String backLabel() {
+        return "‹ Menü";
+    }
+
+    private Cell tab(String label, int idx) {
+        return idx == page ? S(label) : G(label, () -> {
+            page = idx;
+            again();
+        });
+    }
+
+    private Cell mod(int bit) {
+        return T(PvpHud.NAMES[bit], PvpHud.on(bit), () -> {
+            PvpHud.flip(bit);
+            again();
+        });
+    }
+
+    @Override
+    protected void build() {
+        row(tab("Kampf", 0), tab("Anzeigen", 1), tab("Extras", 2));
+        gap(4);
+        if (page == 0) buildFight();
+        else if (page == 1) buildHud();
+        else buildExtras();
+    }
+
+    private void buildFight() {
         Config c = Config.INSTANCE;
-        invisible(px1 - 10 - 64, py0 + 5, 64, 18, () -> MinecraftClient.getInstance().setScreen(new HubScreen()));
-
-        invisible(cx, yHint, cw, 22, () -> {
+        sec("Hit-Assistent");
+        row(T("Hit-Assistent", c.hitAssist, () -> {
             c.hitAssist = !c.hitAssist;
             c.save();
-            reopen();
-        });
-        invisible(cx, yQueue, cw, 22, () -> {
+            again();
+        }));
+        row(T("Klick merken (perfekter Schlag)", c.hitQueue, () -> {
             c.hitQueue = !c.hitQueue;
             c.save();
-            reopen();
-        });
-        int half = (cw - 6) / 2;
-        for (int i = 0; i < 5; i++) {
-            final int bit = i;
-            int x = cx + (i % 2) * (half + 6);
-            int y = yW0 + (i / 2) * 22;
-            invisible(x, y, half, 20, () -> {
-                c.hitWeapons ^= 1 << bit;
+            again();
+        }));
+        text("Zu früh geklickt: Schlag kommt bei voller Leiste.", 0xFF7E8494);
+        sec("Gilt für diese Waffen");
+        for (int i = 0; i < 5; i += 2) {
+            final int a = i, b = i + 1;
+            Cell ca = T(HitAssist.NAMES[a], ((c.hitWeapons >> a) & 1) != 0, () -> {
+                c.hitWeapons ^= 1 << a;
                 c.save();
-                reopen();
+                again();
             });
+            if (b < 5) {
+                row(ca, T(HitAssist.NAMES[b], ((c.hitWeapons >> b) & 1) != 0, () -> {
+                    c.hitWeapons ^= 1 << b;
+                    c.save();
+                    again();
+                }));
+            } else {
+                row(ca);
+            }
         }
-        invisible(cx + cw - 52, yMin + 2, 24, 20, () -> {
+        stepper("Aufladung ab: " + c.hitAssistMin + " %", () -> {
             c.hitAssistMin = Math.max(50, c.hitAssistMin - 5);
             c.save();
-            reopen();
-        });
-        invisible(cx + cw - 24, yMin + 2, 24, 20, () -> {
+            again();
+        }, () -> {
             c.hitAssistMin = Math.min(100, c.hitAssistMin + 5);
             c.save();
-            reopen();
+            again();
         });
-        int qh = (cw - 6) / 2;
-        for (int i = 0; i < qProf.size(); i++) {
-            final ResourcePackProfile qp = qProf.get(i);
-            int x = cx + (i % 2) * (qh + 6);
-            int y = yQuick + (i / 2) * 22;
-            invisible(x, y, qh, 20, () -> {
-                Packs.set(qp, !Packs.isOn(qp));
-                reopen();
+        gap(2);
+        sec("Schnell-Packs");
+        List<String> labels = new ArrayList<>();
+        List<ResourcePackProfile> profs = new ArrayList<>();
+        for (String[] q : Packs.QUICK) {
+            ResourcePackProfile f = Packs.find(Arrays.copyOfRange(q, 1, q.length));
+            if (f != null && !profs.contains(f)) {
+                labels.add(q[0]);
+                profs.add(f);
+            }
+        }
+        for (int i = 0; i < profs.size(); i += 2) {
+            final ResourcePackProfile pa = profs.get(i);
+            Cell ca = T(labels.get(i), Packs.isOn(pa), () -> {
+                Packs.set(pa, !Packs.isOn(pa));
+                again();
             });
+            if (i + 1 < profs.size()) {
+                final ResourcePackProfile pb = profs.get(i + 1);
+                row(ca, T(labels.get(i + 1), Packs.isOn(pb), () -> {
+                    Packs.set(pb, !Packs.isOn(pb));
+                    again();
+                }));
+            } else {
+                row(ca);
+            }
         }
-        invisible(px1 - 10 - 80, yGfx - 3, 80, 14, () -> MinecraftClient.getInstance().setScreen(new TexturePacksScreen()));
+        if (profs.isEmpty()) text("Keine passenden Packs gefunden.", 0xFFFF6A6A);
+        row(G("Pack-Sets und alle Packs ›", () -> MinecraftClient.getInstance().setScreen(new PackSetsScreen())));
     }
 
-    // Absichtlich ohne @Override, wie in den anderen Menüs.
-    public void renderBackground(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        Ui.panel(ctx, this.width, this.height, px0, py0, px1, py1, HEAD);
+    private void buildHud() {
+        sec("Auf dem Bildschirm");
+        for (int i = 0; i < PvpHud.HUD_COUNT; i += 2) row(mod(i), mod(i + 1));
+        gap(2);
+        row(B("Alle an", () -> {
+            PvpHud.setAll(0, PvpHud.HUD_COUNT, true);
+            again();
+        }), G("Alle aus", () -> {
+            PvpHud.setAll(0, PvpHud.HUD_COUNT, false);
+            again();
+        }));
+        gap(2);
+        text("Links oben: Info, CPS, Combo, Effekte. Links Mitte: Tasten.", 0xFF7E8494);
+        text("Rechts: Rüstung und Vorrat. Mitte: Balken, Reichweite, Ziel.", 0xFF7E8494);
     }
 
-    public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        super.render(ctx, mouseX, mouseY, delta);
-        TextRenderer tr = MinecraftClient.getInstance().textRenderer;
+    private void buildExtras() {
         Config c = Config.INSTANCE;
-
-        ctx.drawTextWithShadow(tr, "PvP", px0 + 10, py0 + 6, 0xFFFFFFFF);
-        ctx.drawTextWithShadow(tr, "Hit-Assistent und Schnell-Packs", px0 + 10, py0 + 17, 0xFF7E8494);
-        Ui.btn(ctx, tr, px1 - 10 - 64, py0 + 5, px1 - 10, py0 + 23, "‹ Menü",
-            Ui.in(mouseX, mouseY, px1 - 10 - 64, py0 + 5, px1 - 10, py0 + 23), 0xFF1F232E, 0xFF2A3040, 0xFFD6D9E0);
-
-        Ui.section(ctx, tr, cx, yHit, "Hit-Assistent", cw);
-        Ui.toggle(ctx, tr, cx, yHint, cx + cw, yHint + 22, "Hit-Assistent", c.hitAssist, Ui.in(mouseX, mouseY, cx, yHint, cx + cw, yHint + 22));
-        Ui.toggle(ctx, tr, cx, yQueue, cx + cw, yQueue + 22, "Klick merken (perfekter Schlag)", c.hitQueue, Ui.in(mouseX, mouseY, cx, yQueue, cx + cw, yQueue + 22));
-        ctx.drawTextWithShadow(tr, "Zu früh geklickt: Schlag kommt bei voller Leiste.", cx + 2, yQueue + 26, 0xFF7E8494);
-
-        Ui.section(ctx, tr, cx, yWeap, "Gilt für diese Waffen", cw);
-        int half = (cw - 6) / 2;
-        for (int i = 0; i < 5; i++) {
-            int x = cx + (i % 2) * (half + 6);
-            int y = yW0 + (i / 2) * 22;
-            Ui.toggle(ctx, tr, x, y, x + half, y + 20, HitAssist.NAMES[i], ((c.hitWeapons >> i) & 1) != 0, Ui.in(mouseX, mouseY, x, y, x + half, y + 20));
-        }
-
-        ctx.drawTextWithShadow(tr, "Aufladung ab: " + c.hitAssistMin + " %", cx + 2, yMin + 8, 0xFFD6D9E0);
-        Ui.btn(ctx, tr, cx + cw - 52, yMin + 2, cx + cw - 28, yMin + 22, "-",
-            Ui.in(mouseX, mouseY, cx + cw - 52, yMin + 2, cx + cw - 28, yMin + 22), 0xFF1F232E, 0xFF2A3040, 0xFFFFFFFF);
-        Ui.btn(ctx, tr, cx + cw - 24, yMin + 2, cx + cw, yMin + 22, "+",
-            Ui.in(mouseX, mouseY, cx + cw - 24, yMin + 2, cx + cw, yMin + 22), 0xFF1F232E, 0xFF2A3040, 0xFFFFFFFF);
-
-        Ui.section(ctx, tr, cx, yGfx, "Schnell-Packs", cw - 80);
-        boolean lh = Ui.in(mouseX, mouseY, px1 - 10 - 80, yGfx - 3, px1 - 10, yGfx + 11);
-        String more = "Alle Packs \u203a";
-        ctx.drawTextWithShadow(tr, more, px1 - 10 - tr.getWidth(more), yGfx, lh ? 0xFFFFFFFF : 0xFF9AA0AE);
-        int qh = (cw - 6) / 2;
-        for (int i = 0; i < qProf.size(); i++) {
-            int x = cx + (i % 2) * (qh + 6);
-            int y = yQuick + (i / 2) * 22;
-            Ui.toggle(ctx, tr, x, y, x + qh, y + 20, qLabel.get(i), Packs.isOn(qProf.get(i)), Ui.in(mouseX, mouseY, x, y, x + qh, y + 20));
-        }
-        if (qProf.isEmpty()) {
-            ctx.drawTextWithShadow(tr, "Keine passenden Packs gefunden.", cx + 2, yQuick + 6, 0xFFFF6A6A);
-        }
+        sec("Kampf-Hilfen");
+        row(mod(PvpHud.HITSOUND), mod(PvpHud.TOTEM));
+        row(mod(PvpHud.LOWHP), mod(PvpHud.SPRINT));
+        gap(2);
+        sec("Zoom");
+        row(mod(PvpHud.ZOOM));
+        stepper("Zoom-Stärke: Sichtfeld " + c.zoomFov, () -> {
+            c.zoomFov = Math.max(30, c.zoomFov - 5);
+            c.save();
+            again();
+        }, () -> {
+            c.zoomFov = Math.min(110, c.zoomFov + 5);
+            c.save();
+            again();
+        });
+        text("Im Spiel Taste Z halten. Kleiner Wert = stärker.", 0xFF7E8494);
+        gap(2);
+        sec("Freunde");
+        row(mod(PvpHud.FRIENDS), B("Freunde wählen ›", () -> MinecraftClient.getInstance().setScreen(new FriendsScreen())));
+        text("Freunde nicht schlagen: Klicks auf sie werden ignoriert.", 0xFF7E8494);
     }
 }

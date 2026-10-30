@@ -88,7 +88,7 @@ public class SoundboardScreen extends Screen {
             panelH = HEADER_H + TAB_H + 8 + 110 + DEV_SLOTS * 22 + FOOTER_H + 2;
         } else {
             shown = 0;
-            panelH = HEADER_H + TAB_H + 8 + 180 + FOOTER_H + 2;
+            panelH = HEADER_H + TAB_H + 8 + 224 + FOOTER_H + 2;
         }
         px0 = (this.width - panelW) / 2;
         px1 = px0 + panelW;
@@ -406,7 +406,7 @@ public class SoundboardScreen extends Screen {
         return spotY() + rel;
     }
 
-    private static final int R1 = 13, R2 = 35, R3 = 57, R4 = 97, R5 = 137, R6 = 159;
+    private static final int R1 = 13, R2 = 35, R3 = 57, R4 = 97, R5 = 137, R6 = 159, R7 = 199;
 
     private void toolBtn(int x, int y, int w, Runnable r) {
         addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> r.run()).dimensions(x, y, w, 20).build());
@@ -465,6 +465,11 @@ public class SoundboardScreen extends Screen {
             Lightshow.testUntilMs = System.currentTimeMillis() + 20000;
             MinecraftClient.getInstance().setScreen(null);
         });
+        toolBtn(xl, tlY(R7), hw, () -> {
+            AutoClick.setActive(!AutoClick.active);
+            reopenTools();
+        });
+        toolBtn(xr, tlY(R7), hw, () -> MinecraftClient.getInstance().setScreen(new AutoClickScreen()));
     }
 
     private void renderTools(DrawContext ctx, TextRenderer tr, int mx, int my) {
@@ -499,6 +504,13 @@ public class SoundboardScreen extends Screen {
         Ui.btn(ctx, tr, xl, tlY(R6), xl + hw, tlY(R6) + 20, "Testen (20 s)", Ui.in(mx, my, xl, tlY(R6), xl + hw, tlY(R6) + 20), 0xFF3A1A5C, 0xFF4B2373, 0xFFFFFFFF);
         String ls = Lightshow.status();
         ctx.drawTextWithShadow(tr, tr.trimToWidth(ls, hw - 4), xr + 4, tlY(R6) + 6, 0xFF7E8494);
+
+        String ac = tr.trimToWidth(AutoClick.describe(), sw - 100);
+        int acw = tr.getWidth(ac);
+        Ui.section(ctx, tr, xl + 2, tlY(186), "Auto-Klick", sw - acw - 8);
+        ctx.drawTextWithShadow(tr, ac, px1 - 12 - acw, tlY(186), 0xFF7E8494);
+        Ui.toggle(ctx, tr, xl, tlY(R7), xl + hw, tlY(R7) + 20, "Auto-Klick (Taste " + AutoClick.keyName() + ")", AutoClick.active, Ui.in(mx, my, xl, tlY(R7), xl + hw, tlY(R7) + 20));
+        Ui.btn(ctx, tr, xr, tlY(R7), xr + hw, tlY(R7) + 20, "Einstellungen \u203a", Ui.in(mx, my, xr, tlY(R7), xr + hw, tlY(R7) + 20), 0xFF3A1A5C, 0xFF4B2373, 0xFFFFFFFF);
 
         ctx.drawTextWithShadow(tr, "Zielblock anschauen, dann Startpunkt setzen.", px0 + 10, py1 - FOOTER_H + 8, 0xFF9AA0AE);
         ctx.drawTextWithShadow(tr, "Grün = Start, blau = jeder n-te Block.", px0 + 10, py1 - FOOTER_H + 20, 0xFF9AA0AE);

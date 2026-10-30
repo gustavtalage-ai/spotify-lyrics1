@@ -5,8 +5,10 @@ import net.minecraft.resource.ResourcePackManager;
 import net.minecraft.resource.ResourcePackProfile;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 /** Texture-Packs ein- und ausschalten (wie im normalen Packs-Menü). */
 final class Packs {
@@ -52,6 +54,68 @@ final class Packs {
             MinecraftClient.getInstance().options.refreshResourcePacks(m);
         } catch (Throwable e) {
             SpotifyLyricsClient.LOGGER.warn("Pack umschalten fehlgeschlagen", e);
+        }
+    }
+
+    /** Schnellschalter: Anzeigename, danach Suchbegriffe (klein, ohne Leerzeichen) im Pack-Namen. */
+    static final String[][] QUICK = {
+        {"Low Fire", "lowonfire", "lowfire"},
+        {"Low Shield", "lowshield"},
+        {"Schild + Totem klein", "smallshieldtotem"},
+        {"Totem-Pop klein", "smalltotempop"},
+        {"Kurze Schwerter", "shortswords", "shorterswords"},
+        {"Crystal PvP", "crystalvanilla"}
+    };
+
+    /** Aktive Packs in ihrer Reihenfolge (zuerst das unterste). */
+    static List<String> enabledIds() {
+        List<String> out = new ArrayList<>();
+        try {
+            Set<String> valid = new HashSet<>();
+            for (ResourcePackProfile p : list()) valid.add(p.getId());
+            for (String id : mgr().getEnabledIds()) if (valid.contains(id)) out.add(id);
+        } catch (Throwable ignored) {
+        }
+        return out;
+    }
+
+    /** Genau diese Packs einschalten (alle anderen aus), in dieser Reihenfolge; Texturen laden danach neu. */
+    static void apply(List<String> ids) {
+        try {
+            ResourcePackManager m = mgr();
+            for (ResourcePackProfile p : list()) if (isOn(p)) m.disable(p.getId());
+            for (String id : ids) {
+                ResourcePackProfile pr = m.getProfile(id);
+                if (pr != null && !pr.isRequired() && !pr.isPinned()) m.enable(id);
+            }
+            MinecraftClient.getInstance().options.refreshResourcePacks(m);
+        } catch (Throwable e) {
+            SpotifyLyricsClient.LOGGER.warn("Pack-Set laden fehlgeschlagen", e);
+        }
+    }
+
+    /** Alle gefundenen Schnell-Packs an oder aus. */
+    static void quickAll(boolean on) {
+        try {
+            ResourcePackManager m = mgr();
+            for (String[] q : QUICK) {
+                ResourcePackProfile p = find(java.util.Arrays.copyOfRange(q, 1, q.length));
+                if (p == null) continue;
+                if (on) m.enable(p.getId()); else m.disable(p.getId());
+            }
+            MinecraftClient.getInstance().options.refreshResourcePacks(m);
+        } catch (Throwable e) {
+            SpotifyLyricsClient.LOGGER.warn("Schnell-Packs fehlgeschlagen", e);
+        }
+    }
+
+    /** Anzeigename zu einer Pack-ID (oder null, wenn es das Pack nicht mehr gibt). */
+    static String nameOf(String id) {
+        try {
+            ResourcePackProfile pr = mgr().getProfile(id);
+            return pr == null ? null : pr.getDisplayName().getString();
+        } catch (Throwable e) {
+            return null;
         }
     }
 

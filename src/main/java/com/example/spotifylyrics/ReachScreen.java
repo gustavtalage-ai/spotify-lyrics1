@@ -39,15 +39,7 @@ public class ReachScreen extends ItemScreen {
             PvpHud.flip(PvpHud.CIRCLE);
             again();
         }));
-        stepper(String.format(Locale.ROOT, "Radius: %.1f Blöcke", c.circleR / 10.0), () -> {
-            c.circleR = Math.max(15, c.circleR - 1);
-            c.save();
-            again();
-        }, () -> {
-            c.circleR = Math.min(60, c.circleR + 1);
-            c.save();
-            again();
-        });
+        row(X("Radius: 3.3 Blöcke (normale Reichweite, fest)"));
         row(G("Farbe: " + PvpHud.colorName(c.circleColor) + " ›", () -> {
             c.circleColor = (c.circleColor + 1) % PvpHud.COLOR_NAMES.length;
             c.save();

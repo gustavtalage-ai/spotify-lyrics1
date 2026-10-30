@@ -165,9 +165,7 @@ public class PvpScreen extends ItemScreen {
         gap(2);
         sec("Totem");
         row(mod(PvpHud.TOTEM));
-        row(mod(PvpHud.AUTOTOTEM));
         text("Hinweis kommt, wenn ein Totem gepoppt ist.", 0xFF8B92A5);
-        text("Auto nachlegen kann auf Servern als Cheat gelten.", 0xFFFFAA33);
         gap(2);
         sec("Kampf-Timer und Statistik");
         stepper("Kampf-Timer: " + c.combatSecs + " s", () -> {

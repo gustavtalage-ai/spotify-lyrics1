@@ -236,12 +236,13 @@ public class LyricsHud {
     }
 
     /** Neue Stelle speichern. rx, ry = linke obere Ecke der Anzeige, rw = ihre Breite. */
-    static void setPos(int rx, int ry, int rw, int sw, int sh) {
+    static void setPos(int rx, int ry, int rw, int sw, int sh, boolean centerX) {
         Config c = Config.INSTANCE;
         int style = clampI(c.lyStyle, 0, 2);
         int ax = style == 0 ? rx : rx + rw / 2;
         c.lyPos[style * 2] = clampI(Math.round(ax * 1000f / Math.max(1, sw)), 0, 1000);
         c.lyPos[style * 2 + 1] = clampI(Math.round(ry * 1000f / Math.max(1, sh)), 0, 1000);
+        if (centerX && style != 0) c.lyPos[style * 2] = 500;
     }
 
     static void resetPos() {

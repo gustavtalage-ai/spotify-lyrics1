@@ -326,17 +326,6 @@ final class PvpHud {
         if (offT || total == 0) popped = false;
         prevTotal = total;
         prevOffTotem = offT;
-        if (on(AUTOTOTEM) && popped && tickN - popTick >= 3 && tickN - lastSwapTick >= 4 && mc.interactionManager != null) {
-            PlayerInventory inv = p.getInventory();
-            for (int i = 0; i < 36; i++) {
-                if (inv.getStack(i).isOf(Items.TOTEM_OF_UNDYING)) {
-                    int slot = i < 9 ? 36 + i : i;
-                    mc.interactionManager.clickSlot(p.playerScreenHandler.syncId, slot, 40, SlotActionType.SWAP, p);
-                    lastSwapTick = tickN;
-                    break;
-                }
-            }
-        }
     }
 
     private static void prune(ArrayDeque<Long> q, long now) {
@@ -729,7 +718,7 @@ final class PvpHud {
         if (c.circleWeapon && HitAssist.kindOf(p.getMainHandStack()) < 0) return;
         if (!Overlay3D.begin(mc, td)) return;
         Vec3d feet = p.getLerpedPos(td);
-        double r = Math.max(1.0, c.circleR / 10.0);
+        double r = 3.3;   // normale Minecraft-Reichweite (3.0 + halbe Gegner-Breite), fest
 
         // Spieler im Kreis sammeln
         java.util.List<PlayerEntity> in = new java.util.ArrayList<>();

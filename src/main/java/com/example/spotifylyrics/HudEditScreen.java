@@ -15,6 +15,7 @@ public class HudEditScreen extends Screen {
     private final int[][] rects = new int[32][];
     private static final int LY = 100;
     private int[] lyRect;
+    private boolean snapX, snapY;
     private final Screen backTo;
 
     public HudEditScreen() {
@@ -47,6 +48,13 @@ public class HudEditScreen extends Screen {
         super.render(ctx, mouseX, mouseY, delta);
         TextRenderer tr = MinecraftClient.getInstance().textRenderer;
         int w = this.width, h = this.height;
+
+        // Mitte des Bildschirms: Kreuz mit Linien (leuchtet, wenn die Anzeige einrastet)
+        int mx0 = w / 2, my0 = h / 2;
+        ctx.fill(mx0, 0, mx0 + 1, h, snapX ? 0xB038BDF8 : 0x30FFFFFF);
+        ctx.fill(0, my0, w, my0 + 1, snapY ? 0xB038BDF8 : 0x30FFFFFF);
+        ctx.fill(mx0 - 9, my0, mx0 + 10, my0 + 1, 0xC0FFFFFF);
+        ctx.fill(mx0, my0 - 9, mx0 + 1, my0 + 10, 0xC0FFFFFF);
 
         int shown = 0;
         for (int i = 0; i < rects.length; i++) rects[i] = null;
@@ -102,10 +110,20 @@ public class HudEditScreen extends Screen {
                 }
             }
         }
-        if (down && drag == LY) {
-            if (lyRect != null) LyricsHud.setPos(mouseX - offX, mouseY - offY, lyRect[2], w, h);
-        } else if (down && drag >= 0) {
-            PvpHud.setPos(drag, mouseX - offX, mouseY - offY, w, h);
+        if (down && drag >= 0) {
+            int[] dr = drag == LY ? lyRect : rects[drag];
+            if (dr != null) {
+                int nx = mouseX - offX, ny = mouseY - offY;
+                snapX = Math.abs(nx + dr[2] / 2 - w / 2) <= 6;
+                snapY = Math.abs(ny + dr[3] / 2 - h / 2) <= 6;
+                if (snapX) nx = (w - dr[2]) / 2;
+                if (snapY) ny = (h - dr[3]) / 2;
+                if (drag == LY) LyricsHud.setPos(nx, ny, dr[2], w, h, snapX);
+                else PvpHud.setPos(drag, nx, ny, w, h);
+            }
+        } else {
+            snapX = false;
+            snapY = false;
         }
         if (!down && wasDown && drag >= 0) {
             Config.INSTANCE.save();
@@ -114,7 +132,7 @@ public class HudEditScreen extends Screen {
         wasDown = down;
 
         String hint = shown == 0 ? "Keine Anzeige an. Schalte sie im PvP-Menü unter Anzeigen ein."
-            : "Mit gedrückter Maus ziehen. Esc oder Fertig = speichern.";
+            : "Ziehen. Am Kreuz (Mitte) rastet die Anzeige ein. Esc oder Fertig = speichern.";
         Ui.shadow(ctx, w / 2 - 230, h - 56, w / 2 + 230, h - 4);
         Ui.card(ctx, w / 2 - 230, h - 56, w / 2 + 230, h - 4, Ui.BORDER, 0xF00E1015);
         ctx.drawCenteredTextWithShadow(tr, hint, w / 2, h - 51, 0xFFD6D9E0);

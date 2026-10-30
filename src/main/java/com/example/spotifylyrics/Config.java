@@ -170,6 +170,10 @@ public class Config {
                         c.pvpMods &= ~((1 << 14) | (1 << 15));
                         c.pvpVer = 2;
                     }
+                    if (c.pvpVer < 3) {
+                        c.pvpMods &= ~(1 << 18);
+                        c.pvpVer = 3;
+                    }
                     return c;
                 }
             }

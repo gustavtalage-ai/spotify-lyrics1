@@ -588,19 +588,12 @@ final class PvpHud {
         }
     }
 
-    /** Kreis um dich auf dem Boden (auf den Bildschirm projiziert), Radius = deine Reichweite. Durchgehende Linie. */
+    /** Kreis um dich auf dem Boden, Radius = deine Reichweite. Leuchtende durchgehende Linie (wie die Platzhilfe). */
     private static void drawCircle(DrawContext ctx, MinecraftClient mc, ClientPlayerEntity p, float td, int sw, int sh) {
         Config c = Config.INSTANCE;
         if (c.circleWeapon && HitAssist.kindOf(p.getMainHandStack()) < 0) return;
-        Vec3d eye = p.getCameraPosVec(td);
+        if (!Overlay3D.begin(mc, td)) return;
         Vec3d feet = p.getLerpedPos(td);
-        double yr = Math.toRadians(p.getYaw(td)), pr = Math.toRadians(p.getPitch(td));
-        double fx = -Math.sin(yr) * Math.cos(pr), fy = -Math.sin(pr), fz = Math.cos(yr) * Math.cos(pr);
-        double rx = -Math.cos(yr), rz = -Math.sin(yr);
-        // oben = rechts x vorwaerts
-        double ux = -rz * fy, uy = rz * fx - rx * fz, uz = rx * fy;
-        double tanHalf = Math.tan(Math.toRadians(mc.options.getFov().getValue()) / 2.0);
-        double aspect = (double) sw / Math.max(1, sh);
         double r = Math.max(1.0, c.circleR / 10.0);
 
         // Farbe: 0 = rot, gruen sobald ein Spieler im Kreis ist; 1 = immer gruen; 2 = immer rot
@@ -615,45 +608,19 @@ final class PvpHud {
                 }
             }
         }
-        int rgb = c.circleColor == 1 || (c.circleColor == 0 && inside) ? 0x4ADE80 : 0xFF5A5A;
-        int col = 0xE0000000 | rgb;
+        boolean green = c.circleColor == 1 || (c.circleColor == 0 && inside);
+        int core = green ? 0x9BFFB8 : 0xFF9A9A;
+        int glow = green ? 0x4ADE80 : 0xFF4A4A;
         int th = Math.max(1, Math.min(3, c.circleThick));
 
-        double gy = feet.y + 0.02;
-        int n = 120;
-        int lx = 0, ly = 0;
-        boolean have = false;
+        double gy = feet.y + 0.03;
+        int n = 72;
+        double[] prev = null;
         for (int i = 0; i <= n; i++) {
             double a = 2 * Math.PI * i / n;
-            double dx = feet.x + Math.cos(a) * r - eye.x;
-            double dy = gy - eye.y;
-            double dz = feet.z + Math.sin(a) * r - eye.z;
-            double zc = dx * fx + dy * fy + dz * fz;
-            if (zc < 0.1) {
-                have = false;
-                continue;
-            }
-            double xc = dx * rx + dz * rz;
-            double yc = dx * ux + dy * uy + dz * uz;
-            int px = (int) Math.round(sw / 2.0 + (xc / (zc * tanHalf * aspect)) * sw / 2.0);
-            int py = (int) Math.round(sh / 2.0 - (yc / (zc * tanHalf)) * sh / 2.0);
-            if (have) line(ctx, lx, ly, px, py, th, col, sw, sh);
-            lx = px;
-            ly = py;
-            have = true;
-        }
-    }
-
-    /** Durchgehende Linie zwischen zwei Bildschirmpunkten. */
-    private static void line(DrawContext ctx, int x0, int y0, int x1, int y1, int th, int col, int sw, int sh) {
-        int dx = x1 - x0, dy = y1 - y0;
-        int steps = Math.max(Math.abs(dx), Math.abs(dy));
-        if (steps > 4000) return;
-        if (steps == 0) steps = 1;
-        for (int i = 0; i <= steps; i++) {
-            int x = x0 + dx * i / steps, y = y0 + dy * i / steps;
-            if (x < 0 || y < 0 || x >= sw - th || y >= sh - th) continue;
-            ctx.fill(x, y, x + th, y + th, col);
+            double[] cur = Overlay3D.view(feet.x + Math.cos(a) * r, gy, feet.z + Math.sin(a) * r);
+            if (prev != null) Overlay3D.beam(ctx, prev, cur, core, glow, th, 0.9f);
+            prev = cur;
         }
     }
 

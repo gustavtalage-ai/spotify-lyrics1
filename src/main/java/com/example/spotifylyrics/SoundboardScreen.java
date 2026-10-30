@@ -60,6 +60,13 @@ public class SoundboardScreen extends Screen {
         this.scroll = scroll;
     }
 
+    /** Vom Startmenü aus: Soundboard (Effekte/Musik/Voice/Spotify) oder Tools. */
+    static SoundboardScreen create(boolean tools) {
+        if (tools) tab = 4;
+        else if (tab == 4) tab = 0;
+        return new SoundboardScreen(0);
+    }
+
     @Override
     protected void init() {
         List<Path> cat = categoryOf(Soundboard.list());
@@ -89,10 +96,13 @@ public class SoundboardScreen extends Screen {
         py1 = py0 + panelH;
         rowY0 = py0 + HEADER_H + TAB_H + SEARCH_H + 2;
         half = (px1 - px0 - 24) / 2;
-        tabW = Math.max(40, (px1 - px0 - 16 - 4 * 4) / 5);
+        tabW = Math.max(40, (px1 - px0 - 16 - 3 * 4) / 4);
 
         // Untertabs (die Knöpfe erledigen das Klicken, gezeichnet werden sie in render())
-        for (int i = 0; i < 5; i++) {
+        // Zurück zum Startmenü
+        addDrawableChild(ButtonWidget.builder(Text.literal(""), b ->
+            MinecraftClient.getInstance().setScreen(new HubScreen())).dimensions(px0 + 6, py0 + 8, 18, 18).build());
+        for (int i = 0; i < (tab == 4 ? 0 : 4); i++) {
             final int target = i;
             addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> {
                 if (tab != target) {
@@ -587,22 +597,26 @@ public class SoundboardScreen extends Screen {
         TextRenderer tr = MinecraftClient.getInstance().textRenderer;
 
         // Kopfzeile
-        ctx.drawTextWithShadow(tr, "♪", px0 + 10, py0 + 11, 0xFFC77DFF);
-        ctx.drawTextWithShadow(tr, "Soundboard", px0 + 22, py0 + 7, 0xFFFFFFFF);
+        {
+            boolean bh = Ui.in(mouseX, mouseY, px0 + 6, py0 + 8, px0 + 24, py0 + 26);
+            Ui.btn(ctx, tr, px0 + 6, py0 + 8, px0 + 24, py0 + 26, "‹", bh, 0xFF1F232E, 0xFF2A3040, 0xFFFFFFFF);
+        }
+        ctx.drawTextWithShadow(tr, tab == 4 ? "◆" : "♪", px0 + 30, py0 + 11, 0xFFC77DFF);
+        ctx.drawTextWithShadow(tr, tab == 4 ? "Tools" : "Soundboard", px0 + 42, py0 + 7, 0xFFFFFFFF);
         if (tab <= 1) {
             String what = tab == 0 ? " Effekte · unter 30 Sek." : " Lieder · ab 30 Sek.";
-            ctx.drawTextWithShadow(tr, catTotal + what, px0 + 22, py0 + 19, 0xFF7E8494);
+            ctx.drawTextWithShadow(tr, catTotal + what, px0 + 42, py0 + 19, 0xFF7E8494);
         } else if (tab == 2) {
-            ctx.drawTextWithShadow(tr, "Verändert dein Mikrofon", px0 + 22, py0 + 19, 0xFF7E8494);
+            ctx.drawTextWithShadow(tr, "Verändert dein Mikrofon", px0 + 42, py0 + 19, 0xFF7E8494);
         } else if (tab == 3) {
-            ctx.drawTextWithShadow(tr, "Songs suchen und abspielen", px0 + 22, py0 + 19, 0xFF7E8494);
+            ctx.drawTextWithShadow(tr, "Songs suchen und abspielen", px0 + 42, py0 + 19, 0xFF7E8494);
         } else {
-            ctx.drawTextWithShadow(tr, "Platzhilfe und Item-Filter", px0 + 22, py0 + 19, 0xFF7E8494);
+            ctx.drawTextWithShadow(tr, "Platzhilfe und Item-Filter", px0 + 42, py0 + 19, 0xFF7E8494);
         }
 
         // Untertabs
-        String[] tabNames = {"Effekte", "Musik", "Voice", "Spotify", "Tools"};
-        for (int i = 0; i < 5; i++) {
+        String[] tabNames = {"Effekte", "Musik", "Voice", "Spotify"};
+        for (int i = 0; i < (tab == 4 ? 0 : 4); i++) {
             int tx = tabX(i), ty = tabY();
             boolean sel = tab == i;
             boolean hov = Ui.in(mouseX, mouseY, tx, ty, tx + tabW, ty + 18);

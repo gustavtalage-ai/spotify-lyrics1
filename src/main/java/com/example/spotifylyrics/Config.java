@@ -47,6 +47,10 @@ public class Config {
     /** Streng: Alles ohne Regel wird sofort weggeworfen (nur Filter-Items bleiben im Inventar). */
     public boolean filterStrict = false;
     public java.util.Map<String, Long> filterRules = new java.util.LinkedHashMap<>();
+    /** Hit-Assistent: nur schlagen, wenn die Leiste voll ist. Waffen als Bits: 0 Schwert, 1 Axt, 2 Mace, 3 Speer, 4 Dreizack. */
+    public boolean hitAssist = false;
+    public int hitAssistMin = 100;
+    public int hitWeapons = 1;
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("spotifylyrics.json");

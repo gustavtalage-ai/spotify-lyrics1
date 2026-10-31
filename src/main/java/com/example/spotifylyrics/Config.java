@@ -42,6 +42,11 @@ public class Config {
     public boolean placeHelper = false;
     public int placeSpacing = 3;
     public int placeDir = -1;
+    /** Einstellungen: Akzentfarbe, Hintergrund, Sprache (0 Deutsch, 1 English), Menü-Taste (GLFW, 75 = K). */
+    public int uiAccent = 0;
+    public int uiBg = 0;
+    public int lang = 0;
+    public int menuKey = 75;
     /** Bauen: Kreis-/Kugel-Vorlage (Form siehe BuildHelper.SHAPES, Radius in Blöcken). */
     public boolean shapeOn = false;
     public int shapeType = 0;

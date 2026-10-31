@@ -455,7 +455,8 @@ public final class Soundboard {
         boolean open = false;
         long window = GLFW.glfwGetCurrentContext();
         if (window != 0) {
-            boolean down = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_K) == GLFW.GLFW_PRESS;
+            int mk = Config.INSTANCE.menuKey > 0 ? Config.INSTANCE.menuKey : GLFW.GLFW_KEY_K;
+            boolean down = GLFW.glfwGetKey(window, mk) == GLFW.GLFW_PRESS;
             if (down && !keyWasDown && mc.currentScreen == null && mc.player != null) open = true;
             keyWasDown = down;
         }

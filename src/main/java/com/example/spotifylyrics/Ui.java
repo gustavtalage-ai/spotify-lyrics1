@@ -12,17 +12,20 @@ import net.minecraft.text.Text;
 final class Ui {
     private Ui() {}
 
-    // ---------- Farben ----------
-    static final int ACCENT = 0xFF38BDF8;
-    static final int ACCENT_LIGHT = 0xFF7DD3FC;
-    static final int ACCENT_DIM = 0xFF123A55;
-    static final int ACCENT_DIM_HOV = 0xFF1A4E73;
+    // ---------- Farben (änderbar über Einstellungen) ----------
+    static int ACCENT = 0xFF38BDF8;
+    static int ACCENT_LIGHT = 0xFF7DD3FC;
+    static int ACCENT_DIM = 0xFF123A55;
+    static int ACCENT_DIM_HOV = 0xFF1A4E73;
 
-    static final int BG = 0xFF0E1015;
-    static final int HEAD_BG = 0xFF14171E;
-    static final int SURFACE = 0xFF1A1E27;
-    static final int SURFACE_HOV = 0xFF252B38;
-    static final int BORDER = 0xFF2B3140;
+    static int BG = 0xFF0E1015;
+    static int HEAD_BG = 0xFF14171E;
+    static int SURFACE = 0xFF1A1E27;
+    static int SURFACE_HOV = 0xFF252B38;
+    static int BORDER = 0xFF2B3140;
+    /** Kasten-Hintergrund (zwischen BG und SURFACE). */
+    static int CARD = 0xFF151921;
+    static int CARD_HOV = 0xFF1A202B;
     static final int DIM = 0xB006080C;
 
     static final int TEXT = 0xFFE8EAF0;
@@ -30,6 +33,59 @@ final class Ui {
     static final int GREEN = 0xFF4ADE80;
     static final int RED = 0xFFFB7185;
     static final int AMBER = 0xFFFBBF24;
+
+    /** Akzentfarben: Name, Akzent, hell, dunkel, dunkel (Maus drüber). */
+    static final String[] ACCENT_NAMES = {"Cyan", "Pink", "Lila", "Grün", "Orange", "Rot", "Gold", "Weiß"};
+    private static final int[][] ACCENTS = {
+        {0xFF38BDF8, 0xFF7DD3FC, 0xFF123A55, 0xFF1A4E73},
+        {0xFFF472B6, 0xFFF9A8D4, 0xFF4A1834, 0xFF652147},
+        {0xFFA78BFA, 0xFFC4B5FD, 0xFF2E2358, 0xFF3D2F75},
+        {0xFF4ADE80, 0xFF86EFAC, 0xFF14432A, 0xFF1C5A38},
+        {0xFFFB923C, 0xFFFDBA74, 0xFF4A2810, 0xFF633616},
+        {0xFFF87171, 0xFFFCA5A5, 0xFF4A1616, 0xFF632020},
+        {0xFFFACC15, 0xFFFDE047, 0xFF4A3D0A, 0xFF63520E},
+        {0xFFE5E7EB, 0xFFF3F4F6, 0xFF2A2D35, 0xFF373B45}};
+    /** Hintergründe: Name, BG, Kopf, Fläche, Fläche (Maus), Rand. */
+    static final String[] BG_NAMES = {"Dunkel", "Schwarz", "Nachtblau", "Lila-Nacht", "Grau"};
+    private static final int[][] BGS = {
+        {0xFF0E1015, 0xFF14171E, 0xFF1A1E27, 0xFF252B38, 0xFF2B3140},
+        {0xFF000000, 0xFF0A0A0C, 0xFF141416, 0xFF1F1F23, 0xFF26262B},
+        {0xFF0B1220, 0xFF101A2E, 0xFF16223A, 0xFF1F2E4D, 0xFF263757},
+        {0xFF120D1C, 0xFF191226, 0xFF221933, 0xFF2D2242, 0xFF35284D},
+        {0xFF1B1D22, 0xFF22252B, 0xFF2A2E36, 0xFF353A44, 0xFF3D4350}};
+
+    static int accentPreview(int i) {
+        return ACCENTS[Math.floorMod(i, ACCENTS.length)][0];
+    }
+
+    static int bgPreview(int i) {
+        return BGS[Math.floorMod(i, BGS.length)][2];
+    }
+
+    /** Farben aus den Einstellungen übernehmen. */
+    static void applyTheme() {
+        Config c = Config.INSTANCE;
+        int[] a = ACCENTS[Math.floorMod(c.uiAccent, ACCENTS.length)];
+        ACCENT = a[0];
+        ACCENT_LIGHT = a[1];
+        ACCENT_DIM = a[2];
+        ACCENT_DIM_HOV = a[3];
+        int[] b = BGS[Math.floorMod(c.uiBg, BGS.length)];
+        BG = b[0];
+        HEAD_BG = b[1];
+        SURFACE = b[2];
+        SURFACE_HOV = b[3];
+        BORDER = b[4];
+        CARD = mix(BG, SURFACE, 0.5f);
+        CARD_HOV = mix(BG, SURFACE_HOV, 0.6f);
+    }
+
+    static {
+        try {
+            applyTheme();
+        } catch (Throwable ignored) {
+        }
+    }
 
     // ---------- Text (flach, ohne Schatten) ----------
     static void txt(DrawContext c, TextRenderer tr, String s, int x, int y, int color) {
@@ -139,7 +195,7 @@ final class Ui {
         c.fill(x, y + 1, x + 2, y + 9, ACCENT);
         txt(c, tr, text, x + 6, y, ACCENT_LIGHT);
         int lx = x + 6 + tr.getWidth(text) + 6;
-        hgrad(c, lx, y + 4, x + width - 4, y + 5, 0x4038BDF8, 0x08FFFFFF);
+        hgrad(c, lx, y + 4, x + width - 4, y + 5, (ACCENT & 0x00FFFFFF) | 0x40000000, 0x08FFFFFF);
     }
 
     /** Dunkler Hintergrund mit Panel, Schatten, feinem Rand und Kopfzeile (für alle Menüs gleich). */
@@ -152,7 +208,7 @@ final class Ui {
         c.fill(px0, py0 + head - 4, px1, py0 + head, HEAD_BG);
         c.fill(px0 + 1, py0 + head, px1 - 1, py0 + head + 1, 0xFF232834);
         c.fill(px0 + 3, py0 + 1, px1 - 3, py0 + 2, 0x14FFFFFF);
-        hgrad(c, px0 + 1, py0 + head, px1 - 1, py0 + head + 1, 0xA038BDF8, 0x60F472B6);
+        hgrad(c, px0 + 1, py0 + head, px1 - 1, py0 + head + 1, (ACCENT & 0x00FFFFFF) | 0xA0000000, 0x60F472B6);
         hgrad(c, px0 + 10, py0 + head - 1, px0 + 60, py0 + head + 1, ACCENT, PINK);
     }
 

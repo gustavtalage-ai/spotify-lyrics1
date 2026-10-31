@@ -12,6 +12,11 @@ public class BuildScreen extends ItemScreen {
         super("Bauen", "Helfer zum Bauen");
     }
 
+    public BuildScreen(int p) {
+        this();
+        page = Math.max(0, Math.min(4, p));
+    }
+
     @Override
     protected ItemScreen fresh() {
         return new BuildScreen();
@@ -19,12 +24,12 @@ public class BuildScreen extends ItemScreen {
 
     @Override
     protected Screen back() {
-        return new HubScreen();
+        return new BuildMenuScreen();
     }
 
     @Override
     protected String backLabel() {
-        return "‹ Menü";
+        return "‹ Bauen";
     }
 
     @Override

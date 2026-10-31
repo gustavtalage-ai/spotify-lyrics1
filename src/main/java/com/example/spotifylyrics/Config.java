@@ -42,6 +42,21 @@ public class Config {
     public boolean placeHelper = false;
     public int placeSpacing = 3;
     public int placeDir = -1;
+    /** Bauen: Kreis-/Kugel-Vorlage (Form siehe BuildHelper.SHAPES, Radius in Blöcken). */
+    public boolean shapeOn = false;
+    public int shapeType = 0;
+    public int shapeR = 5;
+    /** Bauen: Raster am Boden (Linien alle n Blöcke, Größe um dich, Chunk-Grenzen). */
+    public boolean gridOn = false;
+    public int gridStep = 1;
+    public int gridRange = 12;
+    public boolean gridChunks = false;
+    /** Bauen: Lineal zwischen zwei Blöcken. */
+    public boolean rulerOn = false;
+    /** Bauen: Symmetrie-Linie (0 Nord-Süd, 1 Ost-West, 2 beide), Mitte auf Block oder Kante. */
+    public boolean symOn = false;
+    public int symAxis = 0;
+    public boolean symEdge = false;
     /** Inventar-Filter: an/aus und Regeln (Item-ID -> Slot-Maske, Bit 0-8 Hotbar, 9-35 Rucksack). */
     public boolean filterOn = true;
     /** Streng: Alles ohne Regel wird sofort weggeworfen (nur Filter-Items bleiben im Inventar). */

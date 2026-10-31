@@ -88,7 +88,7 @@ public class SoundboardScreen extends Screen {
             panelH = HEADER_H + TAB_H + 8 + 110 + DEV_SLOTS * 22 + FOOTER_H + 2;
         } else {
             shown = 0;
-            panelH = HEADER_H + TAB_H + 8 + 224 + FOOTER_H + 2;
+            panelH = HEADER_H + TAB_H + 8 + 140 + FOOTER_H + 2;
         }
         px0 = (this.width - panelW) / 2;
         px1 = px0 + panelW;
@@ -406,7 +406,7 @@ public class SoundboardScreen extends Screen {
         return spotY() + rel;
     }
 
-    private static final int R1 = 13, R2 = 35, R3 = 57, R4 = 97, R5 = 137, R6 = 159, R7 = 199;
+    private static final int R4 = 13, R5 = 53, R6 = 75, R7 = 115;
 
     private void toolBtn(int x, int y, int w, Runnable r) {
         addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> r.run()).dimensions(x, y, w, 20).build());
@@ -415,36 +415,6 @@ public class SoundboardScreen extends Screen {
     private void initTools() {
         Config cfg = Config.INSTANCE;
         int xl = tlX(), xr = tlRight(), hw = tlHalf(), w = tlW();
-        toolBtn(xl, tlY(R1), hw, () -> {
-            cfg.placeHelper = !cfg.placeHelper;
-            cfg.save();
-            reopenTools();
-        });
-        toolBtn(xr, tlY(R1), hw, () -> {
-            cfg.placeHelper = true;
-            cfg.save();
-            PlaceHelper.pendingStart = true;
-            MinecraftClient.getInstance().setScreen(null);
-        });
-        toolBtn(xl, tlY(R2), 24, () -> {
-            cfg.placeSpacing = Math.max(1, cfg.placeSpacing - 1);
-            cfg.save();
-            reopenTools();
-        });
-        toolBtn(xl + w - 24, tlY(R2), 24, () -> {
-            cfg.placeSpacing = Math.min(32, cfg.placeSpacing + 1);
-            cfg.save();
-            reopenTools();
-        });
-        toolBtn(xl, tlY(R3), hw, () -> {
-            cfg.placeDir = cfg.placeDir + 1 >= PlaceHelper.DIR_NAMES.length ? -1 : cfg.placeDir + 1;
-            cfg.save();
-            reopenTools();
-        });
-        toolBtn(xr, tlY(R3), hw, () -> {
-            PlaceHelper.clear();
-            reopenTools();
-        });
         toolBtn(xl, tlY(R4), hw, () -> MinecraftClient.getInstance().setScreen(new FilterScreen()));
         toolBtn(xr, tlY(R4), hw, () -> {
             cfg.filterOn = !cfg.filterOn;
@@ -477,28 +447,11 @@ public class SoundboardScreen extends Screen {
         int xl = tlX(), xr = tlRight(), hw = tlHalf(), w = tlW();
         int sw = px1 - px0 - 20;
 
-        String info = tr.trimToWidth(PlaceHelper.describe(), sw - 90);
-        int iw = tr.getWidth(info);
-        Ui.section(ctx, tr, xl + 2, tlY(0), "Platzhilfe", sw - iw - 8);
-        Ui.txt(ctx, tr, info, px1 - 12 - iw, tlY(0), 0xFF8B92A5);
-        Ui.toggle(ctx, tr, xl, tlY(R1), xl + hw, tlY(R1) + 20, "Platzhilfe", cfg.placeHelper, Ui.in(mx, my, xl, tlY(R1), xl + hw, tlY(R1) + 20));
-        Ui.btn(ctx, tr, xr, tlY(R1), xr + hw, tlY(R1) + 20, "Startpunkt setzen", Ui.in(mx, my, xr, tlY(R1), xr + hw, tlY(R1) + 20), 0xFF123A55, 0xFF1A4E73, 0xFFFFFFFF);
-
-        boolean hm = Ui.in(mx, my, xl, tlY(R2), xl + 24, tlY(R2) + 20);
-        boolean hp = Ui.in(mx, my, xl + w - 24, tlY(R2), xl + w, tlY(R2) + 20);
-        Ui.btn(ctx, tr, xl, tlY(R2), xl + 24, tlY(R2) + 20, "-", hm, 0xFF1A1E27, 0xFF252B38, 0xFFFFFFFF);
-        Ui.btn(ctx, tr, xl + w - 24, tlY(R2), xl + w, tlY(R2) + 20, "+", hp, 0xFF1A1E27, 0xFF252B38, 0xFFFFFFFF);
-        Ui.btn(ctx, tr, xl + 28, tlY(R2), xl + w - 28, tlY(R2) + 20, "Abstand: jeder " + cfg.placeSpacing + ". Block", false, 0xFF13161D, 0xFF13161D, 0xFFD6D9E0);
-
-        String dn = cfg.placeDir < 0 || cfg.placeDir >= PlaceHelper.DIR_NAMES.length ? "Blickrichtung" : PlaceHelper.DIR_NAMES[cfg.placeDir];
-        Ui.btn(ctx, tr, xl, tlY(R3), xl + hw, tlY(R3) + 20, "Richtung: " + dn, Ui.in(mx, my, xl, tlY(R3), xl + hw, tlY(R3) + 20), 0xFF1A1E27, 0xFF252B38, 0xFFD6D9E0);
-        Ui.btn(ctx, tr, xr, tlY(R3), xr + hw, tlY(R3) + 20, "Markierung löschen", Ui.in(mx, my, xr, tlY(R3), xr + hw, tlY(R3) + 20), 0xFF2A141B, 0xFF3D1C26, 0xFFFF9FB0);
-
-        Ui.section(ctx, tr, xl + 2, tlY(84), "Inventar", sw);
+        Ui.section(ctx, tr, xl + 2, tlY(0), "Inventar", sw);
         Ui.btn(ctx, tr, xl, tlY(R4), xl + hw, tlY(R4) + 20, "Filter einrichten (" + cfg.filterRules.size() + ")", Ui.in(mx, my, xl, tlY(R4), xl + hw, tlY(R4) + 20), 0xFF123A55, 0xFF1A4E73, 0xFFFFFFFF);
         Ui.toggle(ctx, tr, xr, tlY(R4), xr + hw, tlY(R4) + 20, "Item-Filter", cfg.filterOn, Ui.in(mx, my, xr, tlY(R4), xr + hw, tlY(R4) + 20));
 
-        Ui.section(ctx, tr, xl + 2, tlY(124), "Lichtshow", sw);
+        Ui.section(ctx, tr, xl + 2, tlY(40), "Lichtshow", sw);
         Ui.toggle(ctx, tr, xl, tlY(R5), xl + hw, tlY(R5) + 20, "Lichtshow", cfg.lightshow, Ui.in(mx, my, xl, tlY(R5), xl + hw, tlY(R5) + 20));
         Ui.btn(ctx, tr, xr, tlY(R5), xr + hw, tlY(R5) + 20, "Farbe: " + Lightshow.MODES[cfg.lightMode % Lightshow.MODES.length], Ui.in(mx, my, xr, tlY(R5), xr + hw, tlY(R5) + 20), 0xFF1A1E27, 0xFF252B38, 0xFFD6D9E0);
         Ui.btn(ctx, tr, xl, tlY(R6), xl + hw, tlY(R6) + 20, "Testen (20 s)", Ui.in(mx, my, xl, tlY(R6), xl + hw, tlY(R6) + 20), 0xFF123A55, 0xFF1A4E73, 0xFFFFFFFF);
@@ -507,13 +460,13 @@ public class SoundboardScreen extends Screen {
 
         String ac = tr.trimToWidth(AutoClick.describe(), sw - 100);
         int acw = tr.getWidth(ac);
-        Ui.section(ctx, tr, xl + 2, tlY(186), "Auto-Klick", sw - acw - 8);
-        Ui.txt(ctx, tr, ac, px1 - 12 - acw, tlY(186), 0xFF8B92A5);
+        Ui.section(ctx, tr, xl + 2, tlY(102), "Auto-Klick", sw - acw - 8);
+        Ui.txt(ctx, tr, ac, px1 - 12 - acw, tlY(102), 0xFF8B92A5);
         Ui.toggle(ctx, tr, xl, tlY(R7), xl + hw, tlY(R7) + 20, "Auto-Klick (Taste " + AutoClick.keyName() + ")", AutoClick.active, Ui.in(mx, my, xl, tlY(R7), xl + hw, tlY(R7) + 20));
         Ui.btn(ctx, tr, xr, tlY(R7), xr + hw, tlY(R7) + 20, "Makros \u203a", Ui.in(mx, my, xr, tlY(R7), xr + hw, tlY(R7) + 20), 0xFF123A55, 0xFF1A4E73, 0xFFFFFFFF);
 
-        Ui.txt(ctx, tr, "Zielblock anschauen, dann Startpunkt setzen.", px0 + 10, py1 - FOOTER_H + 8, 0xFF9AA0AE);
-        Ui.txt(ctx, tr, "Grün = Start, blau = jeder n-te Block.", px0 + 10, py1 - FOOTER_H + 20, 0xFF9AA0AE);
+        Ui.txt(ctx, tr, "Die Platzhilfe ist jetzt unter Bauen.", px0 + 10, py1 - FOOTER_H + 8, 0xFF9AA0AE);
+        Ui.txt(ctx, tr, "Auto-Klick startet und stoppt mit Taste " + AutoClick.keyName() + ".", px0 + 10, py1 - FOOTER_H + 20, 0xFF9AA0AE);
     }
 
     private static String mmss(long ms) {
@@ -615,7 +568,7 @@ public class SoundboardScreen extends Screen {
         } else if (tab == 3) {
             Ui.txt(ctx, tr, "Songs suchen und abspielen", px0 + 42, py0 + 19, 0xFF8B92A5);
         } else {
-            Ui.txt(ctx, tr, "Platzhilfe und Item-Filter", px0 + 42, py0 + 19, 0xFF8B92A5);
+            Ui.txt(ctx, tr, "Filter, Lichtshow und Auto-Klick", px0 + 42, py0 + 19, 0xFF8B92A5);
         }
 
         // Untertabs

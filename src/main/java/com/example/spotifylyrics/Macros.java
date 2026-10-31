@@ -109,6 +109,11 @@ final class Macros {
     }
 
     // ---------- Steuerung ----------
+    /** Nummer des Schritts, der gerade läuft. */
+    static int currentStep() {
+        return step;
+    }
+
     static boolean isRunning(int i) {
         return running == i;
     }

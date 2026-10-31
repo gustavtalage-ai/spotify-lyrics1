@@ -63,6 +63,11 @@ abstract class ItemScreen extends Screen {
         return new Cell(K_BTN, label, false, r, 0xFF2A141B, 0xFF3D1C26, 0xFFFF9FB0);
     }
 
+    /** Knopf in eigener Farbe (Hintergrund, Hintergrund beim Drüberfahren, Schrift). */
+    static Cell C(String label, int bg, int bgHov, int fg, Runnable r) {
+        return new Cell(K_BTN, label, false, r, bg, bgHov, fg);
+    }
+
     /** Gewählter Reiter (nicht klickbar). */
     static Cell S(String label) {
         return new Cell(K_BTN, label, false, null, Ui.ACCENT, Ui.ACCENT, 0xFF04121B);
@@ -138,6 +143,13 @@ abstract class ItemScreen extends Screen {
     protected void sec(String text) {
         add(K_SECTION, 0, cur, cw, 12, text);
         cur += 14;
+    }
+
+    /** Freie Fläche zum selbst Zeichnen reservieren; gibt die Höhe ab Panel-Oberkante zurück. */
+    protected int area(int h) {
+        int y = cur;
+        cur += h;
+        return y;
     }
 
     protected void gap(int n) {

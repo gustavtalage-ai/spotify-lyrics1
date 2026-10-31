@@ -30,7 +30,9 @@
     "spotifylyrics.mixins.json"
   ],
   "contact": {
+    "homepage": "https://github.com/gustavtalage-ai/spotify-lyrics1",
     "sources": "https://github.com/gustavtalage-ai/spotify-lyrics1"
   },
-  "custom": {}
+  "custom": {},
+  "icon": "assets/spotifylyrics/icon.png"
 }

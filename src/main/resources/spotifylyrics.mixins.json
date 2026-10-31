@@ -1,14 +1,13 @@
 {
 	"required": true,
+	"minVersion": "0.8",
 	"package": "com.example.spotifylyrics.mixin",
 	"compatibilityLevel": "JAVA_21",
-	"mixins": [
-		"ExampleMixin"
+	"client": [
+		"BlockSeedMixin",
+		"BlockOffsetMixin"
 	],
 	"injectors": {
-		"defaultRequire": 1
-	},
-	"overwrites": {
-		"requireAnnotations": true
+		"defaultRequire": 0
 	}
 }

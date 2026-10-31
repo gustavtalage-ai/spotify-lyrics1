@@ -5,7 +5,11 @@
 	"compatibilityLevel": "JAVA_21",
 	"client": [
 		"BlockSeedMixin",
-		"BlockOffsetMixin"
+		"BlockOffsetMixin",
+		"MaceMixin",
+		"TotemMixin",
+		"TotemParticleMixin",
+		"ClientWorldExplosionMixin"
 	],
 	"injectors": {
 		"defaultRequire": 0

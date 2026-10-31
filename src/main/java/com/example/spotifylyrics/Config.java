@@ -98,6 +98,28 @@ public class Config {
     public int crossGap = 2;
     public int crossThick = 1;
     public int crossColor = 4;
+    /** Pixel-Fadenkreuz: an (sonst einfacher Stil), Feld (9 bis 15), Pixelgröße, Schatten, Farben je Pixel (15x15, 0 = leer). */
+    public boolean crossPixel = true;
+    public int crossN = 9;
+    public int crossScale = 1;
+    public boolean crossShadow = true;
+    public int[] crossPix = crossDefault();
+    /** Gegner-Erkennung: Fadenkreuz färbt sich um, wenn ein Gegner im Visier ist. */
+    public boolean crossEnemy = true;
+    public int crossEnemyColor = 0xFFFF3B4E;
+
+    static int[] crossDefault() {
+        int[] p = new int[225];
+        int w = 0xFFFFFFFF;
+        for (int k = 2; k <= 4; k++) {
+            p[7 * 15 + 7 - k] = w;
+            p[7 * 15 + 7 + k] = w;
+            p[(7 - k) * 15 + 7] = w;
+            p[(7 + k) * 15 + 7] = w;
+        }
+        p[7 * 15 + 7] = w;
+        return p;
+    }
     /** Lyrics-Anzeige: Stil (0 Kasten, 1 Leiste, 2 Karaoke), Textart (0 Sätze, 1 Wort für Wort, 2 ein Wort), Farbe, Hintergrund, Größe in %. */
     public int lyStyle = 0;
     public int lyUnit = 0;
@@ -181,6 +203,7 @@ public class Config {
                     if (c.deathDim == null) c.deathDim = "";
                     if (c.lyPos == null || c.lyPos.length < 6) c.lyPos = lyPosInit();
                     if (c.macros == null) c.macros = new java.util.ArrayList<>();
+                    if (c.crossPix == null || c.crossPix.length != 225) c.crossPix = crossDefault();
                     if (c.pvpVer < 2) {
                         c.pvpMods &= ~((1 << 14) | (1 << 15));
                         c.pvpVer = 2;

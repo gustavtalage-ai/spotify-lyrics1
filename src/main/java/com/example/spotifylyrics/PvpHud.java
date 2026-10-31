@@ -849,6 +849,12 @@ final class PvpHud {
     /** Eigenes Fadenkreuz mit Mitte (cx, cy). preview = im Menü (ohne Treffer-Blitz, feste Farbe). */
     static void drawCrosshair(DrawContext ctx, MinecraftClient mc, int cx, int cy, boolean preview) {
         Config c = Config.INSTANCE;
+        if (c.crossPixel) {
+            boolean enemy = !preview && c.crossEnemy && enemyInSight(mc);
+            drawPixelCross(ctx, cx, cy, enemy ? c.crossEnemyColor : 0, Math.max(1, c.crossScale));
+            if (!preview && tickN - lastHitTick < 6) hitMarker(ctx, cx, cy);
+            return;
+        }
         int col = preview ? (c.crossColor == 4 ? 0xFFFFFFFF : crossColor(mc)) : crossColor(mc);
         if (!preview && c.crossColor == 4 && tickN - lastHitTick < 6) col = Ui.GREEN;
         int s = Math.max(1, c.crossSize), g = Math.max(0, c.crossGap), t = Math.max(1, c.crossThick);
@@ -867,7 +873,38 @@ final class PvpHud {
         }
         for (int[] q : r) ctx.fill(q[0] - 1, q[1] - 1, q[2] + 1, q[3] + 1, 0x90000000);
         for (int[] q : r) ctx.fill(q[0], q[1], q[2], q[3], col);
-        if (!preview && tickN - lastHitTick < 6) {
+        if (!preview && tickN - lastHitTick < 6) hitMarker(ctx, cx, cy);
+    }
+
+    /** Ist gerade ein Spieler oder Monster im Visier (in Reichweite)? */
+    static boolean enemyInSight(MinecraftClient mc) {
+        return mc.crosshairTarget instanceof EntityHitResult eh && eh.getEntity() instanceof LivingEntity le && le.isAlive();
+    }
+
+    /** Selbst gepixeltes Fadenkreuz. tint != 0: alle Pixel in dieser Farbe (Gegner im Visier). */
+    static void drawPixelCross(DrawContext ctx, int cx, int cy, int tint, int s) {
+        Config c = Config.INSTANCE;
+        int n = Math.max(3, Math.min(15, c.crossN | 1));
+        int off = (15 - n) / 2, half = n / 2;
+        int[] pix = c.crossPix;
+        if (pix == null || pix.length != 225) return;
+        if (c.crossShadow) {
+            for (int gy = 0; gy < n; gy++) for (int gx = 0; gx < n; gx++) {
+                if (pix[(gy + off) * 15 + gx + off] == 0) continue;
+                int x0 = cx + (gx - half) * s - s / 2, y0 = cy + (gy - half) * s - s / 2;
+                ctx.fill(x0 - 1, y0 - 1, x0 + s + 1, y0 + s + 1, 0x70000000);
+            }
+        }
+        for (int gy = 0; gy < n; gy++) for (int gx = 0; gx < n; gx++) {
+            int col = pix[(gy + off) * 15 + gx + off];
+            if (col == 0) continue;
+            int x0 = cx + (gx - half) * s - s / 2, y0 = cy + (gy - half) * s - s / 2;
+            ctx.fill(x0, y0, x0 + s, y0 + s, tint != 0 ? (tint | 0xFF000000) : col);
+        }
+    }
+
+    private static void hitMarker(DrawContext ctx, int cx, int cy) {
+        {
             for (int k = 4; k <= 8; k++) {
                 ctx.fill(cx - k, cy - k, cx - k + 1, cy - k + 1, 0xFFFF5A6E);
                 ctx.fill(cx + k, cy - k, cx + k + 1, cy - k + 1, 0xFFFF5A6E);

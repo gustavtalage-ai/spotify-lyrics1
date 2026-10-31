@@ -85,6 +85,17 @@ final class Ui {
         round2(c, x0 + 1, y0 + 1, x1 - 1, y1 - 1, fill);
     }
 
+    /** Waagrechter Farbverlauf von a nach b (in schmalen Streifen gezeichnet). */
+    static void hgrad(DrawContext c, int x0, int y0, int x1, int y1, int a, int b) {
+        int w = x1 - x0;
+        if (w <= 0) return;
+        for (int x = x0; x < x1; x += 2) {
+            c.fill(x, y0, Math.min(x1, x + 2), y1, mix(a, b, (x - x0) / (float) w));
+        }
+    }
+
+    static final int PINK = 0xFFF472B6;
+
     static boolean in(int mx, int my, int x0, int y0, int x1, int y1) {
         return mx >= x0 && mx < x1 && my >= y0 && my < y1;
     }
@@ -104,6 +115,7 @@ final class Ui {
         int base = hov ? bgHov : bg;
         round2(c, x0, y0, x1, y1, mix(base, 0xFFFFFFFF, hov ? 0.22f : 0.08f));
         round2(c, x0 + 1, y0 + 1, x1 - 1, y1 - 1, base);
+        c.fill(x0 + 3, y0 + 1, x1 - 3, y0 + 2, mix(base, 0xFFFFFFFF, hov ? 0.30f : 0.14f));
         String t = tr.trimToWidth(label, Math.max(4, x1 - x0 - 8));
         txt(c, tr, t, x0 + (x1 - x0 - tr.getWidth(t)) / 2, y0 + (y1 - y0 - 8) / 2, fg);
     }
@@ -112,7 +124,8 @@ final class Ui {
     static void toggle(DrawContext c, TextRenderer tr, int x0, int y0, int x1, int y1, String label, boolean on, boolean hov) {
         c.fill(x0, y0, x1, y1, BG);
         int base = hov ? SURFACE_HOV : SURFACE;
-        round2(c, x0, y0, x1, y1, mix(base, 0xFFFFFFFF, hov ? 0.18f : 0.06f));
+        if (on) base = mix(base, ACCENT, 0.12f);
+        round2(c, x0, y0, x1, y1, on ? mix(base, ACCENT, 0.45f) : mix(base, 0xFFFFFFFF, hov ? 0.18f : 0.06f));
         round2(c, x0 + 1, y0 + 1, x1 - 1, y1 - 1, base);
         txt(c, tr, tr.trimToWidth(label, Math.max(4, x1 - x0 - 50)), x0 + 9, y0 + (y1 - y0 - 8) / 2, on ? TEXT : MUTED);
         int sx1 = x1 - 9, sx0 = sx1 - 24, sy0 = y0 + (y1 - y0 - 12) / 2;
@@ -126,7 +139,7 @@ final class Ui {
         c.fill(x, y + 1, x + 2, y + 9, ACCENT);
         txt(c, tr, text, x + 6, y, ACCENT_LIGHT);
         int lx = x + 6 + tr.getWidth(text) + 6;
-        c.fill(lx, y + 4, x + width - 4, y + 5, 0x1CFFFFFF);
+        hgrad(c, lx, y + 4, x + width - 4, y + 5, 0x4038BDF8, 0x08FFFFFF);
     }
 
     /** Dunkler Hintergrund mit Panel, Schatten, feinem Rand und Kopfzeile (für alle Menüs gleich). */
@@ -138,7 +151,9 @@ final class Ui {
         round2(c, px0, py0, px1, py0 + head, HEAD_BG);
         c.fill(px0, py0 + head - 4, px1, py0 + head, HEAD_BG);
         c.fill(px0 + 1, py0 + head, px1 - 1, py0 + head + 1, 0xFF232834);
-        c.fill(px0 + 10, py0 + head - 1, px0 + 36, py0 + head + 1, ACCENT);
+        c.fill(px0 + 3, py0 + 1, px1 - 3, py0 + 2, 0x14FFFFFF);
+        hgrad(c, px0 + 1, py0 + head, px1 - 1, py0 + head + 1, 0xA038BDF8, 0x60F472B6);
+        hgrad(c, px0 + 10, py0 + head - 1, px0 + 60, py0 + head + 1, ACCENT, PINK);
     }
 
     /** Kleine Anzeige-Fläche für HUD-Elemente (halbdurchsichtig, abgerundet, mit schmalem Akzentstrich). */

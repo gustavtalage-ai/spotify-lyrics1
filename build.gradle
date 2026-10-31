@@ -24,7 +24,25 @@ dependencies { compileOnly "de.maxhenkel.voicechat:voicechat-api:2.6.0"
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 }
 
+// Texturen der Kampf-Effekte kommen aus MasEffects (MIT-Lizenz, (c) MasUN0) und werden beim Bauen geladen
+def masJarFile = layout.buildDirectory.file("maseffects/MasEffects-1.21.11.jar")
+tasks.register('downloadMasEffects') {
+	def target = masJarFile
+	outputs.file(target)
+	doLast {
+		def f = target.get().asFile
+		f.parentFile.mkdirs()
+		new URL('https://cdn.modrinth.com/data/YsP4hqhn/versions/QXvEu8Y3/MasEffects%201.21.11.jar').withInputStream { i ->
+			f.withOutputStream { o -> o << i }
+		}
+	}
+}
+
 processResources {
+	dependsOn 'downloadMasEffects'
+	from(zipTree(masJarFile)) {
+		include 'assets/maseffects/textures/**'
+	}
 	def version = project.version
 	inputs.property "version", version
 

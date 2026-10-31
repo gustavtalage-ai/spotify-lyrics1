@@ -87,7 +87,7 @@ public final class Chat2 {
             if (!Config.INSTANCE.chat2On || mc.player == null || mc.options.hudHidden || hud == null) return;
             ChatHud h = hud;
             ctx.getMatrices().pushMatrix();
-            ctx.getMatrices().translate(ctx.getScaledWindowWidth() - h.getWidth(), 0f);
+            ctx.getMatrices().translate(ctx.getScaledWindowWidth() - (float) Math.ceil(ChatHud.getWidth(mc.options.getChatWidth().getValue()) * mc.options.getChatScale().getValue()) - 12f, 0f);
             h.render(ctx, mc.textRenderer, mc.inGameHud.getTicks(), 0, 0, false, mc.currentScreen instanceof ChatScreen);
             ctx.getMatrices().popMatrix();
         } catch (Throwable ignored) {

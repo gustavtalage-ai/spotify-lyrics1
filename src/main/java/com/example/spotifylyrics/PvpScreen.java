@@ -94,7 +94,7 @@ public class PvpScreen extends CardGridScreen {
 
     private static void hud(List<Card> out) {
         Config c = Config.INSTANCE;
-        out.add(new Card(Lang.t("Zweiter Chat", "Second chat"), Lang.t("Privat & Filter extra", "PMs & filters separate"), "people", () -> c.chat2On, () -> {
+        out.add(new Card(Lang.t("Zweiter Chat", "Second chat"), Lang.t("Regeln → eigenes Fenster", "Rules → own window"), "people", () -> c.chat2On, () -> {
             c.chat2On = !c.chat2On;
             c.save();
         }, Chat2Screen::new));
@@ -128,7 +128,6 @@ public class PvpScreen extends CardGridScreen {
         out.add(new Card(Lang.t("Anti-Koordinaten", "Anti coords"), Lang.t("Keine Textur-Drehung", "No texture rotation"), "grid", () -> c.antiRotation,
             () -> AntiCoordsScreen.set(!c.antiRotation), AntiCoordsScreen::new));
         out.add(bit(Lang.t("Fadenkreuz", "Crosshair"), Lang.t("Selbst gepixelt", "Pixel it yourself"), "cross", PvpHud.CROSS, CrosshairScreen::new));
-        out.add(bit(Lang.t("Reichweite", "Reach"), Lang.t("Kreis am Boden", "Circle on the ground"), "target", PvpHud.CIRCLE, ReachScreen::new));
         out.add(bit(Lang.t("Abstand-Zahl", "Distance"), Lang.t("Meter zum Gegner", "Meters to enemy"), "ruler", PvpHud.REACH, ReachScreen::new));
         out.add(bit(Lang.t("Angriffs-Balken", "Attack bar"), Lang.t("Lädt am Fadenkreuz", "Charges at crosshair"), "bar", PvpHud.BAR, BarScreen::new));
         out.add(bit(Lang.t("Schadenszahlen", "Damage numbers"), Lang.t("Zahlen beim Treffer", "Numbers on hit"), "bang", PvpHud.DMGNUM, null));

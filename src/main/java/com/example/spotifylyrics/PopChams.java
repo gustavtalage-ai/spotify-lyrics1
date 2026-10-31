@@ -51,7 +51,7 @@ public final class PopChams {
             HEALTH.clear();
             return;
         }
-        if (!c.popChams && !(c.fxOn && c.fxTotem)) {
+        if (!c.popChams) {
             GHOSTS.clear();
             return;
         }
@@ -71,7 +71,6 @@ public final class PopChams {
             boolean lost = before != null && t < before;
             boolean hurt = p.hurtTime > 0 || (hp != null && hp < 2.5f);
             if (lost && hurt && p.isAlive()) {
-                CombatFx.totem(p);
                 if (c.popChams) {
                     synchronized (GHOSTS) {
                         GHOSTS.add(new Ghost(p.getX(), p.getY(), p.getZ(), p.getBodyYaw(), ticks, p.isSneaking()));

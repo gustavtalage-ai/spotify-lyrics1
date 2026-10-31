@@ -16,9 +16,11 @@ public class AuctionScreen extends ItemScreen {
     private static String draft = "";
     private int fieldRow = -1;
     private TextFieldWidget field;
+    private long shownSecond = -1;
+    private boolean builtRunning = false;
 
     public AuctionScreen() {
-        super(Lang.t("Auktionen", "Auctions"), Lang.t("Für HugoSMP: bieten per /pay", "For HugoSMP: bid with /pay"));
+        super(Lang.t("Auktionen", "Auctions"), Lang.t("Bieten mit /pay · höchste Summe gewinnt", "Bid with /pay · highest total wins"));
     }
 
     @Override
@@ -52,36 +54,24 @@ public class AuctionScreen extends ItemScreen {
 
     @Override
     protected void build() {
+        builtRunning = Auction.running;
         if (Auction.running) buildRunning();
+        else if (Auction.finished) buildResult();
         else buildSetup();
     }
 
+    // ---------- 1. Neue Auktion ----------
     private void buildSetup() {
-        if (Auction.finished) {
-            sec(Lang.t("Letzte Auktion", "Last auction"));
-            if (!Auction.winner.isEmpty()) {
-                text(Lang.t("Gewinner: ", "Winner: ") + Auction.winner + " – " + Auction.fmt(Auction.winAmount), Ui.GREEN);
-                row(B("/tpa " + Auction.winner + Lang.t(" kopieren", " copy"), () -> Auction.copy("/tpa " + Auction.winner)),
-                    G(Lang.t("Im Chat verkünden", "Announce in chat"), () -> Auction.say("[Auktion] " + Auction.winner + " hat " + Auction.item
-                        + " für " + Auction.fmt(Auction.winAmount) + " gewonnen! Alle anderen bekommen ihr Geld zurück.")));
-            } else {
-                text(Lang.t("Kein gültiges Gebot.", "No valid bid."), 0xFFF87171);
-            }
-            for (Map.Entry<String, Double> e : Auction.sorted()) {
-                if (e.getKey().equals(Auction.winner)) continue;
-                String cmd = "/pay " + e.getKey() + " " + Auction.plain(e.getValue());
-                row(X(Lang.t("Zurück: ", "Refund: ") + e.getKey() + " " + Auction.fmt(e.getValue())).w(3), G(Lang.t("Kopieren", "Copy"), () -> Auction.copy(cmd)));
-            }
-            gap(4);
-        }
-        sec(Lang.t("Neue Auktion", "New auction"));
-        text(Lang.t("Was wird versteigert?", "What is being auctioned?"), 0xFF8B92A5);
-        row(X("").w(4), G(Lang.t("Aus Hand", "From hand"), () -> {
+        sec(Lang.t("Item", "Item"));
+        row(X("").w(3), G(Lang.t("Aus der Hand", "From hand"), () -> {
             draft = handItem();
             field = null;
             again();
         }));
         fieldRow = lastRow();
+        gap(4);
+
+        sec(Lang.t("Regeln", "Rules"));
         stepper(Lang.t("Dauer: ", "Duration: ") + Auction.MINUTES[minIdx] + " Min", () -> {
             minIdx = Math.max(0, minIdx - 1);
             again();
@@ -100,62 +90,102 @@ public class AuctionScreen extends ItemScreen {
             announce = !announce;
             again();
         }));
+        gap(4);
+
         row(B(Lang.t("Auktion starten", "Start auction"), () -> {
             String it = field != null ? field.getText() : draft;
             if (it.isBlank()) it = handItem();
             Auction.start(it, Auction.MINUTES[minIdx], Auction.MIN_BIDS[bidIdx], announce);
             draft = "";
+            field = null;
             again();
         }));
-        gap(2);
-        text(Lang.t("Alle zahlen mit /pay an dich. Wer am Ende", "Everyone pays you with /pay. Whoever paid"), 0xFF8B92A5);
-        text(Lang.t("insgesamt am meisten gezahlt hat, gewinnt.", "the most in total at the end wins."), 0xFF8B92A5);
     }
 
+    // ---------- 2. Läuft ----------
     private void buildRunning() {
-        sec(Lang.t("Läuft: ", "Running: ") + Auction.item);
         String lead = Auction.leader();
-        text(Lang.t("Noch ", "Time left ") + Auction.timeLeft(), 0xFFFFD166);
-        text(lead.isEmpty() ? Lang.t("Noch kein Gebot", "No bid yet")
-            : Lang.t("Höchstgebot: ", "Highest bid: ") + lead + " – " + Auction.fmt(Auction.BIDS.getOrDefault(lead, 0.0)), Ui.TEXT);
+        sec(Auction.item);
+        row(X(Lang.t("Noch ", "Time left ") + Auction.timeLeft()), X(lead.isEmpty()
+            ? (Auction.minBid > 0 ? Lang.t("ab ", "from ") + Auction.fmt(Auction.minBid) : Lang.t("Kein Gebot", "No bid"))
+            : lead + "  " + Auction.fmt(Auction.BIDS.getOrDefault(lead, 0.0))).w(2));
+        gap(4);
+
+        sec(Lang.t("Gebote", "Bids"));
         List<Map.Entry<String, Double>> l = Auction.sorted();
-        for (int i = 0; i < Math.min(6, l.size()); i++) {
+        if (l.isEmpty()) text(Lang.t("Noch niemand hat bezahlt.", "Nobody has paid yet."), 0xFF8B92A5);
+        for (int i = 0; i < Math.min(8, l.size()); i++) {
             Map.Entry<String, Double> e = l.get(i);
-            row(X((i + 1) + ". " + e.getKey() + "   " + Auction.fmt(e.getValue())));
+            row(X((i + 1) + ".").w(1), X(e.getKey()).w(4), X(Auction.fmt(e.getValue())).w(3));
         }
-        gap(2);
+        gap(4);
+
         row(G("+1 Min", () -> {
             Auction.extend(1);
             again();
         }), G("+5 Min", () -> {
             Auction.extend(5);
             again();
-        }), B(Lang.t("Jetzt beenden", "End now"), () -> {
+        }), B(Lang.t("Beenden", "End"), () -> {
             Auction.finish();
             again();
         }));
-        row(R(Lang.t("Abbrechen (alle zurückzahlen)", "Cancel (refund all)"), () -> {
+        row(R(Lang.t("Abbrechen", "Cancel"), () -> {
             Auction.cancel();
             again();
-        }), G(Lang.t("Aktualisieren", "Refresh"), this::again));
-        gap(2);
-        text(Lang.t("Erkannte Zahlungen: ", "Payments detected: ") + Auction.payCount, 0xFF8B92A5);
-        if (!Auction.lastPayLine.isEmpty()) text(Auction.lastPayLine, 0xFF6B7385);
-        text(Lang.t("Wird keine Zahlung erkannt? Schick mir die Chat-", "Payment not detected? Send me the chat"), 0xFF6B7385);
-        text(Lang.t("Nachricht vom Server, dann passe ich es an.", "message from the server and I'll adjust it."), 0xFF6B7385);
+        }));
+    }
+
+    // ---------- 3. Ergebnis ----------
+    private void buildResult() {
+        sec(Lang.t("Ergebnis", "Result"));
+        if (!Auction.winner.isEmpty()) {
+            row(X(Auction.winner).w(3), X(Auction.fmt(Auction.winAmount)).w(2));
+            row(B("/tpa " + Auction.winner + Lang.t(" kopieren", " copy"), () -> Auction.copy("/tpa " + Auction.winner)),
+                G(Lang.t("Im Chat verkünden", "Announce"), () -> Auction.say("[Auktion] " + Auction.winner + " hat " + Auction.item
+                    + " für " + Auction.fmt(Auction.winAmount) + " gewonnen!")));
+        } else {
+            text(Lang.t("Kein gültiges Gebot.", "No valid bid."), 0xFFF87171);
+        }
+        boolean refunds = false;
+        for (Map.Entry<String, Double> e : Auction.sorted()) {
+            if (e.getKey().equals(Auction.winner)) continue;
+            if (!refunds) {
+                gap(4);
+                sec(Lang.t("Zurückzahlen", "Refunds"));
+                refunds = true;
+            }
+            String cmd = "/pay " + e.getKey() + " " + Auction.plain(e.getValue());
+            row(X(e.getKey()).w(3), X(Auction.fmt(e.getValue())).w(2), G(Lang.t("Kopieren", "Copy"), () -> Auction.copy(cmd)).w(2));
+        }
+        gap(4);
+        row(B(Lang.t("Neue Auktion", "New auction"), () -> {
+            Auction.finished = false;
+            again();
+        }));
     }
 
     @Override
     protected void init() {
         super.init();
-        if (fieldRow < 0 || Auction.running) return;
+        if (fieldRow < 0 || Auction.running || Auction.finished) return;
         int[] r = rect(fieldRow, 0);
         if (r[1] < py0 + HEAD || r[1] + r[3] > py1) return;
         field = new TextFieldWidget(MinecraftClient.getInstance().textRenderer, r[0] + 1, r[1] + 1, r[2] - 2, r[3] - 2, Text.literal(""));
         field.setMaxLength(60);
         field.setText(draft.isEmpty() ? handItem() : draft);
-        field.setPlaceholder(Text.literal(Lang.t("Item-Name …", "Item name …")));
+        field.setPlaceholder(Text.literal(Lang.t("Name des Items …", "Item name …")));
         addDrawableChild(field);
+    }
+
+    /** Während der Auktion jede Sekunde neu aufbauen (Restzeit und Gebote), am Ende einmal fürs Ergebnis. */
+    @Override
+    public void tick() {
+        super.tick();
+        if (!builtRunning) return;
+        long sec = System.currentTimeMillis() / 1000;
+        if (shownSecond < 0) shownSecond = sec;
+        if (sec != shownSecond || !Auction.running) again();
     }
 
     public void render(net.minecraft.client.gui.DrawContext ctx, int mouseX, int mouseY, float delta) {

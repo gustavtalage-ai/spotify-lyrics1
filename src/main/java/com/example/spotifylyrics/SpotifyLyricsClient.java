@@ -42,8 +42,11 @@ public class SpotifyLyricsClient implements ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(BuildHelper::tick);
         HudElementRegistry.addLast(Identifier.of("spotifylyrics", "popchams"), PopChams::render);
         ClientTickEvents.END_CLIENT_TICK.register(PopChams::tick);
-        HudElementRegistry.addLast(Identifier.of("spotifylyrics", "reachcircles"), ReachCircles::render);
-        ClientTickEvents.END_CLIENT_TICK.register(CombatFx::tick);
+        ReachCircles.register();
+        // Kampf-Effekte (aus MasEffects portiert)
+        com.example.spotifylyrics.fx.MasConfig.init();
+        com.example.spotifylyrics.fx.ModParticles.Register();
+        com.example.spotifylyrics.fx.EventManager.registerEvents();
         HudElementRegistry.addLast(Identifier.of("spotifylyrics", "chat2"), Chat2::render);
         Chat2.register();
         Auction.register();

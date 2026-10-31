@@ -357,7 +357,6 @@ final class PvpHud {
         if (Config.INSTANCE.pvpMods == 0) return;
         int w = ctx.getScaledWindowWidth(), h = ctx.getScaledWindowHeight();
 
-        if (on(CIRCLE)) drawCircle(ctx, mc, p, td, w, h);
         if (on(DEATH)) drawDeathBeam(ctx, mc, p, td);
         if (on(DMGNUM)) drawPops(ctx, mc, td);
         if (on(CROSS) && mc.currentScreen == null && mc.options.getPerspective().isFirstPerson()) drawCrosshair(ctx, mc, w / 2, h / 2, false);

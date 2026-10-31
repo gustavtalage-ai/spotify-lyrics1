@@ -30,6 +30,7 @@ public class SkinScreen extends ItemScreen {
     static volatile String status = "";
     static volatile boolean busy = false;
     static volatile boolean uploaded = false;
+    private int previewY = -1;
 
     public SkinScreen() {
         super(Lang.t("Skin wechseln", "Change skin"), Lang.t("Hochladen, wechseln, neu joinen", "Upload, switch, rejoin"));
@@ -159,6 +160,9 @@ public class SkinScreen extends ItemScreen {
         Config c = Config.INSTANCE;
         List<Path> list = skins();
         if (sel >= list.size()) sel = Math.max(0, list.size() - 1);
+        sec(Lang.t("Aktueller Skin", "Current skin"));
+        previewY = MinecraftClient.getInstance().player != null ? area(96) : -1;
+        gap(4);
         sec(Lang.t("Deine Skins", "Your skins") + " (" + list.size() + ")");
         if (list.isEmpty()) {
             text(Lang.t("Noch keine Skins. Leg PNG-Dateien in den Ordner:", "No skins yet. Put PNG files into the folder:"), 0xFF8B92A5);
@@ -194,8 +198,8 @@ public class SkinScreen extends ItemScreen {
             } catch (Exception ignored) {
             }
         }), G(Lang.t("Liste neu laden", "Reload list"), this::again));
-        gap(2);
-        sec(Lang.t("Modell", "Model"));
+        gap(4);
+        sec(Lang.t("Hochladen", "Upload"));
         row(c.skinSlim ? G(Lang.t("Klassisch (4px)", "Classic (4px)"), () -> {
             c.skinSlim = false;
             c.save();
@@ -205,8 +209,6 @@ public class SkinScreen extends ItemScreen {
             c.save();
             again();
         }));
-        gap(2);
-        sec(Lang.t("Wechseln", "Switch"));
         row(B(busy ? Lang.t("Lade hoch …", "Uploading …") : Lang.t("Skin hochladen und anziehen", "Upload and wear skin"), () -> {
             if (!list.isEmpty()) upload(list.get(Math.min(sel, list.size() - 1)), c.skinSlim);
             again();
@@ -217,6 +219,18 @@ public class SkinScreen extends ItemScreen {
             row(G(Lang.t("Neu joinen (Server verlassen)", "Rejoin (leave server)"), SkinScreen::rejoin));
         }
         if (!status.isEmpty()) text(status, uploaded ? Ui.GREEN : 0xFFFFD166);
-        if (!server) text(Lang.t("Einzelspieler: Welt verlassen und neu laden.", "Singleplayer: leave and reload the world."), 0xFF8B92A5);
+        if (uploaded && !server) text(Lang.t("Welt verlassen und neu laden, dann siehst du ihn.", "Leave and reload the world to see it."), 0xFF8B92A5);
+    }
+
+    /** Deinen jetzigen Skin als Figur zeigen (dreht sich mit der Maus, wie im Inventar). */
+    public void render(net.minecraft.client.gui.DrawContext ctx, int mouseX, int mouseY, float delta) {
+        super.render(ctx, mouseX, mouseY, delta);
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (previewY < 0 || mc.player == null) return;
+        int y0 = py0 + previewY - scrollY(), y1 = y0 + 96;
+        if (y0 < py0 + HEAD || y1 > py1) return;
+        int cxm = (px0 + px1) / 2;
+        ctx.fill(cxm - 50, y0, cxm + 50, y1, 0x40000000);
+        net.minecraft.client.gui.screen.ingame.InventoryScreen.drawEntity(ctx, cxm - 50, y0, cxm + 50, y1, 40, 0.0625f, mouseX, mouseY, mc.player);
     }
 }

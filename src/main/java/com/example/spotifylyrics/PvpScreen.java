@@ -93,6 +93,11 @@ public class PvpScreen extends CardGridScreen {
     }
 
     private static void hud(List<Card> out) {
+        Config c = Config.INSTANCE;
+        out.add(new Card(Lang.t("Zweiter Chat", "Second chat"), Lang.t("Privat & Filter extra", "PMs & filters separate"), "people", () -> c.chat2On, () -> {
+            c.chat2On = !c.chat2On;
+            c.save();
+        }, Chat2Screen::new));
         out.add(bit("Info", Lang.t("FPS, XYZ, Richtung", "FPS, XYZ, direction"), "info", PvpHud.INFO, null));
         out.add(bit("CPS", Lang.t("Klicks pro Sekunde", "Clicks per second"), "mouse", PvpHud.CPS, null));
         out.add(bit("Combo", Lang.t("Treffer in Folge", "Hits in a row"), "fire", PvpHud.COMBO, null));
@@ -112,6 +117,16 @@ public class PvpScreen extends CardGridScreen {
             c.popChams = !c.popChams;
             c.save();
         }, PopChamsScreen::new));
+        out.add(new Card(Lang.t("Reichweiten-Kreise", "Reach circles"), Lang.t("Kreis um jeden Gegner", "Circle around enemies"), "ring", () -> c.rcOn, () -> {
+            c.rcOn = !c.rcOn;
+            c.save();
+        }, ReachCirclesScreen::new));
+        out.add(new Card(Lang.t("Kampf-Effekte", "Combat effects"), Lang.t("Schockwelle, Spuren, Tod", "Shockwave, trails, death"), "bang", () -> c.fxOn, () -> {
+            c.fxOn = !c.fxOn;
+            c.save();
+        }, CombatFxScreen::new));
+        out.add(new Card(Lang.t("Anti-Koordinaten", "Anti coords"), Lang.t("Keine Textur-Drehung", "No texture rotation"), "grid", () -> c.antiRotation,
+            () -> AntiCoordsScreen.set(!c.antiRotation), AntiCoordsScreen::new));
         out.add(bit(Lang.t("Fadenkreuz", "Crosshair"), Lang.t("Selbst gepixelt", "Pixel it yourself"), "cross", PvpHud.CROSS, CrosshairScreen::new));
         out.add(bit(Lang.t("Reichweite", "Reach"), Lang.t("Kreis am Boden", "Circle on the ground"), "target", PvpHud.CIRCLE, ReachScreen::new));
         out.add(bit(Lang.t("Abstand-Zahl", "Distance"), Lang.t("Meter zum Gegner", "Meters to enemy"), "ruler", PvpHud.REACH, ReachScreen::new));

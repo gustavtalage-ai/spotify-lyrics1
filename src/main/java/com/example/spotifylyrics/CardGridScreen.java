@@ -49,7 +49,7 @@ abstract class CardGridScreen extends Screen {
     private static boolean dragging = false, mouseWas = false;
     private static int dragOff = 0;
     private final List<Card> cards = new ArrayList<>();
-    private int px0, px1, py0, py1, gx0, gy0, cardW, vis;
+    private int px0, px1, py0, py1, gx0, gy0, cardW, vis, cols = 3, tabH = 36;
     private TextFieldWidget search;
 
     protected CardGridScreen(String title) {
@@ -126,11 +126,11 @@ abstract class CardGridScreen extends Screen {
     }
 
     private int rows() {
-        return (cards.size() + 2) / 3;
+        return (cards.size() + cols - 1) / cols;
     }
 
     private int[] card(int i) {
-        int r = i / 3 - scroll(), col = i % 3;
+        int r = i / cols - scroll(), col = i % cols;
         if (r < 0 || r >= vis) return null;
         return new int[] {gx0 + col * (cardW + GAP), gy0 + r * (CARD_H + GAP), cardW, CARD_H};
     }
@@ -140,7 +140,7 @@ abstract class CardGridScreen extends Screen {
     }
 
     private int[] sideBtn(int i) {
-        return new int[] {px0 + 8, gy0 + i * 40, SIDE_W - 6, 36};
+        return new int[] {px0 + 8, py0 + HEAD + 4 + i * (tabH + 4), SIDE_W - 6, tabH};
     }
 
     private int[] gearRect(int[] r) {
@@ -156,7 +156,7 @@ abstract class CardGridScreen extends Screen {
         cards(cards, q);
         int top = searchable() ? SEARCH_H : 0;
         int panelW = Math.min(460, this.width - 16);
-        vis = Math.max(2, Math.min(4, (this.height - 12 - HEAD - 10 - top - FOOT) / (CARD_H + GAP)));
+        vis = Math.max(1, Math.min(4, (this.height - 12 - HEAD - 10 - top - FOOT) / (CARD_H + GAP)));
         int panelH = HEAD + 8 + top + vis * (CARD_H + GAP) + FOOT;
         px0 = (this.width - panelW) / 2;
         px1 = px0 + panelW;
@@ -164,7 +164,15 @@ abstract class CardGridScreen extends Screen {
         py1 = py0 + panelH;
         gx0 = px0 + 8 + (hasSide() ? SIDE_W + 4 : 0);
         gy0 = py0 + HEAD + 8 + top;
-        cardW = (px1 - 14 - gx0 - 2 * GAP) / 3;
+        // Spalten an die Breite anpassen, damit nichts abgeschnitten wird
+        int gridW = px1 - 14 - gx0;
+        cols = gridW >= 3 * 112 + 2 * GAP ? 3 : gridW >= 2 * 100 + GAP ? 2 : 1;
+        cardW = (gridW - (cols - 1) * GAP) / cols;
+        // Seiten-Reiter an die Höhe anpassen
+        if (hasSide()) {
+            int n = categories().length;
+            tabH = Math.max(16, Math.min(36, (py1 - 6 - (py0 + HEAD + 4) - (n - 1) * 4) / n));
+        }
         setScroll(Math.max(0, Math.min(scroll(), Math.max(0, rows() - vis))));
 
         addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> MinecraftClient.getInstance().setScreen(back()))
@@ -349,9 +357,16 @@ abstract class CardGridScreen extends Screen {
                 ctx.fill(r[0], r[1], r[0] + r[2], r[1] + r[3], Ui.BG);
                 Ui.card(ctx, r[0], r[1], r[0] + r[2], r[1] + r[3], sel ? ca : hov ? 0xFF3A4152 : Ui.BORDER,
                     sel ? Ui.mix(0xFF141821, ca, 0.18f) : 0xFF141821);
-                if (icons != null) Icons.draw(ctx, icons[i], r[0] + (r[2] - 12) / 2, r[1] + 6, 1, sel ? ca : 0xFFAAB2C5);
                 String l = cats[i];
-                Ui.txt(ctx, tr, l, r[0] + (r[2] - tr.getWidth(l)) / 2, r[1] + 24, sel ? Ui.TEXT : Ui.MUTED);
+                if (tabH >= 34) {
+                    if (icons != null) Icons.draw(ctx, icons[i], r[0] + (r[2] - 12) / 2, r[1] + 6, 1, sel ? ca : 0xFFAAB2C5);
+                    Ui.txt(ctx, tr, l, r[0] + (r[2] - tr.getWidth(l)) / 2, r[1] + 24, sel ? Ui.TEXT : Ui.MUTED);
+                } else if (tabH >= 22 && icons != null) {
+                    Icons.draw(ctx, icons[i], r[0] + (r[2] - 12) / 2, r[1] + (tabH - 12) / 2, 1, sel ? ca : 0xFFAAB2C5);
+                } else {
+                    String t = tr.trimToWidth(l, r[2] - 4);
+                    Ui.txt(ctx, tr, t, r[0] + (r[2] - tr.getWidth(t)) / 2, r[1] + (tabH - 8) / 2, sel ? Ui.TEXT : Ui.MUTED);
+                }
             }
         }
 

@@ -55,6 +55,24 @@ public class Config {
     public int popTime = 3;
     public boolean popRise = true;
     public boolean popSelf = false;
+    /** Anti-Koordinaten: keine zufällige Textur-Drehung / kein Versatz (verrät sonst die Position). */
+    public boolean antiRotation = false;
+    public boolean antiOffset = true;
+    /** Reichweiten-Kreise um andere Spieler. */
+    public boolean rcOn = false;
+    public int rcRange = 24;
+    public int rcStyle = 0;
+    public boolean rcFriends = false;
+    /** Kampf-Effekte (eigene Partikel). */
+    public boolean fxOn = false;
+    public boolean fxMace = true, fxDeath = true, fxPearl = true, fxTotem = true, fxWind = true;
+    /** Zweiter Chat: Nachrichten mit diesen Wörtern landen in einem eigenen Fenster. */
+    public boolean chat2On = false;
+    public boolean chat2Hide = true;
+    public boolean chat2Pm = true;
+    public int chat2Corner = 0;
+    public int chat2Lines = 8;
+    public java.util.List<String> chat2Words = new java.util.ArrayList<>();
     /** Bauen: Kreis-/Kugel-Vorlage (Form siehe BuildHelper.SHAPES, Radius in Blöcken). */
     public boolean shapeOn = false;
     public int shapeType = 0;

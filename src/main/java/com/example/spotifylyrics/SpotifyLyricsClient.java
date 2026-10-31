@@ -25,7 +25,7 @@ import org.slf4j.LoggerFactory;
 import java.net.URI;
 
 public class SpotifyLyricsClient implements ClientModInitializer {
-    public static final Logger LOGGER = LoggerFactory.getLogger("spotifylyrics");
+    public static final Logger LOGGER = LoggerFactory.getLogger("alphamod");
 
     @Override
     public void onInitializeClient() {
@@ -42,6 +42,13 @@ public class SpotifyLyricsClient implements ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(BuildHelper::tick);
         HudElementRegistry.addLast(Identifier.of("spotifylyrics", "popchams"), PopChams::render);
         ClientTickEvents.END_CLIENT_TICK.register(PopChams::tick);
+        HudElementRegistry.addLast(Identifier.of("spotifylyrics", "reachcircles"), ReachCircles::render);
+        ClientTickEvents.END_CLIENT_TICK.register(CombatFx::tick);
+        HudElementRegistry.addLast(Identifier.of("spotifylyrics", "chat2"), Chat2::render);
+        Chat2.register();
+        Auction.register();
+        ClientTickEvents.END_CLIENT_TICK.register(Auction::tick);
+        HudElementRegistry.addLast(Identifier.of("spotifylyrics", "auction"), Auction::render);
         ClientTickEvents.END_CLIENT_TICK.register(InventoryFilter::tick);
         HitAssist.register();
         ClientTickEvents.END_CLIENT_TICK.register(HitAssist::tick);

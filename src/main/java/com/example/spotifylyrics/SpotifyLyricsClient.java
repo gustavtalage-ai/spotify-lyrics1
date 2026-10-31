@@ -40,6 +40,8 @@ public class SpotifyLyricsClient implements ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(PlaceHelper::tick);
         HudElementRegistry.addLast(Identifier.of("spotifylyrics", "buildhelper"), BuildHelper::render);
         ClientTickEvents.END_CLIENT_TICK.register(BuildHelper::tick);
+        HudElementRegistry.addLast(Identifier.of("spotifylyrics", "popchams"), PopChams::render);
+        ClientTickEvents.END_CLIENT_TICK.register(PopChams::tick);
         ClientTickEvents.END_CLIENT_TICK.register(InventoryFilter::tick);
         HitAssist.register();
         ClientTickEvents.END_CLIENT_TICK.register(HitAssist::tick);

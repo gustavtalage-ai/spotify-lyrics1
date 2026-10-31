@@ -10,11 +10,10 @@ import net.minecraft.text.Text;
 /** Startfläche der Taste K: acht Kacheln (4 nebeneinander, 2 Reihen). */
 public class HubScreen extends Screen {
     private static final int HEAD = 34;
-    private static final int CARD_H = 80;
     private static final int COLS = 4;
     private static final int N = 8;
 
-    private int px0, px1, py0, py1, cardW;
+    private int px0, px1, py0, py1, cardW, CARD_H = 80, skinX0, skinX1;
 
     public HubScreen() {
         super(Text.literal("Menü"));
@@ -31,6 +30,8 @@ public class HubScreen extends Screen {
     @Override
     protected void init() {
         int panelW = Math.min(476, this.width - 16);
+        // Kachel-Höhe an kleine Fenster / große GUI-Skalierung anpassen, damit nichts abgeschnitten wird
+        CARD_H = Math.max(46, Math.min(80, (this.height - 8 - HEAD - 12 - 8 - 12) / 2));
         int panelH = HEAD + 12 + 2 * CARD_H + 8 + 12;
         px0 = (this.width - panelW) / 2;
         px1 = px0 + panelW;
@@ -42,6 +43,13 @@ public class HubScreen extends Screen {
             addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> open(idx))
                 .dimensions(cx(i), cy(i), cardW, CARD_H).build());
         }
+        // kleiner "Skin"-Knopf oben rechts neben dem Tasten-Hinweis
+        TextRenderer tr = MinecraftClient.getInstance().textRenderer;
+        int hw = tr.getWidth(Lang.t("Taste ", "Key ") + Macros.keyName(Config.INSTANCE.menuKey)) + 12;
+        skinX1 = px1 - 12 - hw - 6;
+        skinX0 = skinX1 - (tr.getWidth("Skin") + 24);
+        addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> MinecraftClient.getInstance().setScreen(new SkinScreen()))
+            .dimensions(skinX0, py0 + 9, skinX1 - skinX0, 16).build());
     }
 
     private static void open(int i) {
@@ -72,6 +80,11 @@ public class HubScreen extends Screen {
         int hw = tr.getWidth(hint) + 12;
         Ui.card(ctx, px1 - 12 - hw, py0 + 9, px1 - 12, py0 + 25, Ui.BORDER, Ui.SURFACE);
         Ui.txt(ctx, tr, hint, px1 - 12 - hw + 6, py0 + 13, Ui.MUTED);
+        boolean sh = Ui.in(mouseX, mouseY, skinX0, py0 + 9, skinX1, py0 + 25);
+        ctx.fill(skinX0, py0 + 9, skinX1, py0 + 25, Ui.BG);
+        Ui.card(ctx, skinX0, py0 + 9, skinX1, py0 + 25, sh ? Ui.ACCENT : Ui.BORDER, sh ? Ui.CARD_HOV : Ui.SURFACE);
+        Icons.draw(ctx, "people", skinX0 + 5, py0 + 11, 1, sh ? 0xFFFFFFFF : Ui.ACCENT);
+        Ui.txt(ctx, tr, "Skin", skinX0 + 19, py0 + 13, sh ? Ui.TEXT : Ui.MUTED);
 
         boolean playing = Soundboard.nowPlaying != null;
         int build = BuildHelper.activeCount();
@@ -108,13 +121,20 @@ public class HubScreen extends Screen {
             boolean hov = Ui.in(mouseX, mouseY, x0, y0, x1, y1);
             ctx.fill(x0, y0, x1, y1, Ui.BG);   // normalen Knopf darunter verdecken
             Ui.card(ctx, x0, y0, x1, y1, hov ? accent[i] : Ui.BORDER, hov ? Ui.CARD_HOV : Ui.CARD);
-            // Symbol-Kachel oben links (gezeichnetes Symbol), Pfeil oben rechts
-            Ui.round2(ctx, x0 + 8, y0 + 8, x0 + 36, y0 + 36, (accent[i] & 0x00FFFFFF) | 0x30000000);
-            Icons.draw(ctx, icons[i], x0 + 10, y0 + 10, 2, hov ? 0xFFFFFFFF : accent[i]);
-            Ui.txt(ctx, tr, "›", x1 - 14, y0 + 19, hov ? accent[i] : Ui.MUTED);
-            // Name und Beschreibung
-            Ui.txt(ctx, tr, tr.trimToWidth(names[i], cardW - 20), x0 + 10, y0 + 43, Ui.TEXT);
-            Ui.txt(ctx, tr, tr.trimToWidth(sub1[i], cardW - 20), x0 + 10, y0 + 55, Ui.MUTED);
+            if (CARD_H >= 72) {
+                // Symbol-Kachel oben links (gezeichnetes Symbol), Pfeil oben rechts
+                Ui.round2(ctx, x0 + 8, y0 + 8, x0 + 36, y0 + 36, (accent[i] & 0x00FFFFFF) | 0x30000000);
+                Icons.draw(ctx, icons[i], x0 + 10, y0 + 10, 2, hov ? 0xFFFFFFFF : accent[i]);
+                Ui.txt(ctx, tr, "›", x1 - 14, y0 + 19, hov ? accent[i] : Ui.MUTED);
+                // Name und Beschreibung
+                Ui.txt(ctx, tr, tr.trimToWidth(names[i], cardW - 20), x0 + 10, y0 + 43, Ui.TEXT);
+                Ui.txt(ctx, tr, tr.trimToWidth(sub1[i], cardW - 20), x0 + 10, y0 + 55, Ui.MUTED);
+            } else {
+                // kompakt: kleines Symbol neben dem Namen
+                Ui.round2(ctx, x0 + 6, y0 + 6, x0 + 22, y0 + 22, (accent[i] & 0x00FFFFFF) | 0x30000000);
+                Icons.draw(ctx, icons[i], x0 + 8, y0 + 8, 1, hov ? 0xFFFFFFFF : accent[i]);
+                Ui.txt(ctx, tr, tr.trimToWidth(names[i], cardW - 34), x0 + 27, y0 + 10, Ui.TEXT);
+            }
             // Statuszeile
             boolean on = dot[i] != off;
             Ui.round(ctx, x0 + 10, y1 - 12, x0 + 16, y1 - 6, dot[i]);

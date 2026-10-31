@@ -81,8 +81,23 @@ abstract class ItemScreen extends Screen {
     private static final class It {
         int kind, x, y, w, h, c1, c2, fg;
         String s;
-        boolean on;
+        boolean on, hidden;
         Runnable act;
+    }
+
+    // Scrollen, wenn das Menü nicht auf den Bildschirm passt (Mausrad oder Leiste rechts ziehen)
+    private static final java.util.Map<String, Integer> SCROLLS = new java.util.HashMap<>();
+    private static boolean dragging = false, mouseWas = false;
+    private static int dragOff = 0;
+    private int scroll = 0, maxScroll = 0, viewTop, viewBot, fullH;
+
+    /** Wie weit gerade nach unten gescrollt ist (für eigene Flächen). */
+    protected int scrollY() {
+        return scroll;
+    }
+
+    private String scrollKey() {
+        return getClass().getName();
     }
 
     private final List<It> items = new ArrayList<>();
@@ -195,7 +210,7 @@ abstract class ItemScreen extends Screen {
     /** Kasten einer Zelle in Bildschirm-Koordinaten {x, y, Breite, Höhe}; erst nach build() gültig. */
     protected int[] rect(int row, int cell) {
         int[] r = rowRects.get(row)[cell];
-        return new int[] {cx + r[0], py0 + r[1], r[2], r[3]};
+        return new int[] {cx + r[0], py0 + r[1] - scroll, r[2], r[3]};
     }
 
     /** [-]  Text  [+] */
@@ -213,15 +228,21 @@ abstract class ItemScreen extends Screen {
         cw = panelW - 20;
         cur = HEAD + 8;
         build();
-        int panelH = cur + 8;
+        fullH = cur + 8;
+        int panelH = Math.min(fullH, Math.max(HEAD + 60, this.height - 8));
+        maxScroll = Math.max(0, fullH - panelH);
+        scroll = Math.max(0, Math.min(maxScroll, SCROLLS.getOrDefault(scrollKey(), 0)));
         px0 = (this.width - panelW) / 2;
         px1 = px0 + panelW;
         py0 = Math.max(4, (this.height - panelH) / 2);
         py1 = py0 + panelH;
         cx = px0 + 10;
+        viewTop = py0 + HEAD + 2;
+        viewBot = py1 - 4;
         for (It it : items) {
             it.x += cx;
-            it.y += py0;
+            it.y += py0 - scroll;
+            it.hidden = maxScroll > 0 && (it.y < viewTop || it.y + it.h > viewBot);
         }
         hasBack = back() != null;
         if (hasBack) {
@@ -229,7 +250,7 @@ abstract class ItemScreen extends Screen {
                 .dimensions(px1 - 10 - 72, py0 + 5, 72, 18).build());
         }
         for (It it : items) {
-            if (it.act == null || it.kind == K_SECTION || it.kind == K_TEXT) continue;
+            if (it.act == null || it.kind == K_SECTION || it.kind == K_TEXT || it.hidden) continue;
             final Runnable r = it.act;
             addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> r.run()).dimensions(it.x, it.y, it.w, it.h).build());
         }
@@ -241,7 +262,44 @@ abstract class ItemScreen extends Screen {
     }
 
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontal, double vertical) {
-        return onScroll((int) Math.signum(vertical));
+        int dir = (int) Math.signum(vertical);
+        if (onScroll(dir)) return true;
+        if (maxScroll <= 0) return false;
+        setScroll(scroll - dir * 22);
+        return true;
+    }
+
+    private void setScroll(int ns) {
+        ns = Math.max(0, Math.min(maxScroll, ns));
+        if (ns == scroll) return;
+        SCROLLS.put(scrollKey(), ns);
+        again();
+    }
+
+    /** Leiste rechts zeichnen und ziehen. */
+    private void scrollbar(DrawContext ctx, int mouseX, int mouseY) {
+        long win = org.lwjgl.glfw.GLFW.glfwGetCurrentContext();
+        boolean down = win != 0 && org.lwjgl.glfw.GLFW.glfwGetMouseButton(win, org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_LEFT) == org.lwjgl.glfw.GLFW.GLFW_PRESS;
+        if (maxScroll <= 0) {
+            mouseWas = down;
+            return;
+        }
+        int tx0 = px1 - 7, tx1 = px1 - 3, trackH = viewBot - viewTop;
+        int thumbH = Math.max(16, trackH * (py1 - py0) / Math.max(1, fullH));
+        int thumbY = viewTop + (trackH - thumbH) * scroll / maxScroll;
+        boolean over = Ui.in(mouseX, mouseY, tx0 - 4, viewTop, px1, viewBot);
+        if (down && !mouseWas && over) {
+            dragging = true;
+            dragOff = mouseY >= thumbY && mouseY < thumbY + thumbH ? mouseY - thumbY : thumbH / 2;
+        }
+        if (!down) dragging = false;
+        mouseWas = down;
+        ctx.fill(tx0, viewTop, tx1, viewBot, 0x22FFFFFF);
+        Ui.round(ctx, tx0, thumbY, tx1, thumbY + thumbH, dragging || over ? Ui.ACCENT : 0x88FFFFFF);
+        if (dragging) {
+            int ns = (mouseY - dragOff - viewTop) * maxScroll / Math.max(1, trackH - thumbH);
+            setScroll(ns);
+        }
     }
 
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
@@ -256,6 +314,7 @@ abstract class ItemScreen extends Screen {
                 0xFF1A1E27, 0xFF252B38, 0xFFD6D9E0);
         }
         for (It it : items) {
+            if (it.hidden) continue;
             boolean hov = it.act != null && Ui.in(mouseX, mouseY, it.x, it.y, it.x + it.w, it.y + it.h);
             switch (it.kind) {
                 case K_TOGGLE -> Ui.toggle(ctx, tr, it.x, it.y, it.x + it.w, it.y + it.h, it.s, it.on, hov);
@@ -264,5 +323,6 @@ abstract class ItemScreen extends Screen {
                 default -> Ui.txt(ctx, tr, tr.trimToWidth(it.s, it.w - 2), it.x + 2, it.y, it.fg);
             }
         }
+        scrollbar(ctx, mouseX, mouseY);
     }
 }

@@ -179,7 +179,7 @@ public class MacroEditScreen extends ItemScreen {
         int r = i / COLS - scroll, c = i % COLS;
         if (r < 0 || r >= VIS || areaY < 0) return null;
         int bw = (cw - (COLS - 1) * GAPX) / COLS;
-        return new int[] {cx + c * (bw + GAPX), py0 + areaY + 2 + r * ROWH, bw, BH};
+        return new int[] {cx + c * (bw + GAPX), py0 + areaY - scrollY() + 2 + r * ROWH, bw, BH};
     }
 
     private static int nextDur(int ms) {
@@ -329,7 +329,7 @@ public class MacroEditScreen extends ItemScreen {
         if (m == null || areaY < 0) return;
         TextRenderer tr = MinecraftClient.getInstance().textRenderer;
         int n = m.steps.size();
-        int ax0 = cx, ay0 = py0 + areaY, ax1 = cx + cw, ay1 = ay0 + VIS * ROWH;
+        int ax0 = cx, ay0 = py0 + areaY - scrollY(), ax1 = cx + cw, ay1 = ay0 + VIS * ROWH;
         // Untergrund mit Punktraster
         ctx.fill(ax0 - 2, ay0 - 2, ax1 + 2, ay1, 0xFF0B0D12);
         for (int x = ax0 + 4; x < ax1; x += 10) for (int y = ay0 + 3; y < ay1 - 1; y += 10) ctx.fill(x, y, x + 1, y + 1, 0x22FFFFFF);

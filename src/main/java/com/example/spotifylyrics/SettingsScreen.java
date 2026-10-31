@@ -59,6 +59,8 @@ public class SettingsScreen extends ItemScreen {
     @Override
     protected void build() {
         Config c = Config.INSTANCE;
+        row(G(Lang.t("Skin wechseln ›", "Change skin ›"), () -> net.minecraft.client.MinecraftClient.getInstance().setScreen(new SkinScreen())));
+        gap(2);
         sec(Lang.t("Akzentfarbe", "Accent color") + ": " + Ui.ACCENT_NAMES[Math.floorMod(c.uiAccent, Ui.ACCENT_NAMES.length)]);
         row(accent(0), accent(1), accent(2), accent(3));
         row(accent(4), accent(5), accent(6), accent(7));

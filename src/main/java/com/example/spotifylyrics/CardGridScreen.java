@@ -46,6 +46,8 @@ abstract class CardGridScreen extends Screen {
         }
     }
 
+    private static boolean dragging = false, mouseWas = false;
+    private static int dragOff = 0;
     private final List<Card> cards = new ArrayList<>();
     private int px0, px1, py0, py1, gx0, gy0, cardW, vis;
     private TextFieldWidget search;
@@ -162,7 +164,7 @@ abstract class CardGridScreen extends Screen {
         py1 = py0 + panelH;
         gx0 = px0 + 8 + (hasSide() ? SIDE_W + 4 : 0);
         gy0 = py0 + HEAD + 8 + top;
-        cardW = (px1 - 8 - gx0 - 2 * GAP) / 3;
+        cardW = (px1 - 14 - gx0 - 2 * GAP) / 3;
         setScroll(Math.max(0, Math.min(scroll(), Math.max(0, rows() - vis))));
 
         addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> MinecraftClient.getInstance().setScreen(back()))
@@ -254,6 +256,37 @@ abstract class CardGridScreen extends Screen {
             again();
         }
         return true;
+    }
+
+    /** Leiste rechts neben den Kästen: zeigt die Position und lässt sich ziehen. */
+    private void scrollbar(DrawContext ctx, int mouseX, int mouseY) {
+        long win = org.lwjgl.glfw.GLFW.glfwGetCurrentContext();
+        boolean down = win != 0 && org.lwjgl.glfw.GLFW.glfwGetMouseButton(win, org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_LEFT) == org.lwjgl.glfw.GLFW.GLFW_PRESS;
+        int max = Math.max(0, rows() - vis);
+        if (max <= 0) {
+            mouseWas = down;
+            return;
+        }
+        int top = gy0, bot = gy0 + vis * (CARD_H + GAP) - GAP, tx0 = px1 - 7, tx1 = px1 - 3, trackH = bot - top;
+        int thumbH = Math.max(16, trackH * vis / rows());
+        int thumbY = top + (trackH - thumbH) * scroll() / max;
+        boolean over = Ui.in(mouseX, mouseY, tx0 - 3, top, px1, bot);
+        if (down && !mouseWas && over) {
+            dragging = true;
+            dragOff = mouseY >= thumbY && mouseY < thumbY + thumbH ? mouseY - thumbY : thumbH / 2;
+        }
+        if (!down) dragging = false;
+        mouseWas = down;
+        ctx.fill(tx0, top, tx1, bot, 0x22FFFFFF);
+        Ui.round(ctx, tx0, thumbY, tx1, thumbY + thumbH, dragging || over ? Ui.ACCENT : 0x88FFFFFF);
+        if (dragging) {
+            int ns = Math.round((mouseY - dragOff - top) * (float) max / Math.max(1, trackH - thumbH));
+            ns = Math.max(0, Math.min(max, ns));
+            if (ns != scroll()) {
+                setScroll(ns);
+                again();
+            }
+        }
     }
 
     // ---------- Zeichnen ----------
@@ -360,6 +393,8 @@ abstract class CardGridScreen extends Screen {
                 Ui.txt(ctx, tr, Lang.t("Öffnen ›", "Open ›"), x0 + 6, y1 - 12, hov ? acc : 0xFF7D8598);
             }
         }
+
+        scrollbar(ctx, mouseX, mouseY);
 
         // Fuß
         int fy = py1 - FOOT + 4;

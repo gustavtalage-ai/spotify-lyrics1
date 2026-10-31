@@ -107,6 +107,11 @@ public class PvpScreen extends CardGridScreen {
     }
 
     private static void visuell(List<Card> out) {
+        Config c = Config.INSTANCE;
+        out.add(new Card("Pop-Chams", Lang.t("Umriss beim Totem-Pop", "Outline on totem pop"), "totem", () -> c.popChams, () -> {
+            c.popChams = !c.popChams;
+            c.save();
+        }, PopChamsScreen::new));
         out.add(bit(Lang.t("Fadenkreuz", "Crosshair"), Lang.t("Selbst gepixelt", "Pixel it yourself"), "cross", PvpHud.CROSS, CrosshairScreen::new));
         out.add(bit(Lang.t("Reichweite", "Reach"), Lang.t("Kreis am Boden", "Circle on the ground"), "target", PvpHud.CIRCLE, ReachScreen::new));
         out.add(bit(Lang.t("Abstand-Zahl", "Distance"), Lang.t("Meter zum Gegner", "Meters to enemy"), "ruler", PvpHud.REACH, ReachScreen::new));

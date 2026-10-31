@@ -47,6 +47,14 @@ public class Config {
     public int uiBg = 0;
     public int lang = 0;
     public int menuKey = 75;
+    /** Skin-Menü: Modell schmal (Alex) statt klassisch. */
+    public boolean skinSlim = false;
+    /** Pop-Chams: Umriss wenn ein Totem poppt (Farbe aus PopChams.COLORS, Dauer in Sekunden). */
+    public boolean popChams = false;
+    public int popColor = 0;
+    public int popTime = 3;
+    public boolean popRise = true;
+    public boolean popSelf = false;
     /** Bauen: Kreis-/Kugel-Vorlage (Form siehe BuildHelper.SHAPES, Radius in Blöcken). */
     public boolean shapeOn = false;
     public int shapeType = 0;

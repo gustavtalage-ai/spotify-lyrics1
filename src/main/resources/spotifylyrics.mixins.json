@@ -9,7 +9,8 @@
 		"MaceMixin",
 		"TotemMixin",
 		"TotemParticleMixin",
-		"ClientWorldExplosionMixin"
+		"ClientWorldExplosionMixin",
+		"ZoomMixin"
 	],
 	"injectors": {
 		"defaultRequire": 0

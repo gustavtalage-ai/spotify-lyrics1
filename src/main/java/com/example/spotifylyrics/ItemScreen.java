@@ -16,7 +16,7 @@ import java.util.List;
  */
 abstract class ItemScreen extends Screen {
     static final int HEAD = 28;
-    private static final int K_TOGGLE = 0, K_BTN = 1, K_LABEL = 2, K_SECTION = 3, K_TEXT = 4;
+    private static final int K_TOGGLE = 0, K_BTN = 1, K_LABEL = 2, K_SECTION = 3, K_TEXT = 4, K_SWATCH = 5;
 
     /** Eine Zelle in einer Zeile. */
     static final class Cell {
@@ -71,6 +71,34 @@ abstract class ItemScreen extends Screen {
     /** Gewählter Reiter (nicht klickbar). */
     static Cell S(String label) {
         return new Cell(K_BTN, label, false, null, Ui.ACCENT, Ui.ACCENT, 0xFF04121B);
+    }
+
+    /** Farbfeld (color == 0: Regenbogen). */
+    static Cell Sw(int color, String label, boolean sel, Runnable r) {
+        return new Cell(K_SWATCH, label == null ? "" : label, sel, r, color, color, 0);
+    }
+
+    /**
+     * Farbauswahl: optional eine Zeile mit Name und gewählter Farbe, darunter alle Farben als Felder.
+     * colors[i] == 0 bedeutet Regenbogen.
+     */
+    protected void colorPick(String label, int[] colors, String[] names, int selected, java.util.function.IntConsumer pick) {
+        int sel = Math.floorMod(selected, colors.length);
+        if (label != null) text(label + ":  " + names[sel], Ui.TEXT);
+        int perRow = colors.length <= 8 ? colors.length : (colors.length + 1) / 2;
+        for (int start = 0; start < colors.length; start += perRow) {
+            int n = Math.min(perRow, colors.length - start);
+            Cell[] cells = new Cell[n];
+            for (int i = 0; i < n; i++) {
+                final int k = start + i;
+                cells[i] = Sw(colors[k], "", k == sel, () -> {
+                    pick.accept(k);
+                    Config.INSTANCE.save();
+                    again();
+                });
+            }
+            row(cells);
+        }
     }
 
     /** Reiner Text-Kasten. */
@@ -319,6 +347,7 @@ abstract class ItemScreen extends Screen {
             switch (it.kind) {
                 case K_TOGGLE -> Ui.toggle(ctx, tr, it.x, it.y, it.x + it.w, it.y + it.h, it.s, it.on, hov);
                 case K_BTN, K_LABEL -> Ui.btn(ctx, tr, it.x, it.y, it.x + it.w, it.y + it.h, it.s, hov, it.c1, it.c2, it.fg);
+                case K_SWATCH -> Ui.swatch(ctx, tr, it.x, it.y, it.x + it.w, it.y + it.h, it.c1, it.s, it.on, hov);
                 case K_SECTION -> Ui.section(ctx, tr, it.x + 2, it.y, it.s, it.w);
                 default -> Ui.txt(ctx, tr, tr.trimToWidth(it.s, it.w - 2), it.x + 2, it.y, it.fg);
             }

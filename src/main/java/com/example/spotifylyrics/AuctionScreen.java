@@ -31,12 +31,12 @@ public class AuctionScreen extends ItemScreen {
 
     @Override
     protected Screen back() {
-        return new HubScreen();
+        return new ToolsScreen();
     }
 
     @Override
     protected String backLabel() {
-        return Lang.t("‹ Menü", "‹ Menu");
+        return "‹ Tools";
     }
 
     @Override

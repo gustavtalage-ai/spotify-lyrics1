@@ -7,6 +7,7 @@ import org.lwjgl.glfw.GLFW;
 /** Einstellungen des Clients: Farben, Hintergrund, Sprache und Menü-Taste. */
 public class SettingsScreen extends ItemScreen {
     private static boolean capturing = false;
+    private int previewY = -1;
 
     public SettingsScreen() {
         super(Lang.t("Einstellungen", "Settings"), Lang.t("Farben, Sprache und Taste", "Colors, language and key"));
@@ -32,42 +33,35 @@ public class SettingsScreen extends ItemScreen {
         return 340;
     }
 
-    private Cell accent(int i) {
-        Config c = Config.INSTANCE;
-        int col = Ui.accentPreview(i);
-        boolean sel = Math.floorMod(c.uiAccent, Ui.ACCENT_NAMES.length) == i;
-        return C(sel ? "✔" : "", col, Ui.mix(col, 0xFFFFFFFF, 0.25f), 0xFF0B0D12, () -> {
-            c.uiAccent = i;
-            c.save();
-            Ui.applyTheme();
-            again();
-        });
-    }
-
-    private Cell bg(int i) {
-        Config c = Config.INSTANCE;
-        int col = Ui.bgPreview(i);
-        boolean sel = Math.floorMod(c.uiBg, Ui.BG_NAMES.length) == i;
-        return C((sel ? "✔ " : "") + Ui.BG_NAMES[i], col, Ui.mix(col, 0xFFFFFFFF, 0.12f), sel ? 0xFFFFFFFF : 0xFFB8C0D0, () -> {
-            c.uiBg = i;
-            c.save();
-            Ui.applyTheme();
-            again();
-        });
-    }
-
     @Override
     protected void build() {
         Config c = Config.INSTANCE;
         row(G(Lang.t("Skin wechseln ›", "Change skin ›"), () -> net.minecraft.client.MinecraftClient.getInstance().setScreen(new SkinScreen())));
         gap(2);
-        sec(Lang.t("Akzentfarbe", "Accent color") + ": " + Ui.ACCENT_NAMES[Math.floorMod(c.uiAccent, Ui.ACCENT_NAMES.length)]);
-        row(accent(0), accent(1), accent(2), accent(3));
-        row(accent(4), accent(5), accent(6), accent(7));
+        sec(Lang.t("Akzentfarbe", "Accent color"));
+        int[] acc = new int[Ui.ACCENT_NAMES.length];
+        for (int i = 0; i < acc.length; i++) acc[i] = Ui.accentPreview(i);
+        colorPick(Lang.t("Gewählt", "Selected"), acc, Ui.ACCENT_NAMES, c.uiAccent, k -> {
+            c.uiAccent = k;
+            Ui.applyTheme();
+        });
         gap(2);
         sec(Lang.t("Hintergrund", "Background"));
-        row(bg(0), bg(1), bg(2));
-        row(bg(3), bg(4));
+        int bsel = Math.floorMod(c.uiBg, Ui.BG_NAMES.length);
+        Cell[] bgs = new Cell[Ui.BG_NAMES.length];
+        for (int i = 0; i < bgs.length; i++) {
+            final int k = i;
+            bgs[i] = Sw(Ui.mix(Ui.bgPreview(i), 0xFFFFFFFF, 0.06f), Ui.BG_NAMES[i], k == bsel, () -> {
+                c.uiBg = k;
+                c.save();
+                Ui.applyTheme();
+                again();
+            });
+        }
+        row(bgs);
+        gap(2);
+        sec(Lang.t("Vorschau", "Preview"));
+        previewY = area(26);
         gap(2);
         sec(Lang.t("Sprache", "Language"));
         row(c.lang == 0 ? S("Deutsch") : G("Deutsch", () -> {
@@ -102,6 +96,15 @@ public class SettingsScreen extends ItemScreen {
     // Absichtlich ohne @Override, wie in den anderen Menüs.
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
         super.render(ctx, mouseX, mouseY, delta);
+        if (previewY >= 0) {
+            int y = py0 + previewY - scrollY();
+            if (y > py0 + HEAD && y + 22 < py1) {
+                var tr = net.minecraft.client.MinecraftClient.getInstance().textRenderer;
+                int half = (cw - 4) / 2;
+                Ui.toggle(ctx, tr, cx, y, cx + half, y + 20, Lang.t("Schalter an", "Switch on"), true, false);
+                Ui.btn(ctx, tr, cx + half + 4, y, cx + cw, y + 20, Lang.t("Knopf", "Button"), false, Ui.ACCENT_DIM, Ui.ACCENT_DIM_HOV, 0xFFD6F0FF);
+            }
+        }
         if (!capturing) return;
         long win = GLFW.glfwGetCurrentContext();
         if (win == 0) return;

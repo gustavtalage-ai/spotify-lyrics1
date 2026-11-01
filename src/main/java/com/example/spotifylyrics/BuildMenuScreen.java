@@ -27,7 +27,12 @@ public class BuildMenuScreen extends CardGridScreen {
 
     @Override
     protected Screen back() {
-        return new HubScreen();
+        return new ToolsScreen();
+    }
+
+    @Override
+    protected String backLabel() {
+        return "‹ Tools";
     }
 
     @Override

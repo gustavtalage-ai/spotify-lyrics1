@@ -70,11 +70,8 @@ public class LyricsScreen extends ItemScreen {
             });
             row(B("Anzeige verschieben ›", () -> MinecraftClient.getInstance().setScreen(new HudEditScreen(new LyricsScreen()))));
         } else if (page == 1) {
-            row(G("Farbe: " + pick(LyricsHud.COLORS, c.lyColor) + " ›", () -> {
-                c.lyColor = (c.lyColor + 1) % LyricsHud.COLORS.length;
-                c.save();
-                again();
-            }));
+            colorPick(Lang.t("Farbe", "Color"), new int[] {0xFFFFFFFF, 0xFF38D6F8, 0xFF4ADE80, 0xFFFBE24A, 0xFFFB923C, 0xFFF472B6, 0xFFFF5A5A, 0},
+                LyricsHud.COLORS, c.lyColor, k -> c.lyColor = k);
             row(G("Hintergrund: " + pick(LyricsHud.BGS, c.lyBg) + " ›", () -> {
                 c.lyBg = (c.lyBg + 1) % LyricsHud.BGS.length;
                 c.save();

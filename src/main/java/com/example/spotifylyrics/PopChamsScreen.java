@@ -39,17 +39,8 @@ public class PopChamsScreen extends ItemScreen {
         text(Lang.t("Gesehene Pops: ", "Pops seen: ") + PopChams.seen, 0xFF8B92A5);
         gap(2);
         sec(Lang.t("Farbe", "Color"));
-        Cell[] cells = new Cell[PopChams.COLORS.length];
-        for (int i = 0; i < cells.length; i++) {
-            final int k = i;
-            int col = PopChams.COLORS[i];
-            cells[i] = C(c.popColor == i ? "✔" : "", col, col | 0x202020, 0xFF101010, () -> {
-                c.popColor = k;
-                c.save();
-                again();
-            });
-        }
-        row(cells);
+        String[] pn = {Lang.t("Grün", "Green"), "Gold", Lang.t("Rot", "Red"), Lang.t("Blau", "Blue"), Lang.t("Lila", "Purple"), Lang.t("Weiß", "White")};
+        colorPick(Lang.t("Gewählt", "Selected"), PopChams.COLORS, pn, c.popColor, k -> c.popColor = k);
         gap(2);
         sec(Lang.t("Dauer", "Duration"));
         stepper(Lang.t("Sekunden: ", "Seconds: ") + c.popTime, () -> {

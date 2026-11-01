@@ -43,11 +43,7 @@ public class CrosshairSimpleScreen extends ItemScreen {
             c.save();
             again();
         }));
-        row(G("Farbe: " + PvpHud.CROSS_COLORS[Math.floorMod(c.crossColor, PvpHud.CROSS_COLORS.length)] + " ›", () -> {
-            c.crossColor = (c.crossColor + 1) % PvpHud.CROSS_COLORS.length;
-            c.save();
-            again();
-        }));
+        colorPick(Lang.t("Farbe", "Color"), new int[] {0xFFFFFFFF, Ui.ACCENT, Ui.GREEN, 0xFFFF5A6E, 0}, PvpHud.CROSS_COLORS, c.crossColor, k -> c.crossColor = k);
         stepper("Länge: " + c.crossSize, () -> {
             c.crossSize = Math.max(1, c.crossSize - 1);
             c.save();

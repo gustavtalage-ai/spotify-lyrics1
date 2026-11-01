@@ -21,7 +21,8 @@ import java.util.function.Supplier;
  * Optional mit Kategorien links und Suchleiste oben.
  */
 abstract class CardGridScreen extends Screen {
-    private static final int HEAD = 34, SIDE_W = 52, CARD_H = 46, GAP = 6, FOOT = 26, SEARCH_H = 22;
+    private static final int HEAD = 34, SIDE_W = 52, GAP = 6, FOOT = 26, SEARCH_H = 22;
+    private int CARD_H = 46;
     private static final Map<String, Integer> SCROLL = new HashMap<>();
     private static final Map<String, String> QUERY = new HashMap<>();
 
@@ -100,6 +101,16 @@ abstract class CardGridScreen extends Screen {
         return false;
     }
 
+    /** Große Kästen (größeres Symbol, mehr Platz für Text). */
+    protected boolean big() {
+        return false;
+    }
+
+    /** Knöpfe "Alle an" / "Alle aus" unten rechts. */
+    protected boolean bulkButtons() {
+        return true;
+    }
+
     /** Knöpfe in der Fußzeile (links), z. B. "Anzeigen verschieben". */
     protected void footer(List<Card> out) {}
 
@@ -155,8 +166,9 @@ abstract class CardGridScreen extends Screen {
         String q = query().trim().toLowerCase(Locale.ROOT);
         cards(cards, q);
         int top = searchable() ? SEARCH_H : 0;
-        int panelW = Math.min(460, this.width - 16);
-        vis = Math.max(1, Math.min(4, (this.height - 12 - HEAD - 10 - top - FOOT) / (CARD_H + GAP)));
+        CARD_H = big() ? 72 : 46;
+        int panelW = Math.min(big() ? 560 : 460, this.width - 16);
+        vis = Math.max(1, Math.min(big() ? 3 : 4, (this.height - 12 - HEAD - 10 - top - FOOT) / (CARD_H + GAP)));
         int panelH = HEAD + 8 + top + vis * (CARD_H + GAP) + FOOT;
         px0 = (this.width - panelW) / 2;
         px1 = px0 + panelW;
@@ -166,7 +178,8 @@ abstract class CardGridScreen extends Screen {
         gy0 = py0 + HEAD + 8 + top;
         // Spalten an die Breite anpassen, damit nichts abgeschnitten wird
         int gridW = px1 - 14 - gx0;
-        cols = gridW >= 3 * 112 + 2 * GAP ? 3 : gridW >= 2 * 100 + GAP ? 2 : 1;
+        if (big()) cols = gridW >= 3 * 150 + 2 * GAP ? 3 : gridW >= 2 * 130 + GAP ? 2 : 1;
+        else cols = gridW >= 3 * 112 + 2 * GAP ? 3 : gridW >= 2 * 100 + GAP ? 2 : 1;
         cardW = (gridW - (cols - 1) * GAP) / cols;
         // Seiten-Reiter an die Höhe anpassen
         if (hasSide()) {
@@ -231,7 +244,7 @@ abstract class CardGridScreen extends Screen {
             }).dimensions(r[0], r[1], r[2], r[3]).build());
         }
         int fy = py1 - FOOT + 4;
-        if (query().isEmpty()) {
+        if (query().isEmpty() && bulkButtons()) {
             addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> {
                 setAll(true);
                 again();
@@ -386,10 +399,17 @@ abstract class CardGridScreen extends Screen {
             Ui.card(ctx, x0, y0, x1, y1, on ? acc : hov ? 0xFF3A4152 : Ui.BORDER,
                 on ? Ui.mix(Ui.CARD, acc, 0.14f) : hov ? Ui.CARD_HOV : Ui.CARD);
             // Symbol-Kachel mit gezeichnetem Symbol
-            Ui.round2(ctx, x0 + 5, y0 + 5, x0 + 25, y0 + 25, on ? (acc & 0x00FFFFFF) | 0x50000000 : 0x18FFFFFF);
-            Icons.draw(ctx, c.icon, x0 + 9, y0 + 9, 1, on ? 0xFFFFFFFF : Ui.mix(acc, 0xFFB8C0D0, 0.45f));
-            Ui.txt(ctx, tr, tr.trimToWidth(c.name, r[2] - 50), x0 + 29, y0 + 6, on ? 0xFFFFFFFF : Ui.TEXT);
-            Ui.txt(ctx, tr, tr.trimToWidth(c.desc, r[2] - 34), x0 + 29, y0 + 17, Ui.MUTED);
+            if (big()) {
+                Ui.round2(ctx, x0 + 8, y0 + 8, x0 + 38, y0 + 38, on || hov ? (acc & 0x00FFFFFF) | 0x50000000 : (acc & 0x00FFFFFF) | 0x22000000);
+                Icons.draw(ctx, c.icon, x0 + 11, y0 + 11, 2, on || hov ? 0xFFFFFFFF : Ui.mix(acc, 0xFFFFFFFF, 0.25f));
+                Ui.txt(ctx, tr, tr.trimToWidth(c.name, r[2] - 66), x0 + 46, y0 + 11, on ? 0xFFFFFFFF : Ui.TEXT);
+                Ui.txt(ctx, tr, tr.trimToWidth(c.desc, r[2] - 52), x0 + 46, y0 + 24, Ui.MUTED);
+            } else {
+                Ui.round2(ctx, x0 + 5, y0 + 5, x0 + 25, y0 + 25, on ? (acc & 0x00FFFFFF) | 0x50000000 : 0x18FFFFFF);
+                Icons.draw(ctx, c.icon, x0 + 9, y0 + 9, 1, on ? 0xFFFFFFFF : Ui.mix(acc, 0xFFB8C0D0, 0.45f));
+                Ui.txt(ctx, tr, tr.trimToWidth(c.name, r[2] - 50), x0 + 29, y0 + 6, on ? 0xFFFFFFFF : Ui.TEXT);
+                Ui.txt(ctx, tr, tr.trimToWidth(c.desc, r[2] - 34), x0 + 29, y0 + 17, Ui.MUTED);
+            }
             if (c.flip != null) {
                 // Zahnrad oben rechts
                 if (c.settings != null) {
@@ -403,9 +423,9 @@ abstract class CardGridScreen extends Screen {
                 Ui.round2(ctx, sx0, sy0, sx1, sy0 + 10, on ? acc : 0xFF333A4A);
                 int kx = on ? sx1 - 9 : sx0 + 1;
                 Ui.round(ctx, kx, sy0 + 1, kx + 8, sy0 + 9, on ? 0xFF0B0D12 : 0xFFE8EAF0);
-                Ui.txt(ctx, tr, on ? Lang.t("AN", "ON") : Lang.t("AUS", "OFF"), x0 + 6, y1 - 12, on ? acc : 0xFF5E6678);
+                Ui.txt(ctx, tr, on ? Lang.t("AN", "ON") : Lang.t("AUS", "OFF"), x0 + (big() ? 10 : 6), y1 - 12, on ? acc : 0xFF5E6678);
             } else {
-                Ui.txt(ctx, tr, Lang.t("Öffnen ›", "Open ›"), x0 + 6, y1 - 12, hov ? acc : 0xFF7D8598);
+                Ui.txt(ctx, tr, Lang.t("Öffnen ›", "Open ›"), x0 + (big() ? 10 : 6), y1 - 12, hov ? acc : 0xFF7D8598);
             }
         }
 
@@ -425,7 +445,7 @@ abstract class CardGridScreen extends Screen {
             String h = Lang.t("Mausrad (", "Scroll (") + (scroll() + 1) + "/" + (rows() - vis + 1) + ")";
             Ui.txt(ctx, tr, h, fx + 4, fy + 5, 0xFF6B7385);
         }
-        if (query().isEmpty()) {
+        if (query().isEmpty() && bulkButtons()) {
             int ax = px1 - 8 - 130;
             Ui.btn(ctx, tr, ax, fy, ax + 62, fy + 18, Lang.t("Alle an", "All on"), Ui.in(mouseX, mouseY, ax, fy, ax + 62, fy + 18), Ui.ACCENT_DIM, Ui.ACCENT_DIM_HOV, 0xFFD6F0FF);
             int bx = px1 - 8 - 64;

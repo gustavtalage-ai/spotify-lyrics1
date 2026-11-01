@@ -7,10 +7,10 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.text.Text;
 
-/** Startfläche der Taste K: zehn Kacheln (5 nebeneinander, 2 Reihen). */
+/** Startfläche der Taste K: sieben Kacheln (4 nebeneinander, 2 Reihen). */
 public class HubScreen extends Screen {
     private static final int HEAD = 34;
-        private static final int N = 10;
+    private static final int N = 7;
 
     private int px0, px1, py0, py1, cardW, CARD_H = 80, COLS = 5, ROWS = 2, skinCount = 0;
 
@@ -28,9 +28,9 @@ public class HubScreen extends Screen {
 
     @Override
     protected void init() {
-        int panelW = Math.min(590, this.width - 16);
+        int panelW = Math.min(560, this.width - 16);
         // Kachel-Höhe an kleine Fenster / große GUI-Skalierung anpassen, damit nichts abgeschnitten wird
-        COLS = panelW >= 520 ? 5 : panelW >= 300 ? 4 : 3;
+        COLS = panelW >= 360 ? 4 : panelW >= 260 ? 3 : 2;
         ROWS = (N + COLS - 1) / COLS;
         CARD_H = Math.max(30, Math.min(80, (this.height - 8 - HEAD - 12 - (ROWS - 1) * 8 - 12) / ROWS));
         int panelH = HEAD + 12 + ROWS * CARD_H + (ROWS - 1) * 8 + 12;
@@ -50,14 +50,11 @@ public class HubScreen extends Screen {
     private static void open(int i) {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (i == 0) mc.setScreen(SoundboardScreen.create(false));
-        else if (i == 1) mc.setScreen(SoundboardScreen.create(true));
-        else if (i == 2) mc.setScreen(new BuildMenuScreen());
-        else if (i == 3) mc.setScreen(new MacroScreen());
-        else if (i == 4) mc.setScreen(new PackSetsScreen());
-        else if (i == 5) mc.setScreen(new PvpScreen());
-        else if (i == 6) mc.setScreen(new LyricsScreen());
-        else if (i == 7) mc.setScreen(new AuctionScreen());
-        else if (i == 8) mc.setScreen(new SkinScreen());
+        else if (i == 1) mc.setScreen(new ToolsScreen());
+        else if (i == 2) mc.setScreen(new PackSetsScreen());
+        else if (i == 3) mc.setScreen(new PvpScreen());
+        else if (i == 4) mc.setScreen(new LyricsScreen());
+        else if (i == 5) mc.setScreen(new SkinScreen());
         else mc.setScreen(new SettingsScreen());
     }
 
@@ -86,30 +83,31 @@ public class HubScreen extends Screen {
 
         int macros = cfg.macros.size();
         boolean macroRun = Macros.running >= 0;
-        String[] names = {"Soundboard", "Tools", Lang.t("Bauen", "Build"), Lang.t("Makros", "Macros"), "Texture Packs", "PvP", "Lyrics",
-            Lang.t("Auktionen", "Auctions"), "Skin", Lang.t("Einstellungen", "Settings")};
-        String[] sub1 = {Lang.t("Effekte · Musik · Voice", "Sounds · Music · Voice"), Lang.t("Filter · Licht · Klick", "Filter · Light · Click"),
-            Lang.t("Kreis · Raster · Lineal", "Circle · Grid · Ruler"), Lang.t("Bausteine · Abläufe", "Blocks · Sequences"), "Pack-Sets",
+        boolean toolsOn = AutoClick.active || cfg.filterOn || cfg.lightshow || build > 0 || macroRun || Auction.running;
+        String[] names = {"Soundboard", "Tools", "Texture Packs", "PvP", "Lyrics", "Skin", Lang.t("Einstellungen", "Settings")};
+        String[] sub1 = {Lang.t("Effekte · Musik · Voice", "Sounds · Music · Voice"),
+            Lang.t("Makros · Bauen · Auktionen", "Macros · Build · Auctions"), "Pack-Sets",
             Lang.t("Module · Fadenkreuz", "Modules · Crosshair"),
             LyricsHud.STYLES[Math.floorMod(cfg.lyStyle, LyricsHud.STYLES.length)] + " · "
                 + LyricsHud.UNITS[Math.floorMod(cfg.lyUnit, LyricsHud.UNITS.length)],
-            Lang.t("Bieten per /pay", "Bid with /pay"), Lang.t("Hochladen · Wechseln", "Upload · Switch"),
+            Lang.t("Hochladen · Wechseln", "Upload · Switch"),
             Lang.t("Farben · Sprache", "Colors · Language")};
+        String toolsState = Auction.running ? Lang.t("Auktion ", "Auction ") + Auction.timeLeft()
+            : macroRun ? Lang.t("Makro läuft", "Macro running")
+            : AutoClick.active ? Lang.t("Auto-Klick läuft", "Auto-click on")
+            : toolsOn ? Lang.t("Aktiv", "Active") : macros + Lang.t(" Makros", " macros");
         String[] sub2 = {playing ? Lang.t("Spielt gerade", "Playing") : Lang.t("Bereit", "Ready"),
-            AutoClick.active ? Lang.t("Auto-Klick läuft", "Auto-click on") : (cfg.filterOn ? Lang.t("Filter an", "Filter on") : Lang.t("Filter aus", "Filter off")),
-            build > 0 ? build + Lang.t(" Helfer an", " helpers on") : Lang.t("Alles aus", "All off"),
-            macroRun ? Lang.t("Makro läuft", "Macro running") : macros + Lang.t(" Makros", " macros"),
+            toolsState,
             packs + Lang.t(" aktiv", " active"), mods + Lang.t(" Module an", " modules on"),
             !cfg.enabled ? Lang.t("Aus", "Off") : lyLive ? Lang.t("Läuft", "Live") : Lang.t("Wartet auf Spotify", "Waiting for Spotify"),
-            Auction.running ? Lang.t("Läuft ", "Live ") + Auction.timeLeft() : Lang.t("Keine aktiv", "None active"),
             skinCount + " Skins",
             Ui.ACCENT_NAMES[Math.floorMod(cfg.uiAccent, Ui.ACCENT_NAMES.length)] + " · " + Lang.NAMES[Math.floorMod(cfg.lang, Lang.NAMES.length)]};
         int off = 0xFF4A5164;
-        int[] dot = {playing ? Ui.GREEN : off, AutoClick.active ? Ui.GREEN : off, build > 0 ? Ui.GREEN : off, macroRun ? Ui.GREEN : off,
+        int[] dot = {playing ? Ui.GREEN : off, toolsOn ? Ui.GREEN : off,
             packs > 0 ? Ui.GREEN : off, mods > 0 || cfg.hitAssist ? Ui.GREEN : off,
-            !cfg.enabled ? off : lyLive ? Ui.GREEN : Ui.AMBER, Auction.running ? Ui.GREEN : off, off, Ui.ACCENT};
-        int[] accent = {Ui.ACCENT, Ui.AMBER, 0xFFFB923C, 0xFFA78BFA, 0xFF34D399, Ui.RED, 0xFFF472B6, 0xFFFFD166, 0xFF60A5FA, 0xFFE5E7EB};
-        String[] icons = {"note", "bolt", "cube", "play", "packs", "sword", "mic", "gavel", "people", "cog"};
+            !cfg.enabled ? off : lyLive ? Ui.GREEN : Ui.AMBER, off, Ui.ACCENT};
+        int[] accent = {Ui.ACCENT, Ui.AMBER, 0xFF34D399, Ui.RED, 0xFFF472B6, 0xFF60A5FA, 0xFFE5E7EB};
+        String[] icons = {"note", "bolt", "packs", "sword", "mic", "people", "cog"};
 
         for (int i = 0; i < N; i++) {
             int x0 = cx(i), y0 = cy(i), x1 = x0 + cardW, y1 = y0 + CARD_H;

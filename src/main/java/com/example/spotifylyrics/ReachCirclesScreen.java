@@ -53,6 +53,11 @@ public class ReachCirclesScreen extends ItemScreen {
         return COLORS[0];
     }
 
+    private static int idx(int color) {
+        for (int i = 0; i < COLORS.length; i++) if (COLORS[i] == color) return i;
+        return 0;
+    }
+
     private static String name(int color) {
         for (int i = 0; i < COLORS.length; i++) if (COLORS[i] == color) return COLOR_NAMES[i];
         return String.format("#%06X", color);
@@ -100,7 +105,11 @@ public class ReachCirclesScreen extends ItemScreen {
         gap(4);
 
         sec(Lang.t("Farben", "Colors"));
-        row(color(Lang.t("Du", "Self"), c.rcSelf, v -> c.rcSelf = v), color(Lang.t("Du triffst", "Self can reach"), c.rcSelfCan, v -> c.rcSelfCan = v));
-        row(color(Lang.t("Gegner", "Other"), c.rcOther, v -> c.rcOther = v), color(Lang.t("Gegner trifft", "Other can reach"), c.rcOtherCan, v -> c.rcOtherCan = v));
+        int[] argb = new int[COLORS.length];
+        for (int i = 0; i < argb.length; i++) argb[i] = 0xFF000000 | COLORS[i];
+        colorPick(Lang.t("Dein Kreis", "Your circle"), argb, COLOR_NAMES, idx(c.rcSelf), k -> c.rcSelf = COLORS[k]);
+        colorPick(Lang.t("Dein Kreis, wenn du triffst", "Your circle when you can reach"), argb, COLOR_NAMES, idx(c.rcSelfCan), k -> c.rcSelfCan = COLORS[k]);
+        colorPick(Lang.t("Gegner-Kreis", "Enemy circle"), argb, COLOR_NAMES, idx(c.rcOther), k -> c.rcOther = COLORS[k]);
+        colorPick(Lang.t("Gegner-Kreis, wenn er trifft", "Enemy circle when they can reach"), argb, COLOR_NAMES, idx(c.rcOtherCan), k -> c.rcOtherCan = COLORS[k]);
     }
 }

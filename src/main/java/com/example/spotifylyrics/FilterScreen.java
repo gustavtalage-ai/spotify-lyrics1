@@ -118,7 +118,7 @@ public class FilterScreen extends Screen {
         qw = cx + cw - qx;
 
         // Zurück
-        invisible(px1 - 10 - 64, py0 + 5, 64, 18, () -> MinecraftClient.getInstance().setScreen(new SoundboardScreen(0)));
+        invisible(px1 - 10 - 64, py0 + 5, 64, 18, () -> MinecraftClient.getInstance().setScreen(new ToolsScreen()));
 
         TextFieldWidget f = new TextFieldWidget(this.textRenderer, cx, searchY, cw, 18, Text.literal("Item suchen"));
         f.setMaxLength(40);

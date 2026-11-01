@@ -18,7 +18,7 @@ public class MacroScreen extends ItemScreen {
 
     @Override
     protected Screen back() {
-        return SoundboardScreen.create(true);
+        return new ToolsScreen();
     }
 
     @Override

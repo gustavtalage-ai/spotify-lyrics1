@@ -7,7 +7,7 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.text.Text;
 
-/** Startfläche der Taste K: vier große Kacheln, oben rechts Skin und Taste. */
+/** Startfläche der Taste K: vier große Kacheln (2×2), oben rechts Skin und Taste. */
 public class HubScreen extends Screen {
     private static final int HEAD = 34;
     private static final int N = 4;
@@ -29,8 +29,8 @@ public class HubScreen extends Screen {
 
     @Override
     protected void init() {
-        int panelW = Math.min(520, this.width - 16);
-        COLS = panelW >= 400 ? 4 : 2;
+        int panelW = Math.min(420, this.width - 16);
+        COLS = 2;
         ROWS = (N + COLS - 1) / COLS;
         CARD_H = Math.max(30, Math.min(96, (this.height - 8 - HEAD - 12 - (ROWS - 1) * 8 - 12) / ROWS));
         int panelH = HEAD + 12 + ROWS * CARD_H + (ROWS - 1) * 8 + 12;

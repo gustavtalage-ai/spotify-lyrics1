@@ -27,11 +27,6 @@ public class LyricsScreen extends ItemScreen {
         return "‹ Soundboard";
     }
 
-    @Override
-    protected String backLabel() {
-        return "‹ Menü";
-    }
-
     private Cell tab(String label, int idx) {
         return idx == page ? S(label) : G(label, () -> {
             page = idx;

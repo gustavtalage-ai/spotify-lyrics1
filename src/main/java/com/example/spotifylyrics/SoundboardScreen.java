@@ -61,6 +61,12 @@ public class SoundboardScreen extends Screen {
     }
 
     /** Vom Startmenü aus: Soundboard (Effekte/Musik/Voice/Spotify) oder Tools. */
+    /** Direkt einen Reiter öffnen (0 Effekte, 1 Musik, 2 Voice, 3 Spotify). */
+    static SoundboardScreen open(int t) {
+        tab = t;
+        return new SoundboardScreen(0);
+    }
+
     static SoundboardScreen create(boolean tools) {
         if (tools) tab = 4;
         else if (tab == 4) tab = 0;
@@ -101,7 +107,7 @@ public class SoundboardScreen extends Screen {
         // Untertabs (die Knöpfe erledigen das Klicken, gezeichnet werden sie in render())
         // Zurück zum Startmenü
         addDrawableChild(ButtonWidget.builder(Text.literal(""), b ->
-            MinecraftClient.getInstance().setScreen(new HubScreen())).dimensions(px0 + 6, py0 + 8, 18, 18).build());
+            MinecraftClient.getInstance().setScreen(new SoundScreen())).dimensions(px0 + 6, py0 + 8, 18, 18).build());
         for (int i = 0; i < (tab == 4 ? 0 : 4); i++) {
             final int target = i;
             addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> {

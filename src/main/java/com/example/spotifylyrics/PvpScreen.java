@@ -1,16 +1,14 @@
 package com.example.spotifylyrics;
 
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.resource.ResourcePackProfile;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.function.Supplier;
 
 /** PvP-Loadout: jedes Modul ein Kasten mit Symbol, Schalter und Zahnrad. Mit Kategorien und Suche. */
 public class PvpScreen extends CardGridScreen {
-    private static final String[] CAT_ICONS = {"sword", "chart", "cross", "packs"};
+    private static final String[] CAT_ICONS = {"sword", "chart", "cross"};
     private static int cat = 0;
 
     public PvpScreen() {
@@ -39,7 +37,7 @@ public class PvpScreen extends CardGridScreen {
 
     @Override
     protected String[] categories() {
-        return new String[] {Lang.t("Kampf", "Combat"), "HUD", Lang.t("Visuell", "Visual"), "Packs"};
+        return new String[] {Lang.t("Kampf", "Combat"), "HUD", Lang.t("Visuell", "Visual")};
     }
 
     @Override
@@ -49,7 +47,7 @@ public class PvpScreen extends CardGridScreen {
 
     @Override
     protected int category() {
-        return cat;
+        return Math.floorMod(cat, 3);
     }
 
     @Override
@@ -134,31 +132,18 @@ public class PvpScreen extends CardGridScreen {
         out.add(bit(Lang.t("Leben-Warnung", "Low HP warning"), Lang.t("Roter Rand", "Red border"), "heart", PvpHud.LOWHP, null));
     }
 
-    private static void packs(List<Card> out) {
-        List<String> seen = new ArrayList<>();
-        for (String[] q : Packs.QUICK) {
-            ResourcePackProfile f = Packs.find(Arrays.copyOfRange(q, 1, q.length));
-            if (f == null || seen.contains(q[0])) continue;
-            seen.add(q[0]);
-            out.add(new Card(q[0], Lang.t("Schnell-Pack", "Quick pack"), "packs", () -> Packs.isOn(f), () -> Packs.set(f, !Packs.isOn(f)), PackSetsScreen::new));
-        }
-        out.add(new Card(Lang.t("Alle Packs", "All packs"), Lang.t("Pack-Sets und mehr ›", "Pack sets and more ›"), "packs", () -> false, null, PackSetsScreen::new));
-    }
-
     @Override
     protected void cards(List<Card> out, String query) {
         if (query.isEmpty()) {
             if (cat == 0) kampf(out);
             else if (cat == 1) hud(out);
-            else if (cat == 2) visuell(out);
-            else packs(out);
+            else visuell(out);
             return;
         }
         List<Card> all = new ArrayList<>();
         kampf(all);
         hud(all);
         visuell(all);
-        packs(all);
         List<String> names = new ArrayList<>();
         for (Card c : all) {
             if (c.matches(query) && !names.contains(c.name)) {

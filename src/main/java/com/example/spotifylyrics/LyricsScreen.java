@@ -19,7 +19,12 @@ public class LyricsScreen extends ItemScreen {
 
     @Override
     protected Screen back() {
-        return new HubScreen();
+        return new SoundScreen();
+    }
+
+    @Override
+    protected String backLabel() {
+        return "‹ Soundboard";
     }
 
     @Override

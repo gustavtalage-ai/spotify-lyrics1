@@ -7,6 +7,8 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.client.network.PlayerListEntry;
 import net.minecraft.client.render.RenderTickCounter;
+import net.minecraft.item.ItemStack;
+import org.joml.Matrix3x2fStack;
 import net.minecraft.text.ClickEvent;
 import net.minecraft.text.HoverEvent;
 import net.minecraft.text.MutableText;
@@ -44,6 +46,12 @@ public final class Auction {
     static long finishedAt = 0;
     static String lastPayLine = "";
     static int payCount = 0;
+    static ItemStack stack = ItemStack.EMPTY;
+    static int count = 1;
+    static long startMs = 0;
+    /** Letzte Zahlungen für die Anzeige rechts: {Name, Betrag}. */
+    static final List<String[]> PAYS = new ArrayList<>();
+    private static final Pattern COUNT = Pattern.compile("^(\\d+)\\s*[xX]\\s+(.+)$");
 
     private static final String[] PAY_IN = {"received", "erhalten", "bekommen", "paid you", "hat dir", "has sent you", "sent you", "überwiesen", "gezahlt", "bezahlt", "gutgeschrieben"};
     private static final String[] PAY_OUT = {"you paid", "you sent", "sent to", "paid to", "du hast", "an dich gesendet?"};
@@ -128,6 +136,10 @@ public final class Auction {
                 BIDS.merge(payer, amount, Double::sum);
             }
             payCount++;
+            synchronized (PAYS) {
+                PAYS.add(0, new String[]{payer, dollar(amount)});
+                if (PAYS.size() > 12) PAYS.remove(PAYS.size() - 1);
+            }
             lastPayLine = msg.length() > 80 ? msg.substring(0, 80) + "…" : msg;
             String lead = leader();
             local(Text.literal("[Auktion] ").formatted(Formatting.GOLD)
@@ -198,9 +210,35 @@ public final class Auction {
         synchronized (BIDS) {
             BIDS.clear();
         }
+        synchronized (PAYS) {
+            PAYS.clear();
+        }
         item = it.isBlank() ? "Item" : it.trim();
+        count = 1;
+        stack = ItemStack.EMPTY;
+        Matcher cm = COUNT.matcher(item);
+        if (cm.matches()) {
+            try {
+                count = Integer.parseInt(cm.group(1));
+            } catch (NumberFormatException ignored) {
+            }
+            item = cm.group(2).trim();
+        }
+        try {
+            MinecraftClient mc = MinecraftClient.getInstance();
+            if (mc.player != null) {
+                ItemStack h = mc.player.getMainHandStack();
+                if (!h.isEmpty() && (it.isBlank() || item.equalsIgnoreCase(h.getName().getString()))) {
+                    stack = h.copy();
+                    count = h.getCount();
+                    item = h.getName().getString();
+                }
+            }
+        } catch (Throwable ignored) {
+        }
         minBid = min;
-        endMs = System.currentTimeMillis() + minutes * 60_000L;
+        startMs = System.currentTimeMillis();
+        endMs = startMs + minutes * 60_000L;
         running = true;
         finished = false;
         winner = "";
@@ -285,7 +323,38 @@ public final class Auction {
         return String.format(Locale.ROOT, "%d:%02d", s / 60, s % 60);
     }
 
-    /** Anzeige oben in der Mitte: während der Auktion und 60 s nach dem Ende. */
+    static String dollar(double v) {
+        if (v == Math.rint(v)) return "$" + String.format(Locale.GERMANY, "%,.0f", v);
+        return "$" + String.format(Locale.GERMANY, "%,.2f", v);
+    }
+
+    static double total() {
+        double t = 0;
+        synchronized (BIDS) {
+            for (double v : BIDS.values()) t += v;
+        }
+        return t;
+    }
+
+    private static final int RED = 0xFFE5484D, PANEL = 0xA0141418, WHITE = 0xFFFFFFFF, GRAY = 0xFFB8BCC6, GREEN = 0xFF4ADE80;
+
+    private static void big(DrawContext ctx, TextRenderer tr, String s, int cx, int y, float sc, int col) {
+        Matrix3x2fStack m = ctx.getMatrices();
+        m.pushMatrix();
+        m.translate((float) cx, (float) y);
+        m.scale(sc, sc);
+        ctx.drawTextWithShadow(tr, Text.literal(s), -tr.getWidth(s) / 2, 0, col);
+        m.popMatrix();
+    }
+
+    private static void frame(DrawContext ctx, int x0, int y0, int x1, int y1, int col) {
+        ctx.fill(x0, y0, x1, y0 + 1, col);
+        ctx.fill(x0, y1 - 1, x1, y1, col);
+        ctx.fill(x0, y0, x0 + 1, y1, col);
+        ctx.fill(x1 - 1, y0, x1, y1, col);
+    }
+
+    /** Große Auktions-Anzeige: links Auktion mit Item und Zeit, rechts Gesamteingang und Zahlungen. */
     public static void render(DrawContext ctx, RenderTickCounter tc) {
         try {
             MinecraftClient mc = MinecraftClient.getInstance();
@@ -293,34 +362,101 @@ public final class Auction {
             boolean showEnd = finished && System.currentTimeMillis() - finishedAt < 60_000;
             if (!running && !showEnd) return;
             TextRenderer tr = mc.textRenderer;
-            int sw = ctx.getScaledWindowWidth();
-            String l1, l2, l3;
-            int col;
+            int sw = ctx.getScaledWindowWidth(), sh = ctx.getScaledWindowHeight();
+
+            int m = Math.max(6, sw / 40);
+            int fx0 = m, fy0 = 14, fx1 = sw - m, fy1 = sh - 26;
+            // Titel und roter Rahmen
+            big(ctx, tr, Lang.t("Alpha Auktionen", "Alpha Auctions"), sw / 2, 3, 1f, RED);
+            frame(ctx, fx0, fy0, fx1, fy1, RED);
+
+            int gapX = 6;
+            int lx0 = fx0 + 3, ly0 = fy0 + 3, ly1 = fy1 - 3;
+            int lx1 = fx0 + (int) ((fx1 - fx0) * 0.64f);
+            int rx0 = lx1 + gapX, rx1 = fx1 - 3;
+            ctx.fill(lx0, ly0, lx1, ly1, PANEL);
+            ctx.fill(rx0, ly0, rx1, ly1, PANEL);
+
+            // ---------- links: Auktion ----------
+            int cx = (lx0 + lx1) / 2, y = ly0 + 8;
+            int lh = ly1 - ly0;
+            float s2 = lh > 200 ? 2f : 1.5f;
             if (running) {
                 String lead = leader();
-                l1 = "Auktion: " + item;
-                l2 = lead.isEmpty() ? "Noch kein Gebot" + (minBid > 0 ? " (ab " + fmt(minBid) + ")" : "")
-                    : "Höchstgebot: " + lead + " – " + fmt(BIDS.getOrDefault(lead, 0.0));
-                l3 = "Noch " + timeLeft() + "  ·  /pay " + myName();
-                col = 0xFFFFD166;
+                big(ctx, tr, Lang.t("LAUFENDE AUKTION", "RUNNING AUCTION"), cx, y, 1f, WHITE);
+                y += 16;
+                big(ctx, tr, lead.isEmpty() ? Lang.t("Noch kein Gebot", "No bid yet") : Lang.t("Höchstbieter: ", "Top bidder: ") + lead, cx, y, 1f, GRAY);
+                y += 12;
+                big(ctx, tr, dollar(lead.isEmpty() ? 0 : BIDS.getOrDefault(lead, 0.0)), cx, y, s2, WHITE);
+                y += (int) (9 * s2) + 5;
+                big(ctx, tr, Lang.t("Mindestgebot: ", "Minimum bid: ") + (minBid > 0 ? dollar(minBid) : Lang.t("keines", "none")), cx, y, 1f, GRAY);
             } else if (!winner.isEmpty()) {
-                l1 = "Gewinner: " + winner;
-                l2 = item + " für " + fmt(winAmount);
-                l3 = "/tpa " + winner + " (im Chat zum Kopieren)";
-                col = 0xFF4ADE80;
+                big(ctx, tr, Lang.t("AUKTION BEENDET", "AUCTION ENDED"), cx, y, 1f, WHITE);
+                y += 16;
+                big(ctx, tr, Lang.t("Gewinner: ", "Winner: ") + winner, cx, y, 1f, GREEN);
+                y += 12;
+                big(ctx, tr, dollar(winAmount), cx, y, s2, WHITE);
+                y += (int) (9 * s2) + 5;
+                big(ctx, tr, "/tpa " + winner + Lang.t(" (im Chat kopieren)", " (copy in chat)"), cx, y, 1f, GRAY);
             } else {
-                l1 = "Auktion vorbei";
-                l2 = "Kein gültiges Gebot";
-                l3 = "";
-                col = 0xFFF87171;
+                big(ctx, tr, Lang.t("AUKTION BEENDET", "AUCTION ENDED"), cx, y, 1f, WHITE);
+                y += 16;
+                big(ctx, tr, Lang.t("Kein gültiges Gebot", "No valid bid"), cx, y, 1f, RED);
+                y += 12 + (int) (9 * s2) + 5;
             }
-            int w = Math.max(tr.getWidth(l1), Math.max(tr.getWidth(l2), tr.getWidth(l3))) + 16;
-            int x0 = sw / 2 - w / 2, y0 = 22, h = l3.isEmpty() ? 28 : 38;
-            ctx.fill(x0, y0, x0 + w, y0 + h, 0xB0101218);
-            ctx.fill(x0, y0, x0 + w, y0 + 1, col);
-            ctx.drawCenteredTextWithShadow(tr, Text.literal(l1), sw / 2, y0 + 4, col);
-            ctx.drawCenteredTextWithShadow(tr, Text.literal(l2), sw / 2, y0 + 15, 0xFFFFFFFF);
-            if (!l3.isEmpty()) ctx.drawCenteredTextWithShadow(tr, Text.literal(l3), sw / 2, y0 + 26, 0xFF9AA3B5);
+            y += 14;
+
+            // Item groß in der Mitte
+            int bottomReserve = 46;
+            int space = Math.max(16, (ly1 - bottomReserve) - y - 14);
+            float isc = Math.max(1f, Math.min(4f, space / 16f));
+            if (!stack.isEmpty()) {
+                Matrix3x2fStack mm = ctx.getMatrices();
+                mm.pushMatrix();
+                mm.translate(cx - 8 * isc, (float) y);
+                mm.scale(isc, isc);
+                ctx.drawItem(stack, 0, 0);
+                mm.popMatrix();
+            }
+            y += (int) (16 * isc) + 6;
+            big(ctx, tr, item, cx, y, 1f, WHITE);
+
+            // unten: Menge, Zeit, Balken
+            int by = ly1 - bottomReserve + 6;
+            big(ctx, tr, Lang.t("Menge: ", "Amount: ") + count, cx, by, 1f, GRAY);
+            long left = running ? Math.max(0, endMs - System.currentTimeMillis()) : 0;
+            long secs = left / 1000;
+            big(ctx, tr, String.format(Locale.ROOT, "%02d:%02d", secs / 60, secs % 60), cx, by + 11, 1.5f, WHITE);
+            float frac = running && endMs > startMs ? Math.min(1f, left / (float) (endMs - startMs)) : 0f;
+            int barY = ly1 - 6;
+            ctx.fill(lx0 + 4, barY, lx1 - 4, barY + 2, 0x60FFFFFF);
+            ctx.fill(lx0 + 4, barY, lx0 + 4 + (int) ((lx1 - lx0 - 8) * frac), barY + 2, WHITE);
+
+            // ---------- rechts: Gesamteingang ----------
+            int tx = rx0 + 6, ty = ly0 + 8;
+            ctx.drawTextWithShadow(tr, Text.literal(Lang.t("Gesamteingang", "Total received")), tx, ty, WHITE);
+            ty += 14;
+            big(ctx, tr, dollar(total()), (rx0 + rx1) / 2, ty, 1.5f, GREEN);
+            ty += 20;
+            ctx.drawTextWithShadow(tr, Text.literal(payCount + Lang.t(" Zahlungen", " payments")), tx, ty, GRAY);
+            ty += 14;
+            List<String[]> pays;
+            synchronized (PAYS) {
+                pays = new ArrayList<>(PAYS);
+            }
+            if (pays.isEmpty()) {
+                ctx.drawTextWithShadow(tr, Text.literal(Lang.t("Keine Zahlungen", "No payments")), tx, ty, GRAY);
+            } else {
+                int maxW = rx1 - tx - 4;
+                for (String[] p : pays) {
+                    if (ty + 9 > ly1 - 4) break;
+                    String amt = "+" + p[1];
+                    String name = tr.trimToWidth(p[0], Math.max(10, maxW - tr.getWidth(amt) - 6));
+                    ctx.drawTextWithShadow(tr, Text.literal(name), tx, ty, WHITE);
+                    ctx.drawTextWithShadow(tr, Text.literal(amt), rx1 - 4 - tr.getWidth(amt), ty, GREEN);
+                    ty += 11;
+                }
+            }
         } catch (Throwable ignored) {
         }
     }

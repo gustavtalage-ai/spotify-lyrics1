@@ -335,6 +335,50 @@ final class Ui {
         }
     }
 
+    /** Regenbogen-Fläche (für "Dynamisch" / "Lichtshow"). */
+    static void rainbow(DrawContext c, int x0, int y0, int x1, int y1) {
+        int[] cols = {0xFFF87171, 0xFFFBBF24, 0xFF4ADE80, 0xFF38BDF8, 0xFFA78BFA, 0xFFF472B6};
+        int w = x1 - x0;
+        if (w <= 0) return;
+        for (int x = x0; x < x1; x++) {
+            float t = (x - x0) / (float) w * (cols.length - 1);
+            int i = Math.min(cols.length - 2, (int) t);
+            c.fill(x, y0, x + 1, y1, mix(cols[i], cols[i + 1], t - i));
+        }
+    }
+
+    /** Helle Farbe? (für dunkle oder helle Schrift darauf) */
+    static boolean bright(int argb) {
+        int r = (argb >> 16) & 0xFF, g = (argb >> 8) & 0xFF, b = argb & 0xFF;
+        return r * 299 + g * 587 + b * 114 > 150_000;
+    }
+
+    /**
+     * Farbfeld zur Farbauswahl: runde Farbfläche mit Rand, die gewählte Farbe mit weißem Ring und Haken.
+     * color == 0: Regenbogen.
+     */
+    static void swatch(DrawContext c, TextRenderer tr, int x0, int y0, int x1, int y1, int color, String label, boolean sel, boolean hov) {
+        c.fill(x0, y0, x1, y1, BG);
+        int ring = sel ? 0xFFFFFFFF : hov ? 0xFF6A7387 : BORDER;
+        round2(c, x0, y0, x1, y1, ring);
+        round2(c, x0 + 1, y0 + 1, x1 - 1, y1 - 1, BG);
+        int in = sel ? 3 : 2;
+        int ix0 = x0 + in, iy0 = y0 + in, ix1 = x1 - in, iy1 = y1 - in;
+        if (color == 0) {
+            rainbow(c, ix0, iy0, ix1, iy1);
+        } else {
+            round2(c, ix0, iy0, ix1, iy1, color | 0xFF000000);
+            c.fill(ix0 + 2, iy0, ix1 - 2, iy0 + 1, mix(color | 0xFF000000, 0xFFFFFFFF, 0.25f));
+        }
+        boolean light = color == 0 || bright(color);
+        String t = label == null ? "" : label;
+        if (sel) t = t.isEmpty() ? "✔" : "✔ " + t;
+        if (!t.isEmpty()) {
+            t = tr.trimToWidth(t, Math.max(4, ix1 - ix0 - 4));
+            txt(c, tr, t, x0 + (x1 - x0 - tr.getWidth(t)) / 2, y0 + (y1 - y0 - 8) / 2, light ? 0xFF0B0D12 : 0xFFFFFFFF);
+        }
+    }
+
     /** Kleine Anzeige-Fläche für HUD-Elemente (halbdurchsichtig, abgerundet, mit schmalem Akzentstrich). */
     static void hudBox(DrawContext c, int x0, int y0, int x1, int y1, int accent) {
         round(c, x0, y0, x1, y1, 0xA8101319);

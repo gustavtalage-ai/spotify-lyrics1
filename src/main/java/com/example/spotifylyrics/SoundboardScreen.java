@@ -538,7 +538,7 @@ public class SoundboardScreen extends Screen {
     // Absichtlich ohne @Override: Passt die Signatur, ersetzt das den Standard-Hintergrund durch das dunkle Design.
     // Passt sie nicht, bleibt der normale Hintergrund und alles funktioniert trotzdem.
     public void renderBackground(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        Ui.panel(ctx, this.width, this.height, px0, py0, px1, py1, HEADER_H);
+        Ui.panel(ctx, this.width, this.height, px0, py0, px1, py1, HEADER_H, "Soundboard");
         ctx.fill(px0 + 1, py1 - FOOTER_H, px1 - 1, py1 - FOOTER_H + 1, 0x28FFFFFF);
         ctx.fill(px0 + 1, py1 - FOOTER_H + 1, px1 - 1, py1 - 3, 0xFF0B0D11);
 

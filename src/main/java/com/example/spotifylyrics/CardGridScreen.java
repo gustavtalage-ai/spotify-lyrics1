@@ -314,7 +314,7 @@ abstract class CardGridScreen extends Screen {
 
     // Absichtlich ohne @Override, wie in den anderen Menüs.
     public void renderBackground(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        Ui.panel(ctx, this.width, this.height, px0, py0, px1, py1, HEAD);
+        Ui.panel(ctx, this.width, this.height, px0, py0, px1, py1, HEAD, heading());
     }
 
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
@@ -398,6 +398,7 @@ abstract class CardGridScreen extends Screen {
             if (on) Ui.round2(ctx, x0 - 1, y0 - 1, x1 + 1, y1 + 1, (acc & 0x00FFFFFF) | 0x40000000);
             Ui.card(ctx, x0, y0, x1, y1, on ? acc : hov ? 0xFF3A4152 : Ui.BORDER,
                 on ? Ui.mix(Ui.CARD, acc, 0.14f) : hov ? Ui.CARD_HOV : Ui.CARD);
+            if (Ui.holo() && hov) Ui.brackets(ctx, x0 - 2, y0 - 2, x1 + 2, y1 + 2, 6, Ui.rainbowAt((x0 + y0) / 300f + Ui.phase()));
             // Symbol-Kachel mit gezeichnetem Symbol
             if (big()) {
                 Ui.round2(ctx, x0 + 8, y0 + 8, x0 + 38, y0 + 38, on || hov ? (acc & 0x00FFFFFF) | 0x50000000 : (acc & 0x00FFFFFF) | 0x22000000);

@@ -66,7 +66,7 @@ public class HubScreen extends Screen {
 
     // Absichtlich ohne @Override, wie in den anderen Menüs.
     public void renderBackground(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        Ui.panel(ctx, this.width, this.height, px0, py0, px1, py1, HEAD);
+        Ui.panel(ctx, this.width, this.height, px0, py0, px1, py1, HEAD, "");
     }
 
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
@@ -74,8 +74,14 @@ public class HubScreen extends Screen {
         TextRenderer tr = MinecraftClient.getInstance().textRenderer;
 
         Config cfg = Config.INSTANCE;
-        Ui.txt(ctx, tr, "Alpha Mod", px0 + 12, py0 + 8, Ui.TEXT);
-        Ui.txt(ctx, tr, Lang.t("Wähle einen Bereich", "Choose a section"), px0 + 12, py0 + 20, Ui.MUTED);
+        if (Ui.holo()) {
+            Ui.hexLogo(ctx, tr, px0 + 22, py0 + 17, 11);
+            Ui.rainbowText(ctx, tr, "ALPHA MOD", px0 + 40, py0 + 8);
+            Ui.txt(ctx, tr, Lang.t("Wähle einen Bereich", "Choose a section"), px0 + 40, py0 + 20, Ui.MUTED);
+        } else {
+            Ui.txt(ctx, tr, "Alpha Mod", px0 + 12, py0 + 8, Ui.TEXT);
+            Ui.txt(ctx, tr, Lang.t("Wähle einen Bereich", "Choose a section"), px0 + 12, py0 + 20, Ui.MUTED);
+        }
         // Taste
         String hint = Lang.t("Taste ", "Key ") + Macros.keyName(cfg.menuKey);
         Ui.card(ctx, keyX0, py0 + 9, keyX1, py0 + 25, Ui.BORDER, Ui.SURFACE);
@@ -118,6 +124,10 @@ public class HubScreen extends Screen {
             boolean hov = Ui.in(mouseX, mouseY, x0, y0, x1, y1);
             ctx.fill(x0, y0, x1, y1, Ui.BG);
             Ui.card(ctx, x0, y0, x1, y1, hov ? accent[i] : Ui.BORDER, hov ? Ui.CARD_HOV : Ui.CARD);
+            if (Ui.holo()) {
+                Ui.rainbowH(ctx, x0 + 3, y0, x1 - 3, y0 + 1, Ui.phase() + i * 0.15f);
+                if (hov) Ui.brackets(ctx, x0 - 3, y0 - 3, x1 + 3, y1 + 3, 8, 0xEEFFFFFF);
+            }
             if (CARD_H >= 72) {
                 Ui.round2(ctx, x0 + 8, y0 + 8, x0 + 36, y0 + 36, (accent[i] & 0x00FFFFFF) | 0x30000000);
                 Icons.draw(ctx, icons[i], x0 + 10, y0 + 10, 2, hov ? 0xFFFFFFFF : accent[i]);

@@ -225,7 +225,7 @@ public class CrosshairScreen extends Screen {
 
     // Absichtlich ohne @Override, wie in den anderen Menüs.
     public void renderBackground(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        Ui.panel(ctx, this.width, this.height, px0, py0, px1, py1, HEAD);
+        Ui.panel(ctx, this.width, this.height, px0, py0, px1, py1, HEAD, Lang.t("PvP / Fadenkreuz", "PvP / Crosshair"));
     }
 
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {

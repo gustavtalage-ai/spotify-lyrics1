@@ -47,6 +47,16 @@ public class Config {
     public int uiBg = 0;
     public int lang = 0;
     public int menuKey = 75;
+    /** Design: 0 = Holo (wie im Trailer), 1 = Schlicht; Regenbogen bewegt sich; Abdunkeln 0–4; Pfad unten zeigen; abgerundete Ecken. */
+    public int uiStyle = 0;
+    public boolean uiAnim = true;
+    public int uiDim = 3;
+    public boolean uiPath = true;
+    /** Zoom: an/aus, Taste (GLFW, 67 = C), Stärke (2–10), weiche Kamera beim Zoomen. */
+    public boolean zoomOn = true;
+    public int zoomKey = 67;
+    public int zoomLevel = 4;
+    public boolean zoomSmooth = true;
     /** Skin-Menü: Modell schmal (Alex) statt klassisch. */
     public boolean skinSlim = false;
     /** Pop-Chams: Umriss wenn ein Totem poppt (Farbe aus PopChams.COLORS, Dauer in Sekunden). */

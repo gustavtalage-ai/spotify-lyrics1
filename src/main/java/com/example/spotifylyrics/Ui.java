@@ -1,5 +1,6 @@
 package com.example.spotifylyrics;
 
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.text.OrderedText;
@@ -27,6 +28,99 @@ final class Ui {
     static int CARD = 0xFF151921;
     static int CARD_HOV = 0xFF1A202B;
     static final int DIM = 0xB006080C;
+
+    /** Holo-Design (wie im Trailer) oder schlicht. */
+    static boolean holo() {
+        Config c = Config.INSTANCE;
+        return c == null || c.uiStyle == 0;
+    }
+
+    /** Wie stark der Hintergrund hinter den Menüs abgedunkelt wird. */
+    static int dim() {
+        int[] a = {0x00, 0x50, 0x90, 0xB0, 0xD8};
+        Config c = Config.INSTANCE;
+        int i = c == null ? 3 : Math.max(0, Math.min(4, c.uiDim));
+        return (a[i] << 24) | 0x06080C;
+    }
+
+    /** Regenbogen aus dem Trailer: Pink, Orange, Gelb, Grün, Cyan, Lila. */
+    static final int[] RAINBOW = {0xFFF472B6, 0xFFFB923C, 0xFFFACC15, 0xFFA3E635, 0xFF38BDF8, 0xFFA78BFA};
+
+    static int rainbowAt(float t) {
+        t = t - (float) Math.floor(t);
+        float f = t * RAINBOW.length;
+        int i = (int) f;
+        return mix(RAINBOW[i % RAINBOW.length], RAINBOW[(i + 1) % RAINBOW.length], f - i);
+    }
+
+    /** Verschiebung für den laufenden Regenbogen (0 wenn ausgeschaltet). */
+    static float phase() {
+        Config c = Config.INSTANCE;
+        if (c != null && !c.uiAnim) return 0f;
+        return (System.currentTimeMillis() % 6000L) / 6000f;
+    }
+
+    static void rainbowH(DrawContext c, int x0, int y0, int x1, int y1, float ph) {
+        int w = Math.max(1, x1 - x0);
+        for (int x = x0; x < x1; x += 2) c.fill(x, y0, Math.min(x1, x + 2), y1, rainbowAt((x - x0) / (float) w * 0.8f + ph));
+    }
+
+    static void rainbowV(DrawContext c, int x0, int y0, int x1, int y1, float ph) {
+        int h = Math.max(1, y1 - y0);
+        for (int y = y0; y < y1; y += 2) c.fill(x0, y, x1, Math.min(y1, y + 2), rainbowAt((y - y0) / (float) h * 0.4f + ph));
+    }
+
+    /** Eckwinkel wie bei einem HUD (Holo-Design). */
+    static void brackets(DrawContext c, int x0, int y0, int x1, int y1, int len, int col) {
+        c.fill(x0, y0, x0 + len, y0 + 1, col);
+        c.fill(x0, y0, x0 + 1, y0 + len, col);
+        c.fill(x1 - len, y0, x1, y0 + 1, col);
+        c.fill(x1 - 1, y0, x1, y0 + len, col);
+        c.fill(x0, y1 - 1, x0 + len, y1, col);
+        c.fill(x0, y1 - len, x0 + 1, y1, col);
+        c.fill(x1 - len, y1 - 1, x1, y1, col);
+        c.fill(x1 - 1, y1 - len, x1, y1, col);
+    }
+
+    /** Schräges Schild mit Regenbogen und dunkler Schrift (z. B. "ALPHA MOD // TOOLS"). */
+    static void chip(DrawContext c, TextRenderer tr, int x, int y, String text) {
+        int w = tr.getWidth(text) + 14, h = 11;
+        float ph = phase();
+        for (int j = 0; j < h; j++) {
+            int sh = (h - 1 - j) / 2;
+            for (int i = 0; i < w; i += 3) {
+                c.fill(x + sh + i, y + j, Math.min(x + sh + w, x + sh + i + 3), y + j + 1, rainbowAt(i / (float) w * 0.7f + ph));
+            }
+        }
+        txt(c, tr, text, x + 8, y + 2, 0xFF0B0D12);
+    }
+
+    /** Sechseck mit Regenbogen-Rand und α in der Mitte (Logo aus dem Trailer). */
+    static void hexLogo(DrawContext c, TextRenderer tr, int cx, int cy, int r) {
+        float ph = phase();
+        for (int pass = 0; pass < 2; pass++) {
+            int rr = pass == 0 ? r : r - 2;
+            for (int dy = -rr; dy <= rr; dy++) {
+                float ady = Math.abs(dy);
+                float hw = ady <= rr / 2f ? rr * 0.866f : rr * 0.866f * (rr - ady) / (rr / 2f);
+                int col = pass == 0 ? rainbowAt((dy + rr) / (2f * rr) * 0.8f + ph) : 0xFF0E1220;
+                c.fill(Math.round(cx - hw), cy + dy, Math.round(cx + hw), cy + dy + 1, col);
+            }
+        }
+        String a = "α";
+        txt(c, tr, a, cx - tr.getWidth(a) / 2 + 1, cy - 3, 0xFFFFFFFF);
+    }
+
+    /** Text mit Regenbogen-Farbverlauf (Buchstabe für Buchstabe). */
+    static void rainbowText(DrawContext c, TextRenderer tr, String s, int x, int y) {
+        float ph = phase();
+        int xx = x;
+        for (int i = 0; i < s.length(); i++) {
+            String ch = String.valueOf(s.charAt(i));
+            c.drawText(tr, ch, xx, y, mix(rainbowAt(i / (float) Math.max(1, s.length()) * 0.7f + ph), 0xFFFFFFFF, 0.25f), true);
+            xx += tr.getWidth(ch);
+        }
+    }
 
     static final int TEXT = 0xFFE8EAF0;
     static final int MUTED = 0xFF8B92A5;
@@ -192,67 +286,52 @@ final class Ui {
 
     /** Abschnitts-Überschrift mit Akzent-Strich und feiner Linie. */
     static void section(DrawContext c, TextRenderer tr, int x, int y, String text, int width) {
-        c.fill(x, y + 1, x + 2, y + 9, ACCENT);
+        if (holo()) rainbowV(c, x, y + 1, x + 2, y + 9, phase());
+        else c.fill(x, y + 1, x + 2, y + 9, ACCENT);
         txt(c, tr, text, x + 6, y, ACCENT_LIGHT);
         int lx = x + 6 + tr.getWidth(text) + 6;
         hgrad(c, lx, y + 4, x + width - 4, y + 5, (ACCENT & 0x00FFFFFF) | 0x40000000, 0x08FFFFFF);
     }
 
+    /** Name des offenen Menüs (für das Schild oben und den Pfad unten). */
+    static String where = "";
+
+    static void panel(DrawContext c, int sw, int sh, int px0, int py0, int px1, int py1, int head, String name) {
+        where = name == null ? "" : name;
+        panel(c, sw, sh, px0, py0, px1, py1, head);
+    }
+
     /** Dunkler Hintergrund mit Panel, Schatten, feinem Rand und Kopfzeile (für alle Menüs gleich). */
     static void panel(DrawContext c, int sw, int sh, int px0, int py0, int px1, int py1, int head) {
-        c.fill(0, 0, sw, sh, DIM);
+        c.fill(0, 0, sw, sh, dim());
         shadow(c, px0, py0, px1, py1);
+        boolean holo = holo();
+        float ph = phase();
         round2(c, px0 - 1, py0 - 1, px1 + 1, py1 + 1, BORDER);
         round2(c, px0, py0, px1, py1, BG);
         round2(c, px0, py0, px1, py0 + head, HEAD_BG);
         c.fill(px0, py0 + head - 4, px1, py0 + head, HEAD_BG);
         c.fill(px0 + 1, py0 + head, px1 - 1, py0 + head + 1, 0xFF232834);
         c.fill(px0 + 3, py0 + 1, px1 - 3, py0 + 2, 0x14FFFFFF);
-        hgrad(c, px0 + 1, py0 + head, px1 - 1, py0 + head + 1, (ACCENT & 0x00FFFFFF) | 0xA0000000, 0x60F472B6);
-        hgrad(c, px0 + 10, py0 + head - 1, px0 + 60, py0 + head + 1, ACCENT, PINK);
-    }
-
-    /** Regenbogen-Fläche (für "Dynamisch" / "Lichtshow"). */
-    static void rainbow(DrawContext c, int x0, int y0, int x1, int y1) {
-        int[] cols = {0xFFF87171, 0xFFFBBF24, 0xFF4ADE80, 0xFF38BDF8, 0xFFA78BFA, 0xFFF472B6};
-        int w = x1 - x0;
-        if (w <= 0) return;
-        for (int x = x0; x < x1; x++) {
-            float t = (x - x0) / (float) w * (cols.length - 1);
-            int i = Math.min(cols.length - 2, (int) t);
-            c.fill(x, y0, x + 1, y1, mix(cols[i], cols[i + 1], t - i));
-        }
-    }
-
-    /** Helle Farbe? (für dunkle oder helle Schrift darauf) */
-    static boolean bright(int argb) {
-        int r = (argb >> 16) & 0xFF, g = (argb >> 8) & 0xFF, b = argb & 0xFF;
-        return r * 299 + g * 587 + b * 114 > 150_000;
-    }
-
-    /**
-     * Farbfeld zur Farbauswahl: runde Farbfläche mit Rand, die gewählte Farbe mit weißem Ring und Haken.
-     * color == 0: Regenbogen.
-     */
-    static void swatch(DrawContext c, TextRenderer tr, int x0, int y0, int x1, int y1, int color, String label, boolean sel, boolean hov) {
-        c.fill(x0, y0, x1, y1, BG);
-        int ring = sel ? 0xFFFFFFFF : hov ? 0xFF6A7387 : BORDER;
-        round2(c, x0, y0, x1, y1, ring);
-        round2(c, x0 + 1, y0 + 1, x1 - 1, y1 - 1, BG);
-        int in = sel ? 3 : 2;
-        int ix0 = x0 + in, iy0 = y0 + in, ix1 = x1 - in, iy1 = y1 - in;
-        if (color == 0) {
-            rainbow(c, ix0, iy0, ix1, iy1);
+        if (holo) {
+            // Regenbogen-Rand rundherum und Eckwinkel wie im Trailer
+            rainbowH(c, px0 + 2, py0 - 1, px1 - 2, py0, ph);
+            rainbowH(c, px0 + 2, py1, px1 - 2, py1 + 1, ph + 0.5f);
+            rainbowV(c, px0 - 1, py0 + 2, px0, py1 - 2, ph);
+            rainbowV(c, px1, py0 + 2, px1 + 1, py1 - 2, ph + 0.5f);
+            rainbowH(c, px0 + 1, py0 + head, px1 - 1, py0 + head + 1, ph + 0.25f);
+            brackets(c, px0 - 4, py0 - 4, px1 + 4, py1 + 4, 9, 0xCCFFFFFF);
+            TextRenderer tr = MinecraftClient.getInstance().textRenderer;
+            String nm = where == null ? "" : where.toUpperCase(java.util.Locale.ROOT);
+            if (py0 >= 16) chip(c, tr, px0 + 6, py0 - 14, nm.isEmpty() ? "ALPHA MOD" : "ALPHA MOD // " + nm);
+            Config cfg = Config.INSTANCE;
+            if ((cfg == null || cfg.uiPath) && py1 + 16 <= sh) {
+                String path = Lang.t("PFAD:  K", "PATH:  K") + (nm.isEmpty() ? "" : "  /  " + nm);
+                txt(c, tr, path, px0 + 4, py1 + 7, 0xFF6B7385);
+            }
         } else {
-            round2(c, ix0, iy0, ix1, iy1, color | 0xFF000000);
-            c.fill(ix0 + 2, iy0, ix1 - 2, iy0 + 1, mix(color | 0xFF000000, 0xFFFFFFFF, 0.25f));
-        }
-        boolean light = color == 0 || bright(color);
-        String t = label == null ? "" : label;
-        if (sel) t = t.isEmpty() ? "✔" : "✔ " + t;
-        if (!t.isEmpty()) {
-            t = tr.trimToWidth(t, Math.max(4, ix1 - ix0 - 4));
-            txt(c, tr, t, x0 + (x1 - x0 - tr.getWidth(t)) / 2, y0 + (y1 - y0 - 8) / 2, light ? 0xFF0B0D12 : 0xFFFFFFFF);
+            hgrad(c, px0 + 1, py0 + head, px1 - 1, py0 + head + 1, (ACCENT & 0x00FFFFFF) | 0xA0000000, 0x60F472B6);
+            hgrad(c, px0 + 10, py0 + head - 1, px0 + 60, py0 + head + 1, ACCENT, PINK);
         }
     }
 

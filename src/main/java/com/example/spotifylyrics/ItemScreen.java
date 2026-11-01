@@ -286,7 +286,7 @@ abstract class ItemScreen extends Screen {
 
     // Absichtlich ohne @Override, wie in den anderen Menüs.
     public void renderBackground(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        Ui.panel(ctx, this.width, this.height, px0, py0, px1, py1, HEAD);
+        Ui.panel(ctx, this.width, this.height, px0, py0, px1, py1, HEAD, head);
     }
 
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontal, double vertical) {

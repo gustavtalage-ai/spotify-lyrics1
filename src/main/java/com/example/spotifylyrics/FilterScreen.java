@@ -209,7 +209,7 @@ public class FilterScreen extends Screen {
 
     // Absichtlich ohne @Override, wie im Soundboard-Menü.
     public void renderBackground(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        Ui.panel(ctx, this.width, this.height, px0, py0, px1, py1, HEAD);
+        Ui.panel(ctx, this.width, this.height, px0, py0, px1, py1, HEAD, Lang.t("Tools / Item-Filter", "Tools / Item filter"));
     }
 
     // Absichtlich ohne @Override, wie im Soundboard-Menü.

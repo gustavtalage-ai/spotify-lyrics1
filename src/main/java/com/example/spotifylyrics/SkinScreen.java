@@ -391,7 +391,7 @@ public class SkinScreen extends Screen {
 
     // Absichtlich ohne @Override, wie in den anderen Menüs.
     public void renderBackground(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        Ui.panel(ctx, this.width, this.height, px0, py0, px1, py1, HEAD);
+        Ui.panel(ctx, this.width, this.height, px0, py0, px1, py1, HEAD, "Skins");
     }
 
     private void slot(DrawContext ctx, TextRenderer tr, int i, int x0, int x1, boolean center, int mouseX, int mouseY) {

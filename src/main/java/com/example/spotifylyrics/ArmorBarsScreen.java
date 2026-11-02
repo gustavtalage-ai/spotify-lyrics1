@@ -38,8 +38,8 @@ public class ArmorBarsScreen extends ItemScreen {
         row(t(Lang.t("Nur mit Waffe in der Hand", "Only while holding a weapon"), c.abWeapon, () -> c.abWeapon = !c.abWeapon));
         gap(4);
         sec(Lang.t("Position", "Position"));
-        row(t(Lang.t("Auf der Rüstung", "On the armor"), c.abStyle == 0, () -> c.abStyle = 0),
-            t(Lang.t("Über dem Kopf", "Above the head"), c.abStyle == 1, () -> c.abStyle = 1));
+        row(t(Lang.t("Glanz auf der Rüstung", "Glint on the armor"), c.abStyle == 0, () -> c.abStyle = 0),
+            t(Lang.t("Balken über dem Kopf", "Bars above the head"), c.abStyle == 1, () -> c.abStyle = 1));
         gap(4);
         sec(Lang.t("Reichweite", "Range"));
         stepper(Lang.t("Max. Entfernung: ", "Max distance: ") + c.abDist, () -> {

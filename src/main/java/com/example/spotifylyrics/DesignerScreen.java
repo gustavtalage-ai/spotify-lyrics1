@@ -88,10 +88,12 @@ public class DesignerScreen extends ItemScreen {
         MinecraftClient mc = MinecraftClient.getInstance();
 
         sec(Lang.t("So geht's", "How it works"));
-        text(Lang.t("1. Item in die Hand nehmen oder Block anschauen", "1. Hold an item or look at a block"), Ui.TEXT);
+        text(Lang.t("1. Item aus der Liste wählen (oder in die Hand nehmen)", "1. Pick an item from the list (or hold it)"), Ui.TEXT);
         text(Lang.t("2. Hinzufügen, dann Bild und Sound wählen", "2. Add it, then pick a picture and sound"), Ui.TEXT);
         text(Lang.t("3. Fertig – das Bild ist sofort im Spiel", "3. Done – the picture shows up right away"), Ui.TEXT);
         gap(4);
+        row(C(Lang.t("▦ Alle Items durchsuchen", "▦ Browse all items"), Ui.ACCENT, Ui.ACCENT, 0xFF04121B,
+            () -> MinecraftClient.getInstance().setScreen(new ItemPickerScreen())));
         row(B(Lang.t("+ Item in der Hand", "+ Item in hand"), () -> {
                 if (mc.player == null) return;
                 ItemStack s = mc.player.getMainHandStack();
@@ -131,8 +133,8 @@ public class DesignerScreen extends ItemScreen {
 
     private void buildEdit(Config.Design d) {
         Config c = Config.INSTANCE;
-        text(Designer.itemName(d.item) + "  (" + d.item + ")", Ui.TEXT);
-        gap(4);
+        iconY = area(38);
+        iconItem = d.item;
 
         sec(Lang.t("Bild", "Picture"));
         text(Lang.t("Bild einfach ins Minecraft-Fenster ziehen – oder hier wählen:", "Drag a picture into the Minecraft window – or pick one:"), 0xFF8A93A6);
@@ -176,6 +178,32 @@ public class DesignerScreen extends ItemScreen {
             Designer.apply();
             again();
         }));
+    }
+
+    private int iconY = -1;
+    private String iconItem;
+
+    // Absichtlich ohne @Override, wie in den anderen Menüs.
+    public void render(net.minecraft.client.gui.DrawContext ctx, int mouseX, int mouseY, float delta) {
+        super.render(ctx, mouseX, mouseY, delta);
+        if (iconY < 0 || iconItem == null) return;
+        try {
+            var item = Registries.ITEM.get(net.minecraft.util.Identifier.of(iconItem));
+            int x = cx, y = py0 + iconY - scrollY();
+            if (y < py0 + HEAD || y > py1 - 36) return;
+            ctx.fill(x, y, x + 36, y + 36, Ui.BG);
+            Ui.round(ctx, x, y, x + 36, y + 36, 0xFF1F5A35);
+            org.joml.Matrix3x2fStack m = ctx.getMatrices();
+            m.pushMatrix();
+            m.translate(x + 2, y + 2);
+            m.scale(2f, 2f);
+            ctx.drawItem(new ItemStack(item), 0, 0);
+            m.popMatrix();
+            var tr = MinecraftClient.getInstance().textRenderer;
+            Ui.txt(ctx, tr, Designer.itemName(iconItem), x + 44, y + 8, Ui.TEXT);
+            Ui.txt(ctx, tr, iconItem, x + 44, y + 20, 0xFF8A93A6);
+        } catch (Throwable ignored) {
+        }
     }
 
     private Cell pick(String label, boolean sel, Runnable set) {

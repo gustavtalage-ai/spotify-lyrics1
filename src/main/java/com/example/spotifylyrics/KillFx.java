@@ -153,32 +153,14 @@ public final class KillFx {
         }
     }
 
+    private static final String[] SND = {"sonnenfeuer", "frostkristall", "leere", "neonglitch", "koenigsglanz"};
+
+    /** Eigene Kill-Sounds: Kill 1 bis 5 werden immer höher (Serie), dazu der Finisher-Sound der Kollektion. */
     private static void sounds(int style) {
-        Object a = SoundEvents.ENTITY_FIREWORK_ROCKET_BLAST;
-        play(SoundEvents.ENTITY_GENERIC_EXPLODE, 1.3f, 0.6f);
-        if (style == 0 || style == 4) play(SoundEvents.ENTITY_LIGHTNING_BOLT_THUNDER, 1.4f, 0.5f);
-        switch (style) {
-            case 0 -> {
-                play(SoundEvents.BLOCK_BEACON_ACTIVATE, 1.6f, 0.9f);
-                play(a, 0.8f, 0.8f);
-            }
-            case 1 -> {
-                play(SoundEvents.BLOCK_GLASS_BREAK, 0.7f, 1f);
-                play(SoundEvents.BLOCK_AMETHYST_BLOCK_RESONATE, 1.2f, 1f);
-            }
-            case 2 -> {
-                play(SoundEvents.ENTITY_EVOKER_CAST_SPELL, 1.3f, 0.9f);
-                play(a, 1.2f, 0.6f);
-            }
-            case 3 -> {
-                play(SoundEvents.BLOCK_END_PORTAL_FRAME_FILL, 0.6f, 1f);
-                play(SoundEvents.ENTITY_SHULKER_BULLET_HIT, 1.5f, 0.9f);
-            }
-            default -> {
-                play(SoundEvents.BLOCK_END_PORTAL_SPAWN, 1.8f, 0.5f);
-                play(SoundEvents.BLOCK_BEACON_POWER_SELECT, 1.4f, 0.8f);
-            }
-        }
+        String b = SND[Math.floorMod(style, SND.length)];
+        int k = Math.max(1, Math.min(5, streak));
+        play(SoundEvent.of(net.minecraft.util.Identifier.of("spotifylyrics", "kill." + b + ".k" + k)), 1f, 1f);
+        play(SoundEvent.of(net.minecraft.util.Identifier.of("spotifylyrics", "kill." + b + ".fin")), 1f, 0.9f);
     }
 
     // ---------- 3D ----------
@@ -697,6 +679,94 @@ public final class KillFx {
 
     // ---------- Kill-Banner (HUD) ----------
 
+    /** Emblem der Kollektion im Kill-Banner (eigene Form und Bewegung je Kollektion). */
+    private static void emblem(DrawContext ctx, Matrix3x2fStack m, int style, long el, float alpha, int rgb, int rgb2) {
+        int a = (int) (alpha * 255) << 24;
+        int soft = (int) (alpha * 110) << 24;
+        float spin = el / 1000f;
+        switch (style) {
+            case 0 -> { // Sonne: Strahlenkranz + Kern
+                for (int i = 0; i < 12; i++) {
+                    m.pushMatrix();
+                    m.rotate((float) (i * Math.PI / 6 + spin));
+                    int len = 18 + (i % 2 == 0 ? 8 : 3) + (int) (3 * Math.sin(el / 80.0 + i));
+                    ctx.fill(-2, 10, 2, len, a | (i % 2 == 0 ? rgb : rgb2));
+                    m.popMatrix();
+                }
+                for (int i = 0; i < 3; i++) {
+                    m.pushMatrix();
+                    m.rotate((float) (i * Math.PI / 6));
+                    ctx.fill(-12, -12, 12, 12, a | 0x1A0700);
+                    m.popMatrix();
+                }
+                ctx.fill(-8, -8, 8, 8, a | rgb);
+                ctx.fill(-5, -5, 5, 5, a | 0xFFF4C0);
+            }
+            case 1 -> { // Kristall: Sechseck + wegfliegende Splitter
+                for (int i = 0; i < 3; i++) {
+                    m.pushMatrix();
+                    m.rotate((float) (i * Math.PI / 3 + spin * 0.4));
+                    ctx.fill(-8, -15, 8, 15, a | 0x0A2A5E);
+                    ctx.fill(-6, -13, 6, 13, soft | rgb);
+                    m.popMatrix();
+                }
+                ctx.fill(-4, -9, 4, 9, a | 0xEFFFFF);
+                float k = Math.min(1, el / 500f);
+                for (int i = 0; i < 8; i++) {
+                    m.pushMatrix();
+                    m.rotate((float) (i * Math.PI / 4 + 0.3));
+                    int d = (int) (16 + 22 * k);
+                    ctx.fill(-1, d, 2, d + 6, (int) (alpha * (1 - k) * 255) << 24 | rgb2);
+                    m.popMatrix();
+                }
+            }
+            case 2 -> { // Leere: drehender Ring aus Teilchen um ein schwarzes Loch
+                for (int i = 0; i < 16; i++) {
+                    m.pushMatrix();
+                    m.rotate((float) (i * Math.PI / 8 - spin * 2.2));
+                    int r0 = 14 + (i % 3);
+                    ctx.fill(-2, r0, 2, r0 + 4, a | (i % 2 == 0 ? rgb : rgb2));
+                    m.popMatrix();
+                }
+                m.pushMatrix();
+                m.rotate((float) (Math.PI / 4 + spin));
+                ctx.fill(-11, -11, 11, 11, a | 0x05000C);
+                ctx.fill(-11, -11, 11, -9, soft | rgb2);
+                ctx.fill(-11, 9, 11, 11, soft | rgb2);
+                m.popMatrix();
+                ctx.fill(-3, -3, 3, 3, soft | rgb);
+            }
+            case 3 -> { // Glitch: Quadrat mit RGB-Versatz und Zittern
+                int jx = (el / 60) % 3 == 0 ? (int) ((el * 7) % 5) - 2 : 0;
+                ctx.fill(-14 + jx - 2, -14, 14 + jx - 2, 14, soft | 0xFF00E6);
+                ctx.fill(-14 + jx + 2, -14, 14 + jx + 2, 14, soft | 0x00E5FF);
+                ctx.fill(-14 + jx, -14, 14 + jx, 14, a | 0x0A0A14);
+                for (int y = -12; y < 12; y += 4) ctx.fill(-12 + jx, y, 12 + jx, y + 1, (int) (alpha * 90) << 24 | 0x5CFF3A);
+                ctx.fill(-14 + jx, -14, 14 + jx, -12, a | 0x5CFF3A);
+                ctx.fill(-14 + jx, 12, 14 + jx, 14, a | 0x5CFF3A);
+            }
+            default -> { // Krone: Raute mit drei Zacken und Juwel
+                m.pushMatrix();
+                m.rotate((float) (Math.PI / 4));
+                ctx.fill(-13, -13, 13, 13, a | 0x2A0008);
+                ctx.fill(-13, -13, 13, -11, a | rgb2);
+                ctx.fill(-13, 11, 13, 13, a | rgb2);
+                ctx.fill(-13, -13, -11, 13, a | rgb2);
+                ctx.fill(11, -13, 13, 13, a | rgb2);
+                m.popMatrix();
+                int up = (int) (6 * Math.min(1, el / 300f));
+                for (int i = -1; i <= 1; i++) {
+                    int x = i * 9;
+                    int top = -22 - up - (i == 0 ? 6 : 0);
+                    ctx.fill(x - 2, top, x + 2, -15, a | rgb2);
+                    ctx.fill(x - 3, top - 3, x + 3, top, a | 0xFFF6DC);
+                }
+                ctx.fill(-4, -4, 4, 4, a | rgb);
+                ctx.fill(-2, -2, 2, 2, a | 0xFFFFFF);
+            }
+        }
+    }
+
     public static void hud(DrawContext ctx, RenderTickCounter tick) {
         Config c = Config.INSTANCE;
         if (!c.kfOn || bannerStart == 0) return;
@@ -719,6 +789,23 @@ public final class KillFx {
             ctx.fillGradient(0, 0, sw, edge, va << 24 | rgb, rgb);
             ctx.fillGradient(0, sh - edge, sw, sh, rgb, va << 24 | rgb);
         }
+        // Kill-Zeichen am Fadenkreuz
+        if (el < 450) {
+            float k = el / 450f;
+            int ca = (int) ((1 - k) * 255) << 24;
+            Matrix3x2fStack mm = ctx.getMatrices();
+            mm.pushMatrix();
+            mm.translate(sw / 2f, sh / 2f);
+            mm.scale(1.4f - 0.4f * easeOut(Math.min(1, k * 3)), 1.4f - 0.4f * easeOut(Math.min(1, k * 3)));
+            for (int i = 0; i < 4; i++) {
+                mm.pushMatrix();
+                mm.rotate((float) (Math.PI / 4 + i * Math.PI / 2));
+                ctx.fill(-1, 4, 2, 11, ca | rgb);
+                ctx.fill(0, 5, 1, 10, ca | 0xFFFFFF);
+                mm.popMatrix();
+            }
+            mm.popMatrix();
+        }
         if (!c.kfBanner) return;
 
         TextRenderer tr = mc.textRenderer;
@@ -740,20 +827,15 @@ public final class KillFx {
             ctx.fill(-1, 14, 1, 14 + (int) (16 * Math.min(1, el / 300f)), (int) (alpha * 160) << 24 | (i % 2 == 0 ? rgb : rgb2));
         }
         m.popMatrix();
-        // zwei Rauten übereinander
-        m.pushMatrix();
-        m.rotate((float) (Math.PI / 4) + (el < 400 ? (1 - el / 400f) * 1.5f : 0));
-        ctx.fill(-17, -17, 17, 17, (int) (alpha * 120) << 24 | rgb2);
-        ctx.fill(-15, -15, 15, 15, a | 0x0B0D12);
-        ctx.fill(-15, -15, 15, -12, a | rgb);
-        ctx.fill(-15, 12, 15, 15, a | rgb);
-        ctx.fill(-15, -15, -12, 15, a | rgb);
-        ctx.fill(12, -15, 15, 15, a | rgb);
-        ctx.fill(-8, -8, 8, 8, (int) (alpha * 110) << 24 | rgb2);
-        m.popMatrix();
+        emblem(ctx, m, bannerStyle, el, alpha, rgb, rgb2);
+        // Serien-Striche erscheinen nacheinander
         for (int i = 0; i < streak; i++) {
+            long d = el - 120 - i * 70L;
+            if (d < 0) continue;
+            float pk = Math.min(1, d / 120f);
             int bx = -((streak - 1) * 6) / 2 + i * 6;
-            ctx.fill(bx - 2, -7, bx + 2, 7, a | 0xFFFFFF);
+            int hh = (int) (7 * (pk < 1 ? 1.6f - 0.6f * pk : 1));
+            ctx.fill(bx - 2, -hh, bx + 2, hh, a | 0xFFFFFF);
         }
         m.popMatrix();
         // Flügel

@@ -74,7 +74,7 @@ public final class WeaponSkins {
                         src = ImageIO.read(in);
                     }
                     if (src == null) continue;
-                    BufferedImage out = skin(src, g, glitch, t.hashCode());
+                    BufferedImage out = SkinGen.make(src, c.kfStyle, t.hashCode());
                     Path png = root.resolve("assets").resolve(t.getNamespace()).resolve("textures").resolve(t.getPath() + ".png");
                     Files.createDirectories(png.getParent());
                     ImageIO.write(out, "png", png.toFile());

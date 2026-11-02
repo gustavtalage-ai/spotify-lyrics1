@@ -224,10 +224,9 @@ public final class Skins {
         return l;
     }
 
-    /** Ist die Saison-Kiste gerade im Shop? (Normale Kisten immer; Admin sieht alle.) */
+    /** Ist die Kiste gerade im Shop? Normale Kisten immer, Saison- und Feiertags-Kisten nur an ihren Tagen (auch für Admin). */
     public static boolean caseActive(int k) {
-        if (k < 3 || adminOn()) return true;
-        return inSeason(k);
+        return k < 3 || inSeason(k);
     }
 
     public static boolean inSeason(int k) {

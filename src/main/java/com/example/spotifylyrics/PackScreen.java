@@ -62,7 +62,7 @@ public class PackScreen extends Screen {
         result = r;
         Random rnd = new Random();
         strip = new int[TILES][];
-        for (int i = 0; i < TILES; i++) strip[i] = new int[] {rnd.nextInt(Skins.bundles()), rnd.nextInt(Skins.TYPES.length)};
+        for (int i = 0; i < TILES; i++) strip[i] = new int[] {Skins.bundleOfTier(Skins.rollTier(rnd), rnd), rnd.nextInt(Skins.TYPES.length)};
         strip[WIN] = new int[] {r[0], r[1]};
         target = WIN * STEP + (rnd.nextFloat() - 0.5f) * (TW - 14);
         openStart = System.currentTimeMillis();
@@ -196,17 +196,32 @@ public class PackScreen extends Screen {
         int n8 = Skins.bundles(), tw = Math.min(46, (px1 - px0 - 20 - (n8 - 1) * 4) / n8), tot = n8 * tw + (n8 - 1) * 4;
         int x0 = cx - tot / 2, ty = iy + 14;
         String tip = null;
-        for (int i = 0; i < n8; i++) {
-            int x = x0 + i * (tw + 4);
-            int col = 0xFF000000 | SkinGen.PAL[i][2];
+        for (int j = 0; j < n8; j++) {
+            int i = Skins.ORDER[j];
+            int x = x0 + j * (tw + 4);
+            int col = Skins.tierCol(i);
             Ui.card(ctx, x, ty, x + tw, ty + tw, col, 0xFF07080B);
+            ctx.fillGradient(x + 1, ty + 1, x + tw - 1, ty + tw - 1, 0x05000000, (0x50 << 24) | (col & 0xFFFFFF));
             ctx.fill(x + 1, ty + tw - 4, x + tw - 1, ty + tw - 1, col);
             m.pushMatrix();
             m.translate(x + tw / 2f, ty + tw / 2f - 2);
             m.scale(2f, 2f);
             ctx.drawTextWithShadow(tr, "?", -tr.getWidth("?") / 2, -4, 0xFF8B92A5);
             m.popMatrix();
-            if (Ui.in(mx, my, x, ty, x + tw, ty + tw)) tip = WeaponSkins.BUNDLES[i] + " · " + Lang.t("Finisher: ", "Finisher: ") + KillFx.STYLES[i];
+            if (Ui.in(mx, my, x, ty, x + tw, ty + tw)) {
+                int tr0 = Skins.tier(i), same = 0;
+                for (int q = 0; q < n8; q++) if (Skins.tier(q) == tr0) same++;
+                tip = WeaponSkins.BUNDLES[i] + " · " + Skins.TIER_NAMES[tr0] + " · " + String.format(java.util.Locale.ROOT, "%.1f%%", Skins.TIER_W[tr0] / (float) same);
+            }
+        }
+        // Chancen
+        int lx = 0;
+        for (int q = 0; q < Skins.TIER_NAMES.length; q++) lx += tr.getWidth(Skins.TIER_NAMES[q] + " " + Skins.TIER_W[q] + "%") + (q > 0 ? 10 : 0);
+        int lxx = cx - lx / 2, ly = ty + tw + 8;
+        for (int q = 0; q < Skins.TIER_NAMES.length; q++) {
+            String s = Skins.TIER_NAMES[q] + " " + Skins.TIER_W[q] + "%";
+            Ui.txt(ctx, tr, s, lxx, ly, Skins.TIER_COL[q]);
+            lxx += tr.getWidth(s) + 10;
         }
         if (tip != null) ctx.drawTooltip(tr, List.of(Text.literal(tip)), mx, my);
     }
@@ -229,12 +244,12 @@ public class PackScreen extends Screen {
             int x = (int) (cx + i * STEP - off) - TW / 2;
             if (x > wx1) break;
             int b = strip[i][0], t = strip[i][1];
-            int col = 0xFF000000 | SkinGen.PAL[b][2];
+            int col = 0xFF000000 | SkinGen.PAL[b][2], rc = Skins.tierCol(b);
             int y0 = wy0 + 6, y1 = wy1 - 6;
             Ui.card(ctx, x, y0, x + TW, y1, 0xFF2A2F3A, 0xFF12151C);
-            ctx.fillGradient(x + 1, y0 + 1, x + TW - 1, y1 - 12, (0x55 << 24) | SkinGen.PAL[b][1], 0x05000000);
-            ctx.fill(x + 1, y1 - 4, x + TW - 1, y1 - 1, col);
-            ItemStack s = new ItemStack(Skins.showItem(t));
+            ctx.fillGradient(x + 1, y0 + 1, x + TW - 1, y1 - 12, 0x08000000, (0x60 << 24) | (rc & 0xFFFFFF));
+            ctx.fill(x + 1, y1 - 4, x + TW - 1, y1 - 1, rc);
+            ItemStack s = CollectionScreen.stackFor(t, b);
             CollectionScreen.drawBig(ctx, s, x + TW / 2 - 20, y0 + 6, 2.5f);
             String n = tr.trimToWidth(WeaponSkins.BUNDLES[b], TW - 6);
             ctx.drawTextWithShadow(tr, n, x + (TW - tr.getWidth(n)) / 2, y1 - 15, col);
@@ -256,18 +271,18 @@ public class PackScreen extends Screen {
         if (el >= SPIN_MS) {
             float k = (el - SPIN_MS) / (float) PAUSE_MS;
             int x = (int) (cx + WIN * STEP - target) - TW / 2;
-            ctx.fill(x, wy0 + 6, x + TW, wy1 - 6, (int) (120 * (1 - k)) << 24 | (SkinGen.PAL[result[0]][2] & 0xFFFFFF));
+            ctx.fill(x, wy0 + 6, x + TW, wy1 - 6, (int) (120 * (1 - k)) << 24 | (Skins.tierCol(result[0]) & 0xFFFFFF));
         }
     }
 
     /** Der Gewinn: Strahlen, Blitz, Skin groß. */
     private void reveal(DrawContext ctx, TextRenderer tr, Matrix3x2fStack m, int cx, long rel, long now) {
         int b = result[0], t = result[1];
-        int col = 0xFF000000 | SkinGen.PAL[b][2], col2 = 0xFF000000 | SkinGen.PAL[b][1];
+        int col = 0xFF000000 | SkinGen.PAL[b][2], col2 = Skins.tierCol(b);
         if (!revealPlayed) {
             revealPlayed = true;
             sound("spotifylyrics", "pack.reveal", 1f, 1f);
-            sound("spotifylyrics", "kill." + SND[b] + ".k5", 1f, 0.9f);
+            sound("spotifylyrics", "kill." + SND[b] + ".k" + (1 + Skins.tier(b)), 1f, 0.9f);
         }
         int cy = py0 + HEAD + (py1 - 40 - py0 - HEAD) / 2;
         float k = Math.min(1, rel / 450f);
@@ -289,6 +304,8 @@ public class PackScreen extends Screen {
         m.scale(1.6f, 1.6f);
         ctx.drawTextWithShadow(tr, title, -tr.getWidth(title) / 2, 0, col);
         m.popMatrix();
+        String rn = Skins.tierName(b).toUpperCase(java.util.Locale.ROOT);
+        Ui.txt(ctx, tr, rn, cx - tr.getWidth(rn) / 2, cy - iw / 2 - 18, Skins.tierCol(b));
         String sub = switch (result[2]) {
             case 0 -> Lang.t("NEU!  ·  Finisher: ", "NEW!  ·  Finisher: ") + KillFx.STYLES[b];
             case 2 -> Lang.t("Admin  ·  Finisher: ", "Admin  ·  Finisher: ") + KillFx.STYLES[b];

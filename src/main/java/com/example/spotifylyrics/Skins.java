@@ -84,6 +84,51 @@ public final class Skins {
         c.save();
     }
 
+    // ---------- Seltenheit ----------
+    public static final String[] TIER_NAMES = {"Gewöhnlich", "Selten", "Episch", "Legendär", "Mythisch"};
+    public static final int[] TIER_COL = {0xFF4B69FF, 0xFF8847FF, 0xFFD32CE6, 0xFFEB4B4B, 0xFFFFD700};
+    /** Chance je Seltenheit in Prozent. */
+    public static final int[] TIER_W = {55, 25, 12, 6, 2};
+    /** Wie stark der Finisher ist (Größe, Teilchen, Effekte). */
+    private static final float[] QUALITY = {0.55f, 0.7f, 0.85f, 1f, 1.15f};
+    /** Seltenheit je Kollektion (Reihenfolge wie WeaponSkins.BUNDLES). */
+    private static final int[] TIER = {1, 1, 3, 0, 4, 2, 0, 2};
+    /** Kollektionen sortiert: seltenste zuerst. */
+    public static final int[] ORDER = {4, 2, 5, 7, 0, 1, 3, 6};
+
+    public static int tier(int b) {
+        return b < 0 || b >= TIER.length ? 0 : TIER[b];
+    }
+
+    public static int tierCol(int b) {
+        return TIER_COL[tier(b)];
+    }
+
+    public static String tierName(int b) {
+        return TIER_NAMES[tier(b)];
+    }
+
+    public static float quality(int b) {
+        return b < 0 ? 0.8f : QUALITY[tier(b)];
+    }
+
+    /** Zufällige Seltenheit nach Chancen. */
+    static int rollTier(Random r) {
+        int x = r.nextInt(100), acc = 0;
+        for (int i = 0; i < TIER_W.length; i++) {
+            acc += TIER_W[i];
+            if (x < acc) return i;
+        }
+        return 0;
+    }
+
+    /** Zufällige Kollektion einer Seltenheit. */
+    static int bundleOfTier(int tier, Random r) {
+        List<Integer> l = new ArrayList<>();
+        for (int b = 0; b < bundles(); b++) if (tier(b) == tier) l.add(b);
+        return l.isEmpty() ? r.nextInt(bundles()) : l.get(r.nextInt(l.size()));
+    }
+
     /** Name der Kiste. */
     public static final String CASE = "Alpha-Kiste";
     /** SHA-256 des Admin-Codes (der Code selbst steht nicht im Mod). */
@@ -93,7 +138,7 @@ public final class Skins {
         return Config.INSTANCE.admin;
     }
 
-    /** Code einlösen: richtig = Admin (alle Skins, unendlich Kisten). */
+    /** Code einlösen: richtig = Admin (unendlich Kisten). */
     public static boolean redeem(String code) {
         try {
             String n = code == null ? "" : code.trim().toUpperCase(java.util.Locale.ROOT).replace(" ", "");
@@ -103,9 +148,6 @@ public final class Skins {
             if (!sb.toString().equals(ADMIN_SHA)) return false;
             Config c = Config.INSTANCE;
             c.admin = true;
-            for (int b = 0; b < bundles(); b++)
-                for (int t = 0; t < TYPES.length; t++)
-                    if (!owns(b, t)) c.skinsOwned.add(key(b, t));
             c.save();
             return true;
         } catch (Exception e) {
@@ -133,21 +175,22 @@ public final class Skins {
     public static int[] openPack() {
         if (packsAvailable() <= 0) return null;
         Config c = Config.INSTANCE;
+        Random r = new Random();
+        int tier = rollTier(r);
         List<int[]> free = new ArrayList<>();
         for (int b = 0; b < bundles(); b++)
-            for (int t = 0; t < TYPES.length; t++)
-                if (!owns(b, t)) free.add(new int[] {b, t});
-        Random r = new Random();
-        if (c.admin) return new int[] {r.nextInt(bundles()), r.nextInt(TYPES.length), 2};
+            if (tier(b) == tier)
+                for (int t = 0; t < TYPES.length; t++)
+                    if (!owns(b, t)) free.add(new int[] {b, t});
         int[] res;
-        if (free.isEmpty()) res = new int[] {r.nextInt(bundles()), r.nextInt(TYPES.length), 1};
+        if (free.isEmpty()) res = new int[] {bundleOfTier(tier, r), r.nextInt(TYPES.length), 1};
         else {
             int[] p = free.get(r.nextInt(free.size()));
             res = new int[] {p[0], p[1], 0};
             c.skinsOwned.add(key(p[0], p[1]));
             if (equipped(p[1]) < 0) c.skinsEquipped.put(TYPES[p[1]], p[0]); // erster Skin für die Waffe: gleich ausrüsten
         }
-        c.packsOpened++;
+        if (!c.admin) c.packsOpened++;
         c.save();
         return res;
     }
@@ -155,6 +198,16 @@ public final class Skins {
     private static int ticks;
 
     public static void register() {
+        // Einmalig: Skins, die der alte Admin-Code alle auf einmal gegeben hat, wieder wegnehmen.
+        Config cfg = Config.INSTANCE;
+        if (cfg.skinsRev < 1) {
+            if (cfg.admin) {
+                cfg.skinsOwned.clear();
+                cfg.skinsEquipped.clear();
+            }
+            cfg.skinsRev = 1;
+            cfg.save();
+        }
         ClientTickEvents.END_CLIENT_TICK.register(mc -> {
             if (mc.world == null || mc.player == null || mc.isPaused()) return;
             Config c = Config.INSTANCE;

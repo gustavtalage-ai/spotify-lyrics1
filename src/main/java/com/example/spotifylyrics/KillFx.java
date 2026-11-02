@@ -164,7 +164,7 @@ public final class KillFx {
         String b = SND[Math.floorMod(style, SND.length)];
         int k = Math.max(1, Math.min(5, streak));
         play(SoundEvent.of(net.minecraft.util.Identifier.of("spotifylyrics", "kill." + b + ".k" + k)), 1f, 1f);
-        play(SoundEvent.of(net.minecraft.util.Identifier.of("spotifylyrics", "kill." + b + ".fin")), 1f, 0.9f);
+        if (Skins.tier(style) >= 1) play(SoundEvent.of(net.minecraft.util.Identifier.of("spotifylyrics", "kill." + b + ".fin")), 1f, 0.9f);
     }
 
     /** Vorschau eines Finishers vor dir. */
@@ -221,6 +221,7 @@ public final class KillFx {
                     continue;
                 }
                 float ox = (float) (f.x - cam.x), oy = (float) (f.y - cam.y), oz = (float) (f.z - cam.z);
+                curQ = Skins.quality(f.style);
                 switch (f.style) {
                     case 0 -> beamFx(f, t, ox, oy, oz);
                     case 1 -> shatterFx(f, t, ox, oy, oz);
@@ -372,8 +373,11 @@ public final class KillFx {
         return f.color == -1 ? PAL[f.style][0] : f.color == 0 ? Ui.rainbowAt((System.currentTimeMillis() % 3000) / 3000f) & 0xFFFFFF : f.color;
     }
 
+    /** Stärke des gerade gezeichneten Finishers (nach Seltenheit). */
+    private static float curQ = 1f;
+
     private static float S() {
-        return Math.max(0.5f, Config.INSTANCE.kfSize / 100f);
+        return Math.max(0.5f, Config.INSTANCE.kfSize / 100f) * curQ;
     }
 
     /** Linie mit Leuchten: breiter, schwacher Schein + heller Kern. */
@@ -836,9 +840,11 @@ public final class KillFx {
     private static void particles(MinecraftClient mc, Fx f, float t) {
         if (mc.world == null || !Config.INSTANCE.kfParticles) return;
         Random r = new Random();
+        curQ = Skins.quality(f.style);
         float S = S();
         double x = f.x, y = f.y, z = f.z;
         int n = t < 0.15f ? 26 : t < 0.6f ? 8 : 3;
+        n = Math.max(1, Math.round(n * curQ * curQ));
         try {
             for (int i = 0; i < n; i++) {
                 double vx = (r.nextDouble() - 0.5) * 0.9 * S, vy = r.nextDouble() * 0.9 * S, vz = (r.nextDouble() - 0.5) * 0.9 * S;
@@ -1014,7 +1020,7 @@ public final class KillFx {
         int sw = ctx.getScaledWindowWidth(), sh = ctx.getScaledWindowHeight();
 
         // Bildschirm-Blitz und farbiger Rand
-        if (c.kfFlash && el < 700) {
+        if (c.kfFlash && el < 700 && (bannerStyle < 0 || Skins.tier(bannerStyle) >= 2)) {
             float k = el / 700f;
             int fa = (int) ((1 - k) * (1 - k) * 110);
             ctx.fill(0, 0, sw, sh, fa << 24 | rgb);

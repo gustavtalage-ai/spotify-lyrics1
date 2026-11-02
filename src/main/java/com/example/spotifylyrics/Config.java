@@ -257,6 +257,8 @@ public class Config {
     public int packsBonus = 1;
     /** Admin-Code eingelöst: alle Skins, unendlich Kisten. */
     public boolean admin = false;
+    /** Stand der Skin-Daten (für einmalige Umstellungen). */
+    public int skinsRev = 0;
 
     /** Pack-Sets: bis zu 4 Plätze, je die Pack-IDs getrennt mit "|" (leer = frei). */
     public java.util.List<String> packSets = new java.util.ArrayList<>();

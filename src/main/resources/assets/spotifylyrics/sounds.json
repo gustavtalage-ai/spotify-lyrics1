@@ -248,5 +248,100 @@
     "sounds": [
       "spotifylyrics:kill/pack_reveal"
     ]
+  },
+  "kill.magmakern.k1": {
+    "sounds": [
+      "spotifylyrics:kill/magmakern_k1"
+    ]
+  },
+  "kill.magmakern.k2": {
+    "sounds": [
+      "spotifylyrics:kill/magmakern_k2"
+    ]
+  },
+  "kill.magmakern.k3": {
+    "sounds": [
+      "spotifylyrics:kill/magmakern_k3"
+    ]
+  },
+  "kill.magmakern.k4": {
+    "sounds": [
+      "spotifylyrics:kill/magmakern_k4"
+    ]
+  },
+  "kill.magmakern.k5": {
+    "sounds": [
+      "spotifylyrics:kill/magmakern_k5"
+    ]
+  },
+  "kill.magmakern.fin": {
+    "sounds": [
+      "spotifylyrics:kill/magmakern_fin"
+    ]
+  },
+  "kill.sternenstaub.k1": {
+    "sounds": [
+      "spotifylyrics:kill/sternenstaub_k1"
+    ]
+  },
+  "kill.sternenstaub.k2": {
+    "sounds": [
+      "spotifylyrics:kill/sternenstaub_k2"
+    ]
+  },
+  "kill.sternenstaub.k3": {
+    "sounds": [
+      "spotifylyrics:kill/sternenstaub_k3"
+    ]
+  },
+  "kill.sternenstaub.k4": {
+    "sounds": [
+      "spotifylyrics:kill/sternenstaub_k4"
+    ]
+  },
+  "kill.sternenstaub.k5": {
+    "sounds": [
+      "spotifylyrics:kill/sternenstaub_k5"
+    ]
+  },
+  "kill.sternenstaub.fin": {
+    "sounds": [
+      "spotifylyrics:kill/sternenstaub_fin"
+    ]
+  },
+  "kill.geisterhauch.k1": {
+    "sounds": [
+      "spotifylyrics:kill/geisterhauch_k1"
+    ]
+  },
+  "kill.geisterhauch.k2": {
+    "sounds": [
+      "spotifylyrics:kill/geisterhauch_k2"
+    ]
+  },
+  "kill.geisterhauch.k3": {
+    "sounds": [
+      "spotifylyrics:kill/geisterhauch_k3"
+    ]
+  },
+  "kill.geisterhauch.k4": {
+    "sounds": [
+      "spotifylyrics:kill/geisterhauch_k4"
+    ]
+  },
+  "kill.geisterhauch.k5": {
+    "sounds": [
+      "spotifylyrics:kill/geisterhauch_k5"
+    ]
+  },
+  "kill.geisterhauch.fin": {
+    "sounds": [
+      "spotifylyrics:kill/geisterhauch_fin"
+    ]
+  },
+  "coin": {
+    "sounds": [
+      "spotifylyrics:kill/coin"
+    ]
   }
 }

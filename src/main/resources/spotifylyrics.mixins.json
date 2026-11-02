@@ -12,7 +12,8 @@
 		"ClientWorldExplosionMixin",
 		"ZoomMixin",
 		"GlowMixin",
-		"GlowColorMixin"
+		"GlowColorMixin",
+		"SkinModelMixin"
 	],
 	"injectors": {
 		"defaultRequire": 0

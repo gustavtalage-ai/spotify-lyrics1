@@ -148,5 +148,105 @@
     "sounds": [
       "spotifylyrics:kill/koenigsglanz_fin"
     ]
+  },
+  "kill.blutmond.k1": {
+    "sounds": [
+      "spotifylyrics:kill/blutmond_k1"
+    ]
+  },
+  "kill.blutmond.k2": {
+    "sounds": [
+      "spotifylyrics:kill/blutmond_k2"
+    ]
+  },
+  "kill.blutmond.k3": {
+    "sounds": [
+      "spotifylyrics:kill/blutmond_k3"
+    ]
+  },
+  "kill.blutmond.k4": {
+    "sounds": [
+      "spotifylyrics:kill/blutmond_k4"
+    ]
+  },
+  "kill.blutmond.k5": {
+    "sounds": [
+      "spotifylyrics:kill/blutmond_k5"
+    ]
+  },
+  "kill.blutmond.fin": {
+    "sounds": [
+      "spotifylyrics:kill/blutmond_fin"
+    ]
+  },
+  "kill.giftranke.k1": {
+    "sounds": [
+      "spotifylyrics:kill/giftranke_k1"
+    ]
+  },
+  "kill.giftranke.k2": {
+    "sounds": [
+      "spotifylyrics:kill/giftranke_k2"
+    ]
+  },
+  "kill.giftranke.k3": {
+    "sounds": [
+      "spotifylyrics:kill/giftranke_k3"
+    ]
+  },
+  "kill.giftranke.k4": {
+    "sounds": [
+      "spotifylyrics:kill/giftranke_k4"
+    ]
+  },
+  "kill.giftranke.k5": {
+    "sounds": [
+      "spotifylyrics:kill/giftranke_k5"
+    ]
+  },
+  "kill.giftranke.fin": {
+    "sounds": [
+      "spotifylyrics:kill/giftranke_fin"
+    ]
+  },
+  "kill.gewitter.k1": {
+    "sounds": [
+      "spotifylyrics:kill/gewitter_k1"
+    ]
+  },
+  "kill.gewitter.k2": {
+    "sounds": [
+      "spotifylyrics:kill/gewitter_k2"
+    ]
+  },
+  "kill.gewitter.k3": {
+    "sounds": [
+      "spotifylyrics:kill/gewitter_k3"
+    ]
+  },
+  "kill.gewitter.k4": {
+    "sounds": [
+      "spotifylyrics:kill/gewitter_k4"
+    ]
+  },
+  "kill.gewitter.k5": {
+    "sounds": [
+      "spotifylyrics:kill/gewitter_k5"
+    ]
+  },
+  "kill.gewitter.fin": {
+    "sounds": [
+      "spotifylyrics:kill/gewitter_fin"
+    ]
+  },
+  "pack.open": {
+    "sounds": [
+      "spotifylyrics:kill/pack_open"
+    ]
+  },
+  "pack.reveal": {
+    "sounds": [
+      "spotifylyrics:kill/pack_reveal"
+    ]
   }
 }

@@ -953,7 +953,7 @@ public final class KillFx {
             float k = i / 60f;
             double ang = k * Math.PI * 6 + t * 4;
             float rad = (0.6f + 3.5f * k) * S * pop;
-            cube(x + (float) Math.cos(ang) * rad, y + 0.3f + k * (f.h + 2 * S), z + (float) Math.sin(ang) * rad, 0.07f * S, ang, k * 3,
+            cube(x + (float) Math.cos(ang) * rad, y + 0.3f + k * (f.h + 2 * S), z + (float) Math.sin(ang) * rad, 0.07f * S, (float) ang, k * 3,
                 i % 2 == 0 ? 0xA8C8FF : 0xFFB8F0, a * (1 - k * 0.5f));
         }
         // Lichtringe
@@ -1002,7 +1002,7 @@ public final class KillFx {
         for (int i = 0; i < 40; i++) {
             double ang = r.nextDouble() * Math.PI * 2;
             float d = (1 + r.nextFloat() * 5) * S, k = (t * 0.8f + r.nextFloat()) % 1f;
-            cube(x + (float) Math.cos(ang) * d, y + 0.2f + k * 2 * S, z + (float) Math.sin(ang) * d, 0.18f * S * (1 - k), ang, k, 0x2EC4B6, a * 0.35f * (1 - k));
+            cube(x + (float) Math.cos(ang) * d, y + 0.2f + k * 2 * S, z + (float) Math.sin(ang) * d, 0.18f * S * (1 - k), (float) ang, k, 0x2EC4B6, a * 0.35f * (1 - k));
         }
         pillar(x, y, y + 6 * S, z, 0.7f * S * (1 - t), 0x7FFFE0, a * 0.4f, 0f);
         float tk = (t - 0.3f) * 2;

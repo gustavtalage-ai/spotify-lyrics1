@@ -34,6 +34,7 @@ public class SpotifyLyricsClient implements ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(Soundboard::tick);
         HudElementRegistry.addLast(Identifier.of("spotifylyrics", "lyrics"), LyricsHud::render);
         HudElementRegistry.addLast(Identifier.of("spotifylyrics", "soundicon"), SoundIcon::render);
+        HudElementRegistry.addLast(Identifier.of("spotifylyrics", "killbanner"), KillFx::hud);
         HudElementRegistry.addLast(Identifier.of("spotifylyrics", "lightshow"), Lightshow::render);
         HudElementRegistry.addLast(Identifier.of("spotifylyrics", "placehelper"), PlaceHelper::render);
         ClientTickEvents.END_CLIENT_TICK.register(Lightshow::tick);
@@ -45,6 +46,7 @@ public class SpotifyLyricsClient implements ClientModInitializer {
         ReachCircles.register();
         ArmorBars.register();
         Designer.register();
+        KillFx.register();
         // Kampf-Effekte (aus MasEffects portiert)
         com.example.spotifylyrics.fx.MasConfig.init();
         com.example.spotifylyrics.fx.ModParticles.Register();

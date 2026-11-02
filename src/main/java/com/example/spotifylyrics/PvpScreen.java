@@ -119,6 +119,10 @@ public class PvpScreen extends CardGridScreen {
             c.rcOn = !c.rcOn;
             c.save();
         }, ReachCirclesScreen::new));
+        out.add(new Card(Lang.t("Kill-Animation", "Kill animation"), (c.kfStyle >= 5 ? Lang.t("Zufällig", "Random") : KillFx.STYLES[Math.max(0, c.kfStyle)]), "skull", () -> c.kfOn, () -> {
+            c.kfOn = !c.kfOn;
+            c.save();
+        }, KillFxScreen::new));
         out.add(new Card(Lang.t("Gegner-Rüstung", "Enemy armor"), Lang.t("Haltbarkeit als Balken", "Durability bars"), "armor", () -> c.armorBars, () -> {
             c.armorBars = !c.armorBars;
             c.save();

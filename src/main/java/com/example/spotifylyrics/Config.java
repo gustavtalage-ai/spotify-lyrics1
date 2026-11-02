@@ -236,6 +236,13 @@ public class Config {
     public java.util.List<Design> designs = new java.util.ArrayList<>();
     /** Reichweite: Gegner leuchten grün, wenn du sie treffen kannst. */
     public boolean rcGlow = true;
+    /** Kill-Animation: an, Stil (0-4, 5 = zufällig), Farbe, Banner, Sound, auch bei Mobs. */
+    public boolean kfOn = true;
+    public int kfStyle = 0;
+    public int kfColor = 0;
+    public boolean kfBanner = true;
+    public boolean kfSound = true;
+    public boolean kfMobs = false;
 
     /** Pack-Sets: bis zu 4 Plätze, je die Pack-IDs getrennt mit "|" (leer = frei). */
     public java.util.List<String> packSets = new java.util.ArrayList<>();

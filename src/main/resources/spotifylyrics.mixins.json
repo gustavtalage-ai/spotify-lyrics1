@@ -10,7 +10,9 @@
 		"TotemMixin",
 		"TotemParticleMixin",
 		"ClientWorldExplosionMixin",
-		"ZoomMixin"
+		"ZoomMixin",
+		"GlowMixin",
+		"GlowColorMixin"
 	],
 	"injectors": {
 		"defaultRequire": 0

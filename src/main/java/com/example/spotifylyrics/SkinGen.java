@@ -19,10 +19,18 @@ final class SkinGen {
         {0x0A2A5E, 0x2F86F5, 0x8FF3FF, 0xFFFFFF, 0x1A2238, 0xBFEFFF},   // Frostkristall
         {0x07001A, 0x3A137A, 0x8E3CFF, 0xFF8AF0, 0x0C0614, 0xB14BFF},   // Leere
         {0x07070F, 0xE600D0, 0x00E5FF, 0x5CFF3A, 0x121218, 0x00E5FF},   // Neon-Glitch
-        {0x3A0010, 0xB3122E, 0xFFC23D, 0xFFF6DC, 0x26140A, 0xFFD45A}    // Königsglanz
+        {0x3A0010, 0xB3122E, 0xFFC23D, 0xFFF6DC, 0x26140A, 0xFFD45A},   // Königsglanz
+        {0x140003, 0x7A0012, 0xFF2A3D, 0xFFB0A0, 0x0E0608, 0xC4102F},   // Blutmond
+        {0x04200E, 0x1F8A3A, 0x7CFF4F, 0xE8FFB0, 0x1A1408, 0x9BE15A},   // Giftranke
+        {0x0B1424, 0x2A4A8C, 0x5AD1FF, 0xFFF35A, 0x14161E, 0x5AD1FF}    // Gewittersturm
     };
 
     static BufferedImage make(BufferedImage src, int style, int seed) {
+        return make(src, style, seed, false);
+    }
+
+    /** woodIsBody: bei Bogen/Armbrust ist das Holz der Hauptteil (bekommt das Muster). */
+    static BufferedImage make(BufferedImage src, int style, int seed, boolean woodIsBody) {
         int[] P = PAL[style];
         int sw = src.getWidth(), sh = src.getHeight();
         int sc = sw <= 16 ? 2 : 1;
@@ -36,7 +44,7 @@ final class SkinGen {
                 a[i] = argb >>> 24;
                 int r = argb >> 16 & 0xFF, g = argb >> 8 & 0xFF, b = argb & 0xFF;
                 lum[i] = (r * 299 + g * 587 + b * 114) / 1000;
-                handle[i] = isWood(r, g, b);
+                handle[i] = !woodIsBody && isWood(r, g, b);
             }
         }
         // Rand der Klinge (Nachbar durchsichtig oder Griff)
@@ -126,6 +134,37 @@ final class SkinGen {
                 if ((x + y) % 8 == 0) col = mix(col, P[1], 0.55f);
 
             }
+            case 5 -> { // Blutmond: dunkelrot, Tropfen laufen nach unten
+                col = mix(P[0], P[1], (float) Math.pow(l, 0.9));
+                int colSeed = hash(seed, x, 77) % 100;
+                if (colSeed < 35) {
+                    float pos = ((y / (float) h) - ft - colSeed / 100f) % 1f;
+                    if (pos < 0) pos += 1;
+                    if (pos < 0.18f) col = mix(col, P[2], 1 - pos / 0.18f);
+                }
+                if (hash(seed, x * 7 + y, 13) % 41 == 0) col = mix(col, P[3], 0.5f + 0.5f * (float) Math.sin(ft * Math.PI * 2));
+            }
+            case 6 -> { // Giftranke: grüne Ranken schlängeln sich, Sporen leuchten
+                col = mix(P[0], P[1], (float) Math.pow(l, 0.85));
+                float v = (float) Math.sin((x * 0.6f + y * 0.6f) * 0.9f + Math.sin(y * 0.5f + ft * Math.PI * 2) * 2.2f);
+                if (Math.abs(v) < 0.22f) col = mix(col, P[2], 0.85f);
+                if (hash(seed, x * 11 + y * 5, 21) % 31 == 0) {
+                    float tw = (float) Math.max(0, Math.sin((ft * 2 + (hash(seed, x, y) % 100) / 100f) * Math.PI * 2));
+                    col = mix(col, P[3], tw);
+                }
+            }
+            case 7 -> { // Gewittersturm: dunkle Wolken, Blitze zucken über die Klinge
+                col = mix(P[0], P[1], (float) Math.pow(l, 0.9));
+                float n = fbm(x * 0.25f, ((y + ft * h) % h) * 0.25f, seed + 9, Math.max(1, h / 4));
+                col = mix(col, 0x3A4660, clamp((n - 0.5f) * 2) * 0.6f);
+                int fi = (int) (ft * FRAMES);
+                if (fi % 5 == 0 || fi % 5 == 1) {
+                    int bx = (hash(seed, fi / 5, 3) % Math.max(1, w / 2)) + w / 4;
+                    int zig = bx + (int) (Math.sin(y * 0.9f + fi) * 2) + (y % 6 < 3 ? 1 : -1);
+                    if (Math.abs(x - zig) <= (fi % 5 == 0 ? 1 : 0)) col = mix(P[3], 0xFFFFFF, 0.4f);
+                    else if (Math.abs(x - zig) == 2) col = mix(col, P[2], 0.6f);
+                }
+            }
             default -> { // Königsglanz: roter Kern, goldene Kanten, Juwel-Funkeln
                 col = mix(P[0], P[1], (float) Math.pow(l, 0.8));
                 if (hash(seed, x * 13 + y * 7, 2) % 29 == 0) {
@@ -137,7 +176,7 @@ final class SkinGen {
         // Umriss: dunkel mit farbigem Schimmer (Neon/Gold leuchten stärker)
         if (edge) {
             int glow = style == 3 ? ((int) ((ft * 2 + diag * 2) * 3) % 3 == 0 ? P[1] : (int) ((ft * 2 + diag * 2) * 3) % 3 == 1 ? P[2] : P[3])
-                : style == 4 ? P[2] : P[1];
+                : style == 4 || style == 7 ? P[2] : style == 5 ? P[2] : P[1];
             float pulse = 0.5f + 0.5f * (float) Math.sin((ft * 2 + diag) * Math.PI * 2);
             col = mix(mix(P[0], 0x000000, 0.25f), glow, style >= 3 ? 0.75f + 0.25f * pulse : 0.3f + 0.45f * pulse);
         }

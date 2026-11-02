@@ -119,10 +119,11 @@ public class PvpScreen extends CardGridScreen {
             c.rcOn = !c.rcOn;
             c.save();
         }, ReachCirclesScreen::new));
-        out.add(new Card(Lang.t("Finisher & Skins", "Finisher & skins"), (c.kfStyle >= 5 ? Lang.t("Zufällig", "Random") : WeaponSkins.BUNDLES[Math.max(0, c.kfStyle)]), "skull", () -> c.kfOn, () -> {
+        out.add(new Card(Lang.t("Sammlung & Packs", "Collection & packs"), Skins.packsAvailable() > 0 ? Skins.packsAvailable() + Lang.t(" Packs bereit!", " packs ready!")
+            : Skins.totalOwned() + Lang.t(" Skins · Finisher", " skins · finisher"), "skull", () -> c.kfOn, () -> {
             c.kfOn = !c.kfOn;
             c.save();
-        }, KillFxScreen::new));
+        }, CollectionScreen::new));
         out.add(new Card(Lang.t("Gegner-Rüstung", "Enemy armor"), Lang.t("Haltbarkeit als Balken", "Durability bars"), "armor", () -> c.armorBars, () -> {
             c.armorBars = !c.armorBars;
             c.save();

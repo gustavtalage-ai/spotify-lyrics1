@@ -249,6 +249,12 @@ public class Config {
     public boolean kfFlash = true;
     /** Waffen-Skins passend zum Finisher. */
     public boolean wsOn = true;
+    /** Skin-Sammlung: besessene Skins ("bundle:typ"), ausgerüstet je Waffen-Typ, Spielzeit für Packs. */
+    public java.util.List<String> skinsOwned = new java.util.ArrayList<>();
+    public java.util.Map<String, Integer> skinsEquipped = new java.util.HashMap<>();
+    public long playMs = 0;
+    public int packsOpened = 0;
+    public int packsBonus = 1;
 
     /** Pack-Sets: bis zu 4 Plätze, je die Pack-IDs getrennt mit "|" (leer = frei). */
     public java.util.List<String> packSets = new java.util.ArrayList<>();
@@ -274,6 +280,8 @@ public class Config {
                     if (c.lyPos == null || c.lyPos.length < 6) c.lyPos = lyPosInit();
                     if (c.macros == null) c.macros = new java.util.ArrayList<>();
                     if (c.designs == null) c.designs = new java.util.ArrayList<>();
+                    if (c.skinsOwned == null) c.skinsOwned = new java.util.ArrayList<>();
+                    if (c.skinsEquipped == null) c.skinsEquipped = new java.util.HashMap<>();
                     if (c.crossPix == null || c.crossPix.length != 225) c.crossPix = crossDefault();
                     if (c.pvpVer < 2) {
                         c.pvpMods &= ~((1 << 14) | (1 << 15));

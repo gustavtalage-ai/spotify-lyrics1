@@ -38,18 +38,15 @@ public final class WeaponSkins {
     }
 
     /** Name der Kollektion je Finisher (gleiche Reihenfolge wie KillFx.STYLES). */
-    public static final String[] BUNDLES = {"Sonnenfeuer", "Frostkristall", "Leere", "Neon-Glitch", "Königsglanz"};
-    static final String VERSION = "v2";
+    public static final String[] BUNDLES = {"Sonnenfeuer", "Frostkristall", "Leere", "Neon-Glitch", "Königsglanz", "Blutmond", "Giftranke", "Gewittersturm"};
+    static final String VERSION = "v3";
     private static final String NS = "spotifylyrics";
 
     /** Waffen (Pfad), für die Skins im Pack liegen. */
     private static volatile Set<String> available = new HashSet<>();
 
     static boolean isWeapon(Item it) {
-        Identifier id = Registries.ITEM.getId(it);
-        if (!id.getNamespace().equals("minecraft")) return false;
-        String p = id.getPath();
-        return p.endsWith("_sword") || p.endsWith("_axe") || p.endsWith("_spear") || p.equals("mace");
+        return Skins.typeOf(it) >= 0;
     }
 
     /** Für die Vorschau: Waffe im Skin einer Kollektion. */
@@ -64,15 +61,17 @@ public final class WeaponSkins {
     public static ItemStack skinned(ItemStack stack, HeldItemContext held) {
         try {
             Config c = Config.INSTANCE;
-            if (!c.wsOn || c.kfStyle < 0 || c.kfStyle >= BUNDLES.length || stack == null || stack.isEmpty() || held == null) return stack;
+            if (!c.wsOn || stack == null || stack.isEmpty() || held == null) return stack;
             MinecraftClient mc = MinecraftClient.getInstance();
             if (mc.player == null || held.getEntity() != mc.player) return stack;
             Identifier cur = stack.get(DataComponentTypes.ITEM_MODEL);
             if (cur != null && cur.getNamespace().equals(NS)) return stack;
+            int b = Skins.equipped(Skins.typeOf(stack.getItem()));
+            if (b < 0) return stack;
             Identifier id = Registries.ITEM.getId(stack.getItem());
             if (!id.getNamespace().equals("minecraft") || !available.contains(id.getPath())) return stack;
             ItemStack s = stack.copy();
-            s.set(DataComponentTypes.ITEM_MODEL, Identifier.of(NS, "skin/s" + c.kfStyle + "/" + id.getPath()));
+            s.set(DataComponentTypes.ITEM_MODEL, Identifier.of(NS, "skin/s" + b + "/" + id.getPath()));
             return s;
         } catch (Throwable e) {
             return stack;
@@ -121,7 +120,7 @@ public final class WeaponSkins {
                         if (v.startsWith("#") || en.getKey().equals("particle")) continue;
                         Identifier t = Identifier.of(v);
                         String skinTex = "item/skin/s" + k + "/" + t.getNamespace() + "/" + t.getPath();
-                        if (writeTexture(mc, root, t, skinTex, k, srcCache)) nt.addProperty(en.getKey(), NS + ":" + skinTex);
+                        if (writeTexture(mc, root, t, skinTex, k, srcCache, path.equals("bow") || path.equals("crossbow"))) nt.addProperty(en.getKey(), NS + ":" + skinTex);
                     }
                     if (nt.size() == 0) continue;
                     String modelPath = "item/skin/s" + k + "/" + path + "_" + idx++;
@@ -143,7 +142,7 @@ public final class WeaponSkins {
         return made.size();
     }
 
-    private static boolean writeTexture(MinecraftClient mc, Path root, Identifier t, String skinTex, int style, Map<String, BufferedImage> cache) {
+    private static boolean writeTexture(MinecraftClient mc, Path root, Identifier t, String skinTex, int style, Map<String, BufferedImage> cache, boolean woodBody) {
         try {
             Path png = root.resolve("assets").resolve(NS).resolve("textures").resolve(skinTex + ".png");
             if (Files.exists(png)) return true;
@@ -159,7 +158,7 @@ public final class WeaponSkins {
                 if (src.getHeight() > src.getWidth()) src = src.getSubimage(0, 0, src.getWidth(), src.getWidth()); // schon animiert: erstes Bild
                 cache.put(t.toString(), src);
             }
-            BufferedImage out = SkinGen.make(src, style, t.hashCode());
+            BufferedImage out = SkinGen.make(src, style, t.hashCode(), woodBody);
             Files.createDirectories(png.getParent());
             ImageIO.write(out, "png", png.toFile());
             Files.writeString(png.resolveSibling(png.getFileName() + ".mcmeta"), "{\"animation\":{\"frametime\":2,\"interpolate\":true}}");

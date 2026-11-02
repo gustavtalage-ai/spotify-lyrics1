@@ -37,7 +37,7 @@ public final class KillFx {
     private KillFx() {
     }
 
-    public static final String[] STYLES = {"Seelen-Strahl", "Kristall-Explosion", "Wirbelsturm", "Glitch-Würfel", "Lichtkrone"};
+    public static final String[] STYLES = {"Seelen-Strahl", "Kristall-Explosion", "Wirbelsturm", "Glitch-Würfel", "Lichtkrone", "Blutmond", "Rankenfluch", "Donnerschlag"};
     public static final String[] COLOR_NAMES = {"Stil-Farben", "Rot", "Türkis", "Lila", "Gold", "Grün", "Regenbogen"};
     /** -1 = eigene Farben je Animation, 0 = Regenbogen. */
     public static final int[] COLORS = {-1, 0xFF4655, 0x2EE6E6, 0xB14BFF, 0xFFC23D, 0x47F58A, 0};
@@ -89,6 +89,20 @@ public final class KillFx {
         long now = System.currentTimeMillis();
         for (Fx f : ACTIVE) particles(mc, f, (now - f.start) / (float) DURATION);
         if (now - lastKill > 30000) streak = 0;
+        // Bogen/Armbrust: stirbt kurz nach deinem Schuss ein Spieler in der Nähe, zählt das als dein Kill
+        if (c.kfOn && now - lastShotMs < 5000) {
+            for (PlayerEntity p : mc.world.getPlayers()) {
+                if (p == mc.player) continue;
+                if (p.deathTime >= 1 && p.deathTime <= 2 && DEAD_SEEN.add(p.getId()) && p.squaredDistanceTo(mc.player) < 100 * 100) {
+                    if (p.getId() == targetId) fired = true;
+                    trigger(p, lastShotStyle);
+                }
+            }
+        }
+        if (DEAD_SEEN.size() > 0) DEAD_SEEN.removeIf(id -> {
+            Entity e2 = mc.world.getEntityById(id);
+            return !(e2 instanceof LivingEntity l2) || l2.deathTime == 0;
+        });
         if (!c.kfOn || targetId < 0 || fired || now - targetMs > 4000) return;
         Entity e = mc.world.getEntityById(targetId);
         if (!(e instanceof LivingEntity le)) return;
@@ -99,36 +113,50 @@ public final class KillFx {
         }
     }
 
-    /** Animation an der Stelle des Gegners starten (auch für die Vorschau). */
-    static void trigger(LivingEntity le) {
-        Config c = Config.INSTANCE;
-        Fx f = new Fx();
-        f.style = c.kfStyle >= STYLES.length ? new Random().nextInt(STYLES.length) : Math.max(0, c.kfStyle);
-        f.x = le.getX();
-        f.y = le.getY();
-        f.z = le.getZ();
-        f.h = Math.max(1f, le.getHeight());
-        f.start = System.currentTimeMillis();
-        f.seed = f.start ^ le.getId();
-        f.color = -1;
-        if (ACTIVE.size() > 6) ACTIVE.remove(0);
-        ACTIVE.add(f);
-        streak = Math.min(5, streak + 1);
-        lastKill = f.start;
-        bannerStart = f.start;
-        bannerName = le.getName().getString();
-        bannerStyle = f.style;
-        if (c.kfSound) sounds(f.style);
+    /** Kollektion der Waffe in deiner Hand (-1 = kein Skin). */
+    static int heldStyle() {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc.player == null || !Config.INSTANCE.wsOn) return -1;
+        return Skins.equipped(Skins.typeOf(mc.player.getMainHandStack().getItem()));
     }
 
-    /** Vorschau: Animation 3 Blöcke vor dir. */
-    static void preview() {
+    static void trigger(LivingEntity le) {
+        trigger(le, heldStyle());
+    }
+
+    /** Finisher an der Stelle des Gegners starten. style = Kollektion der Waffe, -1 = nur Banner. */
+    static void trigger(LivingEntity le, int style) {
+        Config c = Config.INSTANCE;
+        long now = System.currentTimeMillis();
+        if (style >= 0) {
+            Fx f = new Fx();
+            f.style = style;
+            f.x = le.getX();
+            f.y = le.getY();
+            f.z = le.getZ();
+            f.h = Math.max(1f, le.getHeight());
+            f.start = now;
+            f.seed = now ^ le.getId();
+            f.color = -1;
+            if (ACTIVE.size() > 6) ACTIVE.remove(0);
+            ACTIVE.add(f);
+        }
+        streak = Math.min(5, streak + 1);
+        lastKill = now;
+        bannerStart = now;
+        bannerName = le.getName().getString();
+        bannerStyle = style;
+        if (c.kfSound && style >= 0) sounds(style);
+    }
+
+    /** Vorschau eines Finishers vor dir. */
+    static void preview(int style) {
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.player == null) return;
+        if (mc.player == null || style < 0) return;
         Vec3d look = mc.player.getRotationVec(1f);
         Config c = Config.INSTANCE;
         Fx f = new Fx();
-        f.style = c.kfStyle >= STYLES.length ? new Random().nextInt(STYLES.length) : Math.max(0, c.kfStyle);
+        f.style = style;
         f.x = mc.player.getX() + look.x * 9;
         f.y = mc.player.getY();
         f.z = mc.player.getZ() + look.z * 9;
@@ -145,27 +173,13 @@ public final class KillFx {
         if (c.kfSound) sounds(f.style);
     }
 
-    private static void play(Object sound, float pitch, float vol) {
-        try {
-            SoundEvent se = sound instanceof SoundEvent s ? s : sound instanceof RegistryEntry<?> r && r.value() instanceof SoundEvent s2 ? s2 : null;
-            if (se != null) MinecraftClient.getInstance().getSoundManager().play(PositionedSoundInstance.ui(se, pitch, vol));
-        } catch (Throwable ignored) {
-        }
-    }
-
-    private static final String[] SND = {"sonnenfeuer", "frostkristall", "leere", "neonglitch", "koenigsglanz"};
-
-    /** Eigene Kill-Sounds: Kill 1 bis 5 werden immer höher (Serie), dazu der Finisher-Sound der Kollektion. */
-    private static void sounds(int style) {
-        String b = SND[Math.floorMod(style, SND.length)];
-        int k = Math.max(1, Math.min(5, streak));
-        play(SoundEvent.of(net.minecraft.util.Identifier.of("spotifylyrics", "kill." + b + ".k" + k)), 1f, 1f);
-        play(SoundEvent.of(net.minecraft.util.Identifier.of("spotifylyrics", "kill." + b + ".fin")), 1f, 0.9f);
-    }
-
-    // ---------- 3D ----------
+    /** Für Bogen/Armbrust: zuletzt geschossen (Zeit und Kollektion). */
+    static long lastShotMs;
+    static int lastShotStyle = -1;
+    private static final java.util.Set<Integer> DEAD_SEEN = new java.util.HashSet<>();
 
     private static VertexConsumer vc;
+    private static float camRx = 1, camRz = 0;
     private static final Matrix4f M = new Matrix4f();
 
     private static void render(WorldRenderContext ctx) {
@@ -176,6 +190,9 @@ public final class KillFx {
             VertexConsumerProvider.Immediate consumers = mc.getBufferBuilders().getEntityVertexConsumers();
             vc = consumers.getBuffer(RenderLayers.debugQuads());
             M.identity();
+            double cyaw = Math.toRadians(mc.gameRenderer.getCamera().getYaw());
+            camRx = (float) -Math.cos(cyaw);
+            camRz = (float) -Math.sin(cyaw);
             long now = System.currentTimeMillis();
             Iterator<Fx> it = ACTIVE.iterator();
             while (it.hasNext()) {
@@ -191,6 +208,9 @@ public final class KillFx {
                     case 1 -> shatterFx(f, t, ox, oy, oz);
                     case 2 -> vortexFx(f, t, ox, oy, oz);
                     case 3 -> glitchFx(f, t, ox, oy, oz);
+                    case 5 -> bloodFx(f, t, ox, oy, oz);
+                    case 6 -> vineFx(f, t, ox, oy, oz);
+                    case 7 -> stormFx(f, t, ox, oy, oz);
                     default -> crownFx(f, t, ox, oy, oz);
                 }
             }
@@ -311,7 +331,10 @@ public final class KillFx {
         {0x7DF9FF, 0x2E8BFF, 0xB46CFF, 0xFFFFFF},   // Kristall: Eis
         {0xB14BFF, 0xFF3DD8, 0x5B2BFF, 0xFFFFFF},   // Wirbel: Violett
         {0x39FF14, 0xFF00E6, 0x00F0FF, 0xFFFFFF},   // Glitch: Neon
-        {0xFF2D55, 0xFFC23D, 0xFFFFFF, 0xFF7A00}    // Krone: Rot/Gold
+        {0xFF2D55, 0xFFC23D, 0xFFFFFF, 0xFF7A00},   // Krone: Rot/Gold
+        {0xFF1E30, 0x8A0010, 0xFF7A6E, 0x2A0006},   // Blutmond
+        {0x7CFF4F, 0x1F8A3A, 0xE8FFB0, 0x2EE6A0},   // Rankenfluch
+        {0x5AD1FF, 0xFFF35A, 0xFFFFFF, 0x3A5BFF}    // Donnerschlag
     };
 
     /** Farbe an Stelle k (0..1) der Palette des Effekts. */
@@ -646,6 +669,150 @@ public final class KillFx {
         if (shoot > 0) ring(x, y + 0.05f, z, (1 + 12 * easeOut(shoot)) * S, 0.8f * S * (1 - shoot), 72, 0xFFFFFF, 1 - shoot);
     }
 
+    // ---------- 6: Blutmond ----------
+    /** Senkrechter Bogen, immer zur Kamera gedreht (für den Mond). */
+    private static void arc(float cx, float cy, float cz, float r, float a0, float a1, float th, int rgb, float al, boolean crescent) {
+        int seg = 40;
+        for (int i = 0; i < seg; i++) {
+            float k0 = i / (float) seg, k1 = (i + 1) / (float) seg;
+            float b0 = a0 + (a1 - a0) * k0, b1 = a0 + (a1 - a0) * k1;
+            float w0 = crescent ? th * (float) Math.sin(Math.PI * k0) : th, w1 = crescent ? th * (float) Math.sin(Math.PI * k1) : th;
+            float c0 = (float) Math.cos(b0), s0 = (float) Math.sin(b0), c1 = (float) Math.cos(b1), s1 = (float) Math.sin(b1);
+            quad(new float[] {cx + camRx * c0 * r, cy + s0 * r, cz + camRz * c0 * r},
+                new float[] {cx + camRx * c0 * (r + w0), cy + s0 * (r + w0), cz + camRz * c0 * (r + w0)},
+                new float[] {cx + camRx * c1 * (r + w1), cy + s1 * (r + w1), cz + camRz * c1 * (r + w1)},
+                new float[] {cx + camRx * c1 * r, cy + s1 * r, cz + camRz * c1 * r}, rgb, al);
+        }
+    }
+
+    private static void bloodFx(Fx f, float t, float x, float y, float z) {
+        float S = S(), a = fade(t, 0.05f, 0.25f);
+        Random r = new Random(f.seed);
+        // Mond steigt hinter dem Gegner auf
+        float rise = easeOut(Math.min(1, t / 0.4f));
+        float my = y + 4 * S + 7 * S * rise, R = 3.2f * S;
+        arc(x, my, z, R * 1.1f, (float) (-Math.PI / 2 - 1.2), (float) (Math.PI / 2 + 1.2), 1.6f * S, 0x8A0010, a * 0.25f, true);
+        arc(x, my, z, R, (float) (-Math.PI / 2 - 1.1), (float) (Math.PI / 2 + 1.1), 1.0f * S, 0xFF1E30, a * 0.9f, true);
+        arc(x, my, z, R + 0.25f * S, (float) (-Math.PI / 2 - 0.9), (float) (Math.PI / 2 + 0.9), 0.35f * S, 0xFF7A6E, a, true);
+        // Blutregen
+        for (int i = 0; i < 80; i++) {
+            float px = x + (r.nextFloat() - 0.5f) * 10 * S, pz = z + (r.nextFloat() - 0.5f) * 10 * S;
+            float sp = 0.6f + r.nextFloat();
+            float k = (t * 2.2f * sp + r.nextFloat()) % 1f;
+            float py = y + 12 * S * (1 - k);
+            line(px, py, pz, px, py + 0.6f * S, pz, 0.05f * S, i % 4 == 0 ? 0xFF7A6E : 0xC4102F, a * 0.8f);
+        }
+        // Risse im Boden
+        float crack = easeOut(Math.min(1, t / 0.3f));
+        for (int i = 0; i < 12; i++) {
+            double ang = Math.PI * 2 * i / 12 + r.nextFloat() * 0.3;
+            float px = x, pz = z, len = (2.5f + r.nextFloat() * 4) * S * crack;
+            int segs = 6;
+            for (int k = 1; k <= segs; k++) {
+                float d = len * k / segs;
+                float jit = (r.nextFloat() - 0.5f) * 0.6f * S;
+                float qx = x + (float) Math.cos(ang) * d + (float) -Math.sin(ang) * jit, qz = z + (float) Math.sin(ang) * d + (float) Math.cos(ang) * jit;
+                glowLine(px, y + 0.05f, pz, qx, y + 0.05f, qz, 0.1f * S, 0xFF1E30, a);
+                px = qx;
+                pz = qz;
+            }
+        }
+        // Herzschlag-Wellen
+        for (int k = 0; k < 2; k++) {
+            float tk = (t - k * 0.25f) * 2.5f;
+            if (tk > 0 && tk < 1) ring(x, y + 0.06f, z, (0.5f + 7 * easeOut(tk)) * S, 0.5f * S * (1 - tk), 64, 0xFF1E30, 1 - tk);
+        }
+        pillar(x, y, y + 3 * S, z, 0.9f * S * (1 - t), 0x8A0010, a * 0.5f, 0);
+    }
+
+    // ---------- 7: Rankenfluch ----------
+    private static void vineFx(Fx f, float t, float x, float y, float z) {
+        float S = S(), a = fade(t, 0.04f, 0.25f);
+        Random r = new Random(f.seed);
+        float grow = easeOut(Math.min(1, t / 0.55f));
+        float cy = y + f.h * 0.6f;
+        for (int v = 0; v < 8; v++) {
+            double a0 = Math.PI * 2 * v / 8 + r.nextFloat() * 0.3;
+            float R0 = (3 + r.nextFloat() * 1.5f) * S;
+            int n = 40;
+            int shown = (int) (n * grow);
+            float px = x + (float) Math.cos(a0) * R0, py = y, pz = z + (float) Math.sin(a0) * R0;
+            for (int i = 1; i <= shown; i++) {
+                float k = i / (float) n;
+                double ang = a0 + k * 3.2;
+                float rad = R0 * (1 - k * 0.85f);
+                float qx = x + (float) Math.cos(ang) * rad, qz = z + (float) Math.sin(ang) * rad;
+                float qy = y + (cy + 1.2f * S - y) * (float) Math.sin(k * Math.PI / 2) + (float) Math.sin(k * 12 + v) * 0.25f * S;
+                glowLine(px, py, pz, qx, qy, qz, 0.16f * S * (1 - k * 0.6f), pc(f, k * 0.5f), a);
+                if (i % 6 == 0) cube(qx, qy, qz, 0.13f * S, k * 5 + v, 0.6f, pc(f, 0.6f), a);
+                px = qx;
+                py = qy;
+                pz = qz;
+            }
+        }
+        // Dornenkreis
+        for (int i = 0; i < 18; i++) {
+            double ang = Math.PI * 2 * i / 18;
+            float k = Math.max(0, Math.min(1, (t - 0.1f - i * 0.01f) * 4));
+            spike(x + (float) Math.cos(ang) * 4.5f * S, y, z + (float) Math.sin(ang) * 4.5f * S, 0.3f * S, (1.4f + (i % 3) * 0.6f) * S * k,
+                (float) -Math.cos(ang) * 0.3f, (float) -Math.sin(ang) * 0.3f, pc(f, 0.2f), a);
+        }
+        // Gift-Blüte am Ende
+        if (t > 0.55f) {
+            float k = (t - 0.55f) / 0.45f;
+            for (int i = 0; i < 40; i++) {
+                double ang = r.nextDouble() * Math.PI * 2;
+                float d = (0.5f + 5 * easeOut(k) * r.nextFloat()) * S;
+                glowCube(x + (float) Math.cos(ang) * d, cy + (r.nextFloat() * 4 - 1) * S * k, z + (float) Math.sin(ang) * d,
+                    0.1f * S, k * 8, k * 5, pc(f, r.nextFloat()), (1 - k));
+            }
+            ring(x, y + 0.05f, z, (1 + 8 * easeOut(k)) * S, 0.5f * S * (1 - k), 64, pc(f, 0.3f), 1 - k);
+        }
+    }
+
+    // ---------- 8: Donnerschlag ----------
+    private static void stormFx(Fx f, float t, float x, float y, float z) {
+        float S = S(), a = fade(t, 0.05f, 0.25f);
+        Random r = new Random(f.seed);
+        float top = y + 16 * S;
+        // Gewitterwolke dreht sich
+        for (int i = 0; i < 40; i++) {
+            double ang = r.nextDouble() * Math.PI * 2 + t * 1.5;
+            float d = (float) Math.sqrt(r.nextFloat()) * 6 * S;
+            cube(x + (float) Math.cos(ang) * d, top + (r.nextFloat() - 0.5f) * 1.5f * S, z + (float) Math.sin(ang) * d,
+                (0.6f + r.nextFloat() * 0.9f) * S, 0, 0, i % 5 == 0 ? 0x3A4660 : 0x1A2030, a * 0.55f);
+        }
+        // mehrere Einschläge
+        float[] hits = {0.03f, 0.18f, 0.33f, 0.5f};
+        for (int h = 0; h < hits.length; h++) {
+            float dt = t - hits[h];
+            if (dt < 0 || dt > 0.08f) continue;
+            Random lr = new Random(f.seed + h * 31 + (long) (t * 80));
+            float hx = x + (h == 0 ? 0 : (lr.nextFloat() - 0.5f) * 5 * S), hz = z + (h == 0 ? 0 : (lr.nextFloat() - 0.5f) * 5 * S);
+            for (int b = 0; b < 2; b++) lightning(lr, hx, top, y, hz, 3 * S, pc(f, b * 0.3f), 1f, 0.26f * S);
+            ring(hx, y + 0.05f, hz, (0.5f + 20 * dt) * S, 0.5f * S, 48, 0xFFFFFF, 1 - dt / 0.08f);
+        }
+        // Strom-Bögen am Boden
+        Random ar = new Random(f.seed + (long) (t * 30));
+        for (int i = 0; i < 10; i++) {
+            double ang = ar.nextDouble() * Math.PI * 2;
+            float d0 = ar.nextFloat() * 4 * S, len = (0.8f + ar.nextFloat() * 1.5f) * S;
+            float px = x + (float) Math.cos(ang) * d0, pz = z + (float) Math.sin(ang) * d0, py = y + 0.1f;
+            for (int k = 0; k < 4; k++) {
+                float qx = px + (ar.nextFloat() - 0.5f) * len, qz = pz + (ar.nextFloat() - 0.5f) * len, qy = y + 0.1f + ar.nextFloat() * 0.6f * S;
+                glowLine(px, py, pz, qx, qy, qz, 0.05f * S, pc(f, ar.nextFloat()), a);
+                px = qx;
+                py = qy;
+                pz = qz;
+            }
+        }
+        // geladene Säule um den Gegner
+        float k = easeOut(Math.min(1, t / 0.3f));
+        pillar(x, y, y + 3 * S * k, z, 1.2f * S, pc(f, 0f), a * 0.25f, 0);
+        ring(x, y + 1.5f * S, z, (1.4f + 0.2f * (float) Math.sin(t * 40)) * S, 0.12f * S, 40, pc(f, 0.5f), a);
+        ring(x, y + 0.05f, z, (1 + 9 * easeOut(t)) * S, 0.35f * S, 64, pc(f, 0.2f), (1 - t));
+    }
+
     // ---------- Partikel (zusätzlich, für mehr Wucht) ----------
 
     private static void particles(MinecraftClient mc, Fx f, float t) {
@@ -663,6 +830,9 @@ public final class KillFx {
                     case 1 -> mc.world.addParticleClient(i % 2 == 0 ? ParticleTypes.ELECTRIC_SPARK : ParticleTypes.END_ROD, px, py, pz, vx, vy, vz);
                     case 2 -> mc.world.addParticleClient(i % 2 == 0 ? ParticleTypes.REVERSE_PORTAL : ParticleTypes.PORTAL, px, py, pz, vx, vy, vz);
                     case 3 -> mc.world.addParticleClient(i % 2 == 0 ? ParticleTypes.GLOW : ParticleTypes.ELECTRIC_SPARK, px, py, pz, vx, vy, vz);
+                    case 5 -> mc.world.addParticleClient(i % 2 == 0 ? ParticleTypes.CRIMSON_SPORE : ParticleTypes.DAMAGE_INDICATOR, px, py, pz, vx, vy, vz);
+                    case 6 -> mc.world.addParticleClient(i % 2 == 0 ? ParticleTypes.HAPPY_VILLAGER : ParticleTypes.SPORE_BLOSSOM_AIR, px, py, pz, vx, vy, vz);
+                    case 7 -> mc.world.addParticleClient(i % 2 == 0 ? ParticleTypes.ELECTRIC_SPARK : ParticleTypes.END_ROD, px, py, pz, vx * 1.5, vy, vz * 1.5);
                     default -> mc.world.addParticleClient(i % 3 == 0 ? ParticleTypes.TOTEM_OF_UNDYING : ParticleTypes.END_ROD, px, py, pz, vx, vy * 1.5, vz);
                 }
             }
@@ -745,6 +915,52 @@ public final class KillFx {
                 ctx.fill(-14 + jx, -14, 14 + jx, -12, a | 0x5CFF3A);
                 ctx.fill(-14 + jx, 12, 14 + jx, 14, a | 0x5CFF3A);
             }
+            case -1 -> { // ohne Skin: schlichte Raute
+                m.pushMatrix();
+                m.rotate((float) (Math.PI / 4));
+                ctx.fill(-12, -12, 12, 12, a | 0x0B0D12);
+                ctx.fill(-12, -12, 12, -10, a | rgb);
+                ctx.fill(-12, 10, 12, 12, a | rgb);
+                ctx.fill(-12, -12, -10, 12, a | rgb);
+                ctx.fill(10, -12, 12, 12, a | rgb);
+                m.popMatrix();
+            }
+            case 5 -> { // Blutmond: Sichel + Tropfen
+                for (int i = 0; i < 14; i++) {
+                    m.pushMatrix();
+                    m.rotate((float) (-Math.PI * 0.85 + i * Math.PI * 0.12));
+                    int th = 3 + (int) (4 * Math.sin(Math.PI * i / 13.0));
+                    ctx.fill(-2, 12, 2, 12 + th, a | (i % 2 == 0 ? rgb : rgb2));
+                    m.popMatrix();
+                }
+                ctx.fill(-5, -5, 5, 5, a | 0x2A0006);
+                int drop = (int) ((el / 8) % 20);
+                ctx.fill(-1, 6 + drop, 2, 9 + drop, (int) (alpha * (1 - drop / 20f) * 255) << 24 | rgb);
+            }
+            case 6 -> { // Rankenfluch: Blatt-Kranz
+                for (int i = 0; i < 10; i++) {
+                    m.pushMatrix();
+                    m.rotate((float) (i * Math.PI / 5 + spin * 0.6));
+                    ctx.fill(-3, 9, 3, 18, a | (i % 2 == 0 ? rgb : rgb2));
+                    ctx.fill(-1, 18, 1, 22, a | 0xE8FFB0);
+                    m.popMatrix();
+                }
+                ctx.fill(-7, -7, 7, 7, a | 0x0A2A12);
+                ctx.fill(-3, -3, 3, 3, a | rgb);
+            }
+            case 7 -> { // Donnerschlag: Blitz im Kreis
+                for (int i = 0; i < 12; i++) {
+                    m.pushMatrix();
+                    m.rotate((float) (i * Math.PI / 6 - spin));
+                    ctx.fill(-1, 15, 1, 19, a | rgb);
+                    m.popMatrix();
+                }
+                ctx.fill(-12, -12, 12, 12, soft | 0x0B1424);
+                int fl = (el / 70) % 4 == 0 ? 0xFFFFFF : rgb2;
+                ctx.fill(-1, -12, 4, -2, a | fl);
+                ctx.fill(-5, -3, 3, 1, a | fl);
+                ctx.fill(-4, 0, 1, 12, a | fl);
+            }
             default -> { // Krone: Raute mit drei Zacken und Juwel
                 m.pushMatrix();
                 m.rotate((float) (Math.PI / 4));
@@ -775,8 +991,8 @@ public final class KillFx {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.options.hudHidden) return;
         int base = -1;
-        int rgb = base == -1 ? PAL[bannerStyle][0] : base == 0 ? Ui.rainbowAt(el / 3000f) & 0xFFFFFF : base;
-        int rgb2 = base == -1 ? PAL[bannerStyle][1] : mixRgb(rgb, 0xFFFFFF, 0.5f);
+        int rgb = bannerStyle < 0 ? 0xD6D9E0 : base == -1 ? PAL[bannerStyle][0] : base == 0 ? Ui.rainbowAt(el / 3000f) & 0xFFFFFF : base;
+        int rgb2 = bannerStyle < 0 ? 0x8A93A6 : base == -1 ? PAL[bannerStyle][1] : mixRgb(rgb, 0xFFFFFF, 0.5f);
         int sw = ctx.getScaledWindowWidth(), sh = ctx.getScaledWindowHeight();
 
         // Bildschirm-Blitz und farbiger Rand

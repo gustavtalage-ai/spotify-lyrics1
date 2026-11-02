@@ -243,6 +243,10 @@ public class Config {
     public boolean kfBanner = true;
     public boolean kfSound = true;
     public boolean kfMobs = false;
+    /** Größe der Kill-Animation in Prozent, Partikel, Bildschirm-Blitz. */
+    public int kfSize = 100;
+    public boolean kfParticles = true;
+    public boolean kfFlash = true;
 
     /** Pack-Sets: bis zu 4 Plätze, je die Pack-IDs getrennt mit "|" (leer = frei). */
     public java.util.List<String> packSets = new java.util.ArrayList<>();

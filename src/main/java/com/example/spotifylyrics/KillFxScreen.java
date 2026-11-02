@@ -48,7 +48,18 @@ public class KillFxScreen extends ItemScreen {
         row(t(Lang.t("Kill-Animation an", "Kill animation on"), c.kfOn, () -> c.kfOn = !c.kfOn));
         row(t(Lang.t("Kill-Banner unten (Serie 1–5)", "Kill banner (streak 1–5)"), c.kfBanner, () -> c.kfBanner = !c.kfBanner),
             t("Sound", c.kfSound, () -> c.kfSound = !c.kfSound));
+        row(t(Lang.t("Partikel", "Particles"), c.kfParticles, () -> c.kfParticles = !c.kfParticles),
+            t(Lang.t("Bildschirm-Blitz", "Screen flash"), c.kfFlash, () -> c.kfFlash = !c.kfFlash));
         row(t(Lang.t("Auch bei Mobs", "Also for mobs"), c.kfMobs, () -> c.kfMobs = !c.kfMobs));
+        stepper(Lang.t("Größe: ", "Size: ") + c.kfSize + "%", () -> {
+            c.kfSize = Math.max(50, c.kfSize - 25);
+            c.save();
+            again();
+        }, () -> {
+            c.kfSize = Math.min(300, c.kfSize + 25);
+            c.save();
+            again();
+        });
         gap(4);
         sec(Lang.t("Animation", "Animation"));
         String[] s = KillFx.STYLES;
@@ -58,8 +69,8 @@ public class KillFxScreen extends ItemScreen {
         gap(4);
         sec(Lang.t("Farbe", "Color"));
         int[] argb = new int[KillFx.COLORS.length];
-        for (int i = 0; i < argb.length; i++) argb[i] = KillFx.COLORS[i] == 0 ? 0 : 0xFF000000 | KillFx.COLORS[i];
-        colorPick(null, argb, KillFx.COLOR_NAMES, c.kfColor, k -> c.kfColor = k);
+        for (int i = 0; i < argb.length; i++) argb[i] = KillFx.COLORS[i] == -1 ? 0xFFFFFFFF : KillFx.COLORS[i] == 0 ? 0 : 0xFF000000 | KillFx.COLORS[i];
+        colorPick(Lang.t("Farbe (weiß = jede Animation eigene Farben)", "Color (white = own colors per animation)"), argb, KillFx.COLOR_NAMES, c.kfColor, k -> c.kfColor = k);
         gap(6);
         row(B(Lang.t("▶ Vorschau ansehen", "▶ Preview"), () -> {
             MinecraftClient.getInstance().setScreen(null);

@@ -119,7 +119,7 @@ public class PvpScreen extends CardGridScreen {
             c.rcOn = !c.rcOn;
             c.save();
         }, ReachCirclesScreen::new));
-        out.add(new Card(Lang.t("Sammlung & Packs", "Collection & packs"), Skins.packsAvailable() > 0 ? Skins.packsAvailable() + Lang.t(" Packs bereit!", " packs ready!")
+        out.add(new Card(Lang.t("Sammlung & Kisten", "Collection & cases"), Skins.packsAvailable() > 0 ? Skins.packsText() + Lang.t(" Kisten bereit!", " cases ready!")
             : Skins.totalOwned() + Lang.t(" Skins · Finisher", " skins · finisher"), "skull", () -> c.kfOn, () -> {
             c.kfOn = !c.kfOn;
             c.save();

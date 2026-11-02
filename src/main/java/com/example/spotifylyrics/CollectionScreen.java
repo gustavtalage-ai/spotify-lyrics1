@@ -49,6 +49,7 @@ public class CollectionScreen extends Screen {
         py1 = py0 + ph;
         MinecraftClient mc = MinecraftClient.getInstance();
         btn(px1 - 10 - 72, py0 + 5, 72, 18, () -> mc.setScreen(new PvpScreen()));
+        btn(px1 - 10 - 72 - 6 - 56, py0 + 5, 56, 18, () -> mc.setScreen(new CodeScreen()));
         btn(px1 - 10 - 130, py0 + HEAD + 8, 130, 26, () -> mc.setScreen(new PackScreen()));
         gx0 = px0 + 10;
         gy0 = py0 + HEAD + 44;
@@ -82,18 +83,19 @@ public class CollectionScreen extends Screen {
         TextRenderer tr = MinecraftClient.getInstance().textRenderer;
         Config c = Config.INSTANCE;
         Ui.txt(ctx, tr, Lang.t("Sammlung", "Collection"), px0 + 10, py0 + 6, Ui.TEXT);
-        Ui.txt(ctx, tr, Skins.totalOwned() + " / " + (Skins.bundles() * Skins.TYPES.length) + " Skins", px0 + 10, py0 + 17, 0xFF8B92A5);
+        Ui.txt(ctx, tr, Skins.totalOwned() + " / " + (Skins.bundles() * Skins.TYPES.length) + " Skins" + (Skins.admin() ? "  ·  §6ADMIN" : ""), px0 + 10, py0 + 17, 0xFF8B92A5);
+        Ui.btn(ctx, tr, px1 - 144, py0 + 5, px1 - 88, py0 + 23, Lang.t("Code", "Code"), Ui.in(mouseX, mouseY, px1 - 144, py0 + 5, px1 - 88, py0 + 23), 0xFF1A1E27, 0xFF252B38, 0xFFFFC23D);
         Ui.btn(ctx, tr, px1 - 10 - 72, py0 + 5, px1 - 10, py0 + 23, "‹ PvP", Ui.in(mouseX, mouseY, px1 - 82, py0 + 5, px1 - 10, py0 + 23), 0xFF1A1E27, 0xFF252B38, 0xFFD6D9E0);
 
         // Pack-Leiste
         int by = py0 + HEAD + 8;
         Ui.card(ctx, px0 + 10, by, px1 - 10, by + 26, 0xFF3A2A10, 0xFF17140E);
         int packs = Skins.packsAvailable();
-        Ui.txt(ctx, tr, Lang.t("Packs: ", "Packs: ") + packs, px0 + 18, by + 4, 0xFFFFC23D);
-        Ui.txt(ctx, tr, Lang.t("Nächstes Pack in ", "Next pack in ") + time(Skins.msToNext()) + Lang.t(" Spielzeit", " playtime"), px0 + 18, by + 15, 0xFF8B92A5);
+        Ui.txt(ctx, tr, Skins.CASE + Lang.t("n: ", "s: ") + Skins.packsText(), px0 + 18, by + 4, 0xFFFFC23D);
+        Ui.txt(ctx, tr, Skins.admin() ? Lang.t("Admin: unendlich Kisten", "Admin: unlimited cases") : Lang.t("Nächste Kiste in ", "Next case in ") + time(Skins.msToNext()) + Lang.t(" Spielzeit", " playtime"), px0 + 18, by + 15, 0xFF8B92A5);
         boolean hov = Ui.in(mouseX, mouseY, px1 - 140, by, px1 - 10, by + 26);
         int pulse = packs > 0 ? (int) (40 * (0.5 + 0.5 * Math.sin(System.currentTimeMillis() / 250.0))) : 0;
-        Ui.btn(ctx, tr, px1 - 140, by, px1 - 10, by + 26, packs > 0 ? Lang.t("▶ Pack öffnen", "▶ Open pack") : Lang.t("Keine Packs", "No packs"), hov,
+        Ui.btn(ctx, tr, px1 - 140, by, px1 - 10, by + 26, packs > 0 ? Lang.t("▶ Kiste öffnen", "▶ Open case") : Lang.t("Keine Kisten", "No cases"), hov,
             packs > 0 ? 0xFF8A5A00 + (pulse << 8) : 0xFF1A1E27, packs > 0 ? 0xFFB07A10 : 0xFF1A1E27, packs > 0 ? 0xFFFFFFFF : 0xFF6F7380);
 
         // Waffen-Karten

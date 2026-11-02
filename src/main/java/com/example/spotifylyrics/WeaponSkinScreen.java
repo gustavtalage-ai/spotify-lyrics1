@@ -50,7 +50,7 @@ public class WeaponSkinScreen extends Screen {
             }
         });
         btn(lx0 + bw + 6, by, bw, 20, () -> {
-            if (view >= 0) {
+            if (view >= 0 && Skins.owns(view, type)) {
                 mc.setScreen(null);
                 KillFx.preview(view);
             }
@@ -76,7 +76,7 @@ public class WeaponSkinScreen extends Screen {
         boolean owned = view < 0 || Skins.owns(view, type);
         int accent = view >= 0 ? 0xFF000000 | SkinGen.PAL[view][2] : 0xFF6A7387;
         Ui.card(ctx, lx0, top, lx1, boxBot, accent, 0xFF0D0F14);
-        if (view >= 0) {
+        if (view >= 0 && owned) {
             ctx.fillGradient(lx0 + 1, top + 1, lx1 - 1, boxBot - 1, (0x40 << 24) | SkinGen.PAL[view][1], (0x10 << 24) | SkinGen.PAL[view][0]);
             // leuchtende Strahlen hinter der Waffe
             long ms = System.currentTimeMillis();
@@ -93,15 +93,31 @@ public class WeaponSkinScreen extends Screen {
         float sc = Math.min(8f, Math.min(lx1 - lx0 - 20, boxBot - top - 20) / 16f);
         int iw = (int) (16 * sc);
         float bob = (float) Math.sin(System.currentTimeMillis() / 600.0) * 3;
-        CollectionScreen.drawBig(ctx, CollectionScreen.stackFor(type, view), (lx0 + lx1 - iw) / 2, (int) ((top + boxBot - iw) / 2 + bob), sc);
-        if (!owned) {
-            ctx.fill(lx0 + 1, top + 1, lx1 - 1, boxBot - 1, 0x88000000);
-            String l = Lang.t("Gesperrt – aus Packs", "Locked – from packs");
-            Ui.txt(ctx, tr, l, (lx0 + lx1 - tr.getWidth(l)) / 2, (top + boxBot) / 2 - 4, 0xFFFFC23D);
+        if (owned) {
+            CollectionScreen.drawBig(ctx, CollectionScreen.stackFor(type, view), (lx0 + lx1 - iw) / 2, (int) ((top + boxBot - iw) / 2 + bob), sc);
+        } else {
+            // ausgeschwärzt mit Fragezeichen
+            ctx.fill(lx0 + 1, top + 1, lx1 - 1, boxBot - 1, 0xFF050608);
+            int cx = (lx0 + lx1) / 2, cy = (int) ((top + boxBot) / 2 + bob);
+            int r = iw / 2;
+            ctx.fill(cx - r, cy - r, cx + r, cy + r, 0xFF0E1016);
+            ctx.fill(cx - r, cy - r, cx + r, cy - r + 2, 0xFF2A2F3A);
+            ctx.fill(cx - r, cy + r - 2, cx + r, cy + r, 0xFF2A2F3A);
+            ctx.fill(cx - r, cy - r, cx - r + 2, cy + r, 0xFF2A2F3A);
+            ctx.fill(cx + r - 2, cy - r, cx + r, cy + r, 0xFF2A2F3A);
+            org.joml.Matrix3x2fStack m = ctx.getMatrices();
+            float qs = Math.max(2f, iw / 14f);
+            m.pushMatrix();
+            m.translate(cx, cy);
+            m.scale(qs, qs);
+            ctx.drawTextWithShadow(tr, "?", -tr.getWidth("?") / 2, -4, 0xFF8B92A5);
+            m.popMatrix();
+            String l = Lang.t("Gesperrt – aus der ", "Locked – from the ") + Skins.CASE;
+            Ui.txt(ctx, tr, l, (lx0 + lx1 - tr.getWidth(l)) / 2, boxBot - 14, 0xFFFFC23D);
         }
         String nm = view >= 0 ? WeaponSkins.BUNDLES[view] + " " + Skins.TYPE_NAMES[type] : Lang.t("Standard", "Default");
         Ui.txt(ctx, tr, nm, lx0 + 2, boxBot + 5, view >= 0 ? accent : Ui.TEXT);
-        if (view >= 0) Ui.txt(ctx, tr, Lang.t("Finisher: ", "Finisher: ") + KillFx.STYLES[view] + (type >= 4 ? Lang.t(" · eigene Nachlade-Animation", " · custom reload") : ""),
+        if (view >= 0) Ui.txt(ctx, tr, Lang.t("Finisher: ", "Finisher: ") + (owned ? KillFx.STYLES[view] : "???") + (type >= 4 ? Lang.t(" · eigene Nachlade-Animation", " · custom reload") : ""),
             lx0 + 2, boxBot + 16, 0xFF8B92A5);
 
         int bw = (lx1 - lx0 - 6) / 2;
@@ -109,8 +125,9 @@ public class WeaponSkinScreen extends Screen {
         Ui.btn(ctx, tr, lx0, by, lx0 + bw, by + 20, eq ? Lang.t("✔ Ausgerüstet", "✔ Equipped") : owned ? Lang.t("Ausrüsten", "Equip") : Lang.t("Gesperrt", "Locked"),
             Ui.in(mouseX, mouseY, lx0, by, lx0 + bw, by + 20), eq ? 0xFF15301F : owned ? Ui.ACCENT_DIM : 0xFF1A1E27, eq ? 0xFF15301F : owned ? Ui.ACCENT_DIM_HOV : 0xFF1A1E27,
             owned ? 0xFFFFFFFF : 0xFF6F7380);
+        boolean canFin = view >= 0 && owned;
         Ui.btn(ctx, tr, lx0 + bw + 6, by, lx1, by + 20, Lang.t("▶ Finisher ansehen", "▶ View finisher"), Ui.in(mouseX, mouseY, lx0 + bw + 6, by, lx1, by + 20),
-            view >= 0 ? 0xFF2A1E40 : 0xFF1A1E27, view >= 0 ? 0xFF3A2A5A : 0xFF1A1E27, view >= 0 ? 0xFFFFFFFF : 0xFF6F7380);
+            canFin ? 0xFF2A1E40 : 0xFF1A1E27, canFin ? 0xFF3A2A5A : 0xFF1A1E27, canFin ? 0xFFFFFFFF : 0xFF6F7380);
 
         // Liste aller Skins
         int rows = Skins.bundles() + 1, rh = Math.min(22, (py1 - 10 - top) / rows);
@@ -121,13 +138,17 @@ public class WeaponSkinScreen extends Screen {
             int col = i >= 0 ? 0xFF000000 | SkinGen.PAL[i][2] : 0xFF8B92A5;
             Ui.card(ctx, rx0, y, rx1, y + rh - 2, sel ? col : (hov ? 0xFF3A4152 : Ui.BORDER), sel ? Ui.CARD_HOV : Ui.CARD);
             if (i >= 0 && has) ctx.fill(rx0 + 1, y + 1, rx0 + 3, y + rh - 3, col);
-            ctx.drawItem(CollectionScreen.stackFor(type, has ? i : -1), rx0 + 5, y + (rh - 2 - 16) / 2);
+            int iy = y + (rh - 2 - 16) / 2;
+            if (has) ctx.drawItem(CollectionScreen.stackFor(type, i), rx0 + 5, iy);
+            else {
+                ctx.fill(rx0 + 5, iy, rx0 + 21, iy + 16, 0xFF050608);
+                ctx.drawTextWithShadow(tr, "?", rx0 + 13 - tr.getWidth("?") / 2, iy + 4, 0xFF8B92A5);
+            }
             String n = i < 0 ? Lang.t("Standard", "Default") : WeaponSkins.BUNDLES[i];
             Ui.txt(ctx, tr, n, rx0 + 25, y + (rh - 2 - 8) / 2, has ? (i >= 0 ? col : Ui.TEXT) : 0xFF5A6070);
             String tag = Skins.equipped(type) == i ? "✔" : has ? "" : "🔒";
             if (!has) tag = Lang.t("gesperrt", "locked");
             if (!tag.isEmpty()) Ui.txt(ctx, tr, tag, rx1 - 6 - tr.getWidth(tag), y + (rh - 2 - 8) / 2, has ? 0xFF4ADE80 : 0xFF5A6070);
-            if (!has) ctx.fill(rx0 + 4, y + 2, rx0 + 22, y + rh - 4, 0x99000000);
         }
     }
 }

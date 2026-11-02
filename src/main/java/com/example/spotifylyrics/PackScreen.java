@@ -6,32 +6,42 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.sound.PositionedSoundInstance;
+import net.minecraft.item.ItemStack;
 import net.minecraft.sound.SoundEvent;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import org.joml.Matrix3x2fStack;
 
-/** Pack öffnen: Kiste wackelt, leuchtet immer stärker, platzt auf – und der neue Skin erscheint. */
+import java.util.List;
+import java.util.Random;
+
+/** Kiste öffnen wie in CS: Band mit Skins rollt durch, wird langsamer und bleibt unter dem Strich stehen. */
 public class PackScreen extends Screen {
     private static final int HEAD = 28;
-    private static final long OPEN_MS = 1700;
-    private static int[] result;      // {Kollektion, Typ, doppelt}
-    private static long openStart;    // 0 = noch nicht geöffnet
+    private static final long SPIN_MS = 6200;
+    private static final long PAUSE_MS = 450;
+    private static final int TILES = 56, WIN = 47, TW = 72, STEP = 78;
+
+    private static int[] result;      // {Kollektion, Typ, 0 neu / 1 doppelt / 2 admin}
+    private static int[][] strip;     // {Kollektion, Typ} je Feld
+    private static float target;      // Ziel-Verschiebung in Pixeln
+    private static long openStart;
+    private static int lastIdx;
+    private static boolean revealPlayed;
     private int px0, px1, py0, py1;
 
+    private static final String[] SND = {"sonnenfeuer", "frostkristall", "leere", "neonglitch", "koenigsglanz", "blutmond", "giftranke", "gewitter"};
+
     public PackScreen() {
-        super(Text.literal("Packs"));
+        super(Text.literal(Skins.CASE));
     }
 
-    private static void sound(String id, float pitch, float vol) {
+    private static void sound(String ns, String id, float pitch, float vol) {
         try {
-            MinecraftClient.getInstance().getSoundManager().play(PositionedSoundInstance.ui(SoundEvent.of(Identifier.of("spotifylyrics", id)), pitch, vol));
+            MinecraftClient.getInstance().getSoundManager().play(PositionedSoundInstance.ui(SoundEvent.of(Identifier.of(ns, id)), pitch, vol));
         } catch (Throwable ignored) {
         }
     }
-
-    private static final String[] SND = {"sonnenfeuer", "frostkristall", "leere", "neonglitch", "koenigsglanz", "blutmond", "giftranke", "gewitter"};
-    private static boolean revealPlayed;
 
     private void btn(int x, int y, int w, int h, Runnable r) {
         addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> r.run()).dimensions(x, y, w, h).build());
@@ -41,50 +51,53 @@ public class PackScreen extends Screen {
         MinecraftClient.getInstance().setScreen(new PackScreen());
     }
 
-    private boolean revealed() {
-        return result != null && System.currentTimeMillis() - openStart >= OPEN_MS;
+    private static boolean revealed() {
+        return result != null && System.currentTimeMillis() - openStart >= SPIN_MS + PAUSE_MS;
+    }
+
+    /** Kiste öffnen und das Band mit dem Gewinn an Stelle WIN bauen. */
+    private static void start() {
+        int[] r = Skins.openPack();
+        if (r == null) return;
+        result = r;
+        Random rnd = new Random();
+        strip = new int[TILES][];
+        for (int i = 0; i < TILES; i++) strip[i] = new int[] {rnd.nextInt(Skins.bundles()), rnd.nextInt(Skins.TYPES.length)};
+        strip[WIN] = new int[] {r[0], r[1]};
+        target = WIN * STEP + (rnd.nextFloat() - 0.5f) * (TW - 14);
+        openStart = System.currentTimeMillis();
+        lastIdx = 0;
+        revealPlayed = false;
+        sound("spotifylyrics", "pack.open", 1f, 0.8f);
     }
 
     @Override
     protected void init() {
-        int pw = Math.min(380, this.width - 16), ph = Math.min(300, this.height - 8);
+        int pw = Math.min(440, this.width - 16), ph = Math.min(300, this.height - 8);
         px0 = (this.width - pw) / 2;
         px1 = px0 + pw;
         py0 = Math.max(4, (this.height - ph) / 2);
         py1 = py0 + ph;
         MinecraftClient mc = MinecraftClient.getInstance();
         btn(px1 - 10 - 86, py0 + 5, 86, 18, () -> {
+            if (result != null && !revealed()) return;
             result = null;
             mc.setScreen(new CollectionScreen());
         });
         int by = py1 - 32, bw = (pw - 20 - 8) / 3;
         if (result == null) {
-            btn((px0 + px1) / 2 - 70, by, 140, 22, () -> {
-                int[] r = Skins.openPack();
-                if (r != null) {
-                    result = r;
-                    openStart = System.currentTimeMillis();
-                    revealPlayed = false;
-                    sound("pack.open", 1f, 1f);
-                    reopen();
-                }
+            btn((px0 + px1) / 2 - 75, by, 150, 22, () -> {
+                start();
+                reopen();
             });
         } else {
             btn(px0 + 10, by, bw, 22, () -> {
-                if (revealed() && result[2] == 0) Skins.equip(result[1], result[0]);
+                if (revealed() && result[2] != 1) Skins.equip(result[1], result[0]);
             });
             btn(px0 + 14 + bw, by, bw, 22, () -> {
                 if (!revealed()) return;
                 result = null;
-                if (Skins.packsAvailable() > 0) {
-                    int[] r = Skins.openPack();
-                    if (r != null) {
-                        result = r;
-                        openStart = System.currentTimeMillis();
-                        revealPlayed = false;
-                        sound("pack.open", 1f, 1f);
-                    }
-                }
+                if (Skins.packsAvailable() > 0) start();
                 reopen();
             });
             btn(px0 + 18 + 2 * bw, by, bw, 22, () -> {
@@ -98,7 +111,7 @@ public class PackScreen extends Screen {
 
     // Absichtlich ohne @Override, wie in den anderen Menüs.
     public void renderBackground(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        Ui.panel(ctx, this.width, this.height, px0, py0, px1, py1, HEAD, Lang.t("Sammlung / Packs", "Collection / Packs"));
+        Ui.panel(ctx, this.width, this.height, px0, py0, px1, py1, HEAD, Lang.t("Sammlung / ", "Collection / ") + Skins.CASE);
     }
 
     // Absichtlich ohne @Override, wie in den anderen Menüs.
@@ -106,46 +119,158 @@ public class PackScreen extends Screen {
         super.render(ctx, mouseX, mouseY, delta);
         TextRenderer tr = MinecraftClient.getInstance().textRenderer;
         int packs = Skins.packsAvailable();
-        Ui.txt(ctx, tr, Lang.t("Skin-Pack", "Skin pack"), px0 + 10, py0 + 6, Ui.TEXT);
-        Ui.txt(ctx, tr, packs + Lang.t(" Packs · nächstes in ", " packs · next in ") + CollectionScreen.time(Skins.msToNext()), px0 + 10, py0 + 17, 0xFF8B92A5);
-        Ui.btn(ctx, tr, px1 - 96, py0 + 5, px1 - 10, py0 + 23, Lang.t("‹ Sammlung", "‹ Collection"), Ui.in(mouseX, mouseY, px1 - 96, py0 + 5, px1 - 10, py0 + 23), 0xFF1A1E27, 0xFF252B38, 0xFFD6D9E0);
+        String ptxt = Skins.packsText();
+        Ui.txt(ctx, tr, Skins.CASE, px0 + 10, py0 + 6, 0xFFFFC23D);
+        Ui.txt(ctx, tr, Skins.admin() ? Lang.t("Admin · unendlich Kisten", "Admin · unlimited cases")
+            : ptxt + Lang.t(" Kisten · nächste in ", " cases · next in ") + CollectionScreen.time(Skins.msToNext()), px0 + 10, py0 + 17, 0xFF8B92A5);
+        boolean spinning = result != null && !revealed();
+        Ui.btn(ctx, tr, px1 - 96, py0 + 5, px1 - 10, py0 + 23, Lang.t("‹ Sammlung", "‹ Collection"), Ui.in(mouseX, mouseY, px1 - 96, py0 + 5, px1 - 10, py0 + 23),
+            0xFF1A1E27, 0xFF252B38, spinning ? 0xFF6F7380 : 0xFFD6D9E0);
 
-        int cx = (px0 + px1) / 2, cy = py0 + HEAD + (py1 - 40 - py0 - HEAD) / 2 + 4;
+        int cx = (px0 + px1) / 2;
         long now = System.currentTimeMillis();
         Matrix3x2fStack m = ctx.getMatrices();
         int by = py1 - 32, bw = (px1 - px0 - 20 - 8) / 3;
 
         if (result == null) {
-            // ruhende Kiste
-            crate(ctx, m, cx, cy, 0, 0, 0xFFFFC23D, now);
-            String l = packs > 0 ? Lang.t("Klick auf „Öffnen“", "Click “Open”") : Lang.t("Spiel weiter, um Packs zu bekommen", "Keep playing to earn packs");
-            Ui.txt(ctx, tr, l, cx - tr.getWidth(l) / 2, cy + 48, 0xFF8B92A5);
-            boolean hov = Ui.in(mouseX, mouseY, cx - 70, by, cx + 70, by + 22);
-            Ui.btn(ctx, tr, cx - 70, by, cx + 70, by + 22, packs > 0 ? Lang.t("Öffnen", "Open") : Lang.t("Keine Packs", "No packs"), hov,
+            idle(ctx, tr, m, cx, now, mouseX, mouseY);
+            boolean hov = Ui.in(mouseX, mouseY, cx - 75, by, cx + 75, by + 22);
+            Ui.btn(ctx, tr, cx - 75, by, cx + 75, by + 22, packs > 0 ? Lang.t("Kiste öffnen", "Open case") + " (" + ptxt + ")" : Lang.t("Keine Kisten", "No cases"), hov,
                 packs > 0 ? 0xFF8A5A00 : 0xFF1A1E27, packs > 0 ? 0xFFB07A10 : 0xFF1A1E27, packs > 0 ? 0xFFFFFFFF : 0xFF6F7380);
             return;
         }
 
-        int b = result[0], t = result[1];
-        int col = 0xFF000000 | SkinGen.PAL[b][2], col2 = 0xFF000000 | SkinGen.PAL[b][1];
         long el = now - openStart;
-        if (el < OPEN_MS) {
-            // Kiste wackelt immer stärker und leuchtet in der Farbe der Kollektion
-            float k = el / (float) OPEN_MS;
-            float shake = k * k * 6;
-            float ang = (float) Math.sin(el / 30.0) * 0.08f * k;
-            int glow = Ui.mix(0xFFFFC23D, col, k);
-            crate(ctx, m, cx + (int) (Math.sin(el / 21.0) * shake), cy + (int) (Math.cos(el / 17.0) * shake), ang, k, glow, now);
-            if ((el / 90) % 2 == 0 && k > 0.5f) ctx.fill(px0 + 1, py0 + HEAD, px1 - 1, py1 - 1, (int) (k * 40) << 24 | (col & 0xFFFFFF));
+        if (el < SPIN_MS + PAUSE_MS) {
+            roulette(ctx, tr, cx, el);
+            String l = Lang.t("Kiste wird geöffnet …", "Opening case …");
+            Ui.txt(ctx, tr, l, cx - tr.getWidth(l) / 2, by + 7, 0xFF8B92A5);
             return;
         }
+        reveal(ctx, tr, m, cx, el - SPIN_MS - PAUSE_MS, now);
+
+        int b = result[0], t = result[1];
+        boolean eq = Skins.equipped(t) == b;
+        boolean canEq = result[2] != 1 || Skins.owns(b, t);
+        Ui.btn(ctx, tr, px0 + 10, by, px0 + 10 + bw, by + 22, eq ? Lang.t("✔ Ausgerüstet", "✔ Equipped") : Lang.t("Ausrüsten", "Equip"),
+            Ui.in(mouseX, mouseY, px0 + 10, by, px0 + 10 + bw, by + 22), eq ? 0xFF15301F : canEq ? Ui.ACCENT_DIM : 0xFF1A1E27, eq ? 0xFF15301F : canEq ? Ui.ACCENT_DIM_HOV : 0xFF1A1E27, 0xFFFFFFFF);
+        Ui.btn(ctx, tr, px0 + 14 + bw, by, px0 + 14 + 2 * bw, by + 22, packs > 0 ? Lang.t("Noch eine (", "Another (") + ptxt + ")" : Lang.t("Fertig", "Done"),
+            Ui.in(mouseX, mouseY, px0 + 14 + bw, by, px0 + 14 + 2 * bw, by + 22), 0xFF8A5A00, 0xFFB07A10, 0xFFFFFFFF);
+        Ui.btn(ctx, tr, px0 + 18 + 2 * bw, by, px1 - 10, by + 22, Lang.t("Ansehen ›", "View ›"),
+            Ui.in(mouseX, mouseY, px0 + 18 + 2 * bw, by, px1 - 10, by + 22), 0xFF1A1E27, 0xFF252B38, 0xFFD6D9E0);
+    }
+
+    /** Ruhende Kiste mit Inhalt (alles noch als „?“). */
+    private void idle(DrawContext ctx, TextRenderer tr, Matrix3x2fStack m, int cx, long now, int mx, int my) {
+        int cy = py0 + HEAD + 62;
+        float pulse = 0.5f + 0.5f * (float) Math.sin(now / 300.0);
+        int w = 70, h = 36;
+        float bob = (float) Math.sin(now / 700.0) * 2;
+        m.pushMatrix();
+        m.translate(cx, cy + bob);
+        // Leuchten
+        ctx.fill(-w - 8, -h - 8, w + 8, h + 8, (int) ((0.12f + 0.12f * pulse) * 255) << 24 | 0xFFC23D);
+        // Kiste
+        ctx.fill(-w, -h, w, h, 0xFF2A2210);
+        ctx.fill(-w, -h, w, -h + 14, 0xFF3A2E12);          // Deckel
+        ctx.fill(-w, -h + 14, w, -h + 17, 0xFFFFC23D);      // Deckelkante
+        ctx.fill(-w, -h, w, -h + 2, 0xFFFFC23D);
+        ctx.fill(-w, h - 2, w, h, 0xFFFFC23D);
+        ctx.fill(-w, -h, -w + 2, h, 0xFFFFC23D);
+        ctx.fill(w - 2, -h, w, h, 0xFFFFC23D);
+        ctx.fill(-w + 10, -h + 2, -w + 16, h - 2, 0xFF8A5A00); // Beschläge
+        ctx.fill(w - 16, -h + 2, w - 10, h - 2, 0xFF8A5A00);
+        ctx.fill(-14, -h - 6, 14, -h, 0xFF8A5A00);          // Griff
+        ctx.fill(-10, -h - 4, 10, -h, 0xFF2A2210);
+        ctx.fill(-9, -h + 12, 9, -h + 24, 0xFFFFC23D);      // Schloss
+        ctx.fill(-3, -h + 16, 3, -h + 22, 0xFF2A2210);
+        m.scale(1.4f, 1.4f);
+        String n = Skins.CASE.toUpperCase(java.util.Locale.ROOT);
+        ctx.drawTextWithShadow(tr, n, -tr.getWidth(n) / 2, 6, 0xFFFFE08A);
+        m.popMatrix();
+
+        // Inhalt
+        String l = Lang.t("Enthält einen Skin aus diesen Kollektionen:", "Contains one skin from these collections:");
+        int iy = cy + h + 16;
+        Ui.txt(ctx, tr, l, cx - tr.getWidth(l) / 2, iy, 0xFF8B92A5);
+        int n8 = Skins.bundles(), tw = Math.min(46, (px1 - px0 - 20 - (n8 - 1) * 4) / n8), tot = n8 * tw + (n8 - 1) * 4;
+        int x0 = cx - tot / 2, ty = iy + 14;
+        String tip = null;
+        for (int i = 0; i < n8; i++) {
+            int x = x0 + i * (tw + 4);
+            int col = 0xFF000000 | SkinGen.PAL[i][2];
+            Ui.card(ctx, x, ty, x + tw, ty + tw, col, 0xFF07080B);
+            ctx.fill(x + 1, ty + tw - 4, x + tw - 1, ty + tw - 1, col);
+            m.pushMatrix();
+            m.translate(x + tw / 2f, ty + tw / 2f - 2);
+            m.scale(2f, 2f);
+            ctx.drawTextWithShadow(tr, "?", -tr.getWidth("?") / 2, -4, 0xFF8B92A5);
+            m.popMatrix();
+            if (Ui.in(mx, my, x, ty, x + tw, ty + tw)) tip = WeaponSkins.BUNDLES[i] + " · " + Lang.t("Finisher: ", "Finisher: ") + KillFx.STYLES[i];
+        }
+        if (tip != null) ctx.drawTooltip(tr, List.of(Text.literal(tip)), mx, my);
+    }
+
+    /** Das durchlaufende Band. */
+    private void roulette(DrawContext ctx, TextRenderer tr, int cx, long el) {
+        int wx0 = px0 + 10, wx1 = px1 - 10, wy0 = py0 + HEAD + 40, wy1 = wy0 + 92;
+        float p = Math.min(1f, el / (float) SPIN_MS);
+        float e = 1f - (float) Math.pow(1f - p, 4);
+        float off = target * e;
+        int idx = Math.round(off / STEP);
+        if (idx != lastIdx) {
+            lastIdx = idx;
+            sound("minecraft", "block.note_block.hat", 1.5f + 0.3f * (1 - p), 0.45f);
+        }
+        Ui.card(ctx, wx0 - 1, wy0 - 1, wx1 + 1, wy1 + 1, 0xFF2A2F3A, 0xFF07080B);
+        ctx.enableScissor(wx0, wy0, wx1, wy1);
+        int first = Math.max(0, (int) ((off - (cx - wx0)) / STEP) - 1);
+        for (int i = first; i < TILES; i++) {
+            int x = (int) (cx + i * STEP - off) - TW / 2;
+            if (x > wx1) break;
+            int b = strip[i][0], t = strip[i][1];
+            int col = 0xFF000000 | SkinGen.PAL[b][2];
+            int y0 = wy0 + 6, y1 = wy1 - 6;
+            Ui.card(ctx, x, y0, x + TW, y1, 0xFF2A2F3A, 0xFF12151C);
+            ctx.fillGradient(x + 1, y0 + 1, x + TW - 1, y1 - 12, (0x55 << 24) | SkinGen.PAL[b][1], 0x05000000);
+            ctx.fill(x + 1, y1 - 4, x + TW - 1, y1 - 1, col);
+            ItemStack s = new ItemStack(Skins.showItem(t));
+            CollectionScreen.drawBig(ctx, s, x + TW / 2 - 20, y0 + 6, 2.5f);
+            String n = tr.trimToWidth(WeaponSkins.BUNDLES[b], TW - 6);
+            ctx.drawTextWithShadow(tr, n, x + (TW - tr.getWidth(n)) / 2, y1 - 15, col);
+        }
+        // Ränder abdunkeln
+        for (int k = 0; k < 8; k++) {
+            int a = (int) (200 * (1 - k / 8f)) << 24;
+            ctx.fill(wx0 + k * 6, wy0, wx0 + k * 6 + 6, wy1, a);
+            ctx.fill(wx1 - k * 6 - 6, wy0, wx1 - k * 6, wy1, a);
+        }
+        ctx.disableScissor();
+        // Strich in der Mitte
+        ctx.fill(cx - 1, wy0 - 6, cx + 1, wy1 + 6, 0xFFFFC23D);
+        ctx.fill(cx - 5, wy0 - 6, cx + 5, wy0 - 4, 0xFFFFC23D);
+        ctx.fill(cx - 3, wy0 - 4, cx + 3, wy0 - 2, 0xFFFFC23D);
+        ctx.fill(cx - 5, wy1 + 4, cx + 5, wy1 + 6, 0xFFFFC23D);
+        ctx.fill(cx - 3, wy1 + 2, cx + 3, wy1 + 4, 0xFFFFC23D);
+        // Gewinner kurz aufleuchten lassen
+        if (el >= SPIN_MS) {
+            float k = (el - SPIN_MS) / (float) PAUSE_MS;
+            int x = (int) (cx + WIN * STEP - target) - TW / 2;
+            ctx.fill(x, wy0 + 6, x + TW, wy1 - 6, (int) (120 * (1 - k)) << 24 | (SkinGen.PAL[result[0]][2] & 0xFFFFFF));
+        }
+    }
+
+    /** Der Gewinn: Strahlen, Blitz, Skin groß. */
+    private void reveal(DrawContext ctx, TextRenderer tr, Matrix3x2fStack m, int cx, long rel, long now) {
+        int b = result[0], t = result[1];
+        int col = 0xFF000000 | SkinGen.PAL[b][2], col2 = 0xFF000000 | SkinGen.PAL[b][1];
         if (!revealPlayed) {
             revealPlayed = true;
-            sound("pack.reveal", 1f, 1f);
-            sound("kill." + SND[b] + ".k5", 1f, 0.9f);
+            sound("spotifylyrics", "pack.reveal", 1f, 1f);
+            sound("spotifylyrics", "kill." + SND[b] + ".k5", 1f, 0.9f);
         }
-        float k = Math.min(1, (el - OPEN_MS) / 450f);
-        // Strahlen
+        int cy = py0 + HEAD + (py1 - 40 - py0 - HEAD) / 2;
+        float k = Math.min(1, rel / 450f);
         for (int i = 0; i < 16; i++) {
             m.pushMatrix();
             m.translate(cx, cy);
@@ -154,49 +279,21 @@ public class PackScreen extends Screen {
             ctx.fill(-3, 18, 3, 18 + len, (int) (70 * (1 - 0.3 * (i % 2))) << 24 | (i % 2 == 0 ? col : col2) & 0xFFFFFF);
             m.popMatrix();
         }
-        // Blitz direkt nach dem Aufplatzen
-        if (el - OPEN_MS < 250) ctx.fill(px0 + 1, py0 + HEAD, px1 - 1, py1 - 1, (int) ((1 - (el - OPEN_MS) / 250f) * 180) << 24 | 0xFFFFFF);
-        float sc = (1.5f + 4.5f * (1 - (1 - k) * (1 - k))) * (1 + 0.03f * (float) Math.sin(now / 300.0));
+        if (rel < 250) ctx.fill(px0 + 1, py0 + HEAD, px1 - 1, py1 - 1, (int) ((1 - rel / 250f) * 180) << 24 | 0xFFFFFF);
+        float sc = (1.5f + 4f * (1 - (1 - k) * (1 - k))) * (1 + 0.03f * (float) Math.sin(now / 300.0));
         int iw = (int) (16 * sc);
-        CollectionScreen.drawBig(ctx, CollectionScreen.stackFor(t, b), cx - iw / 2, cy - iw / 2, sc);
+        CollectionScreen.drawBig(ctx, CollectionScreen.stackFor(t, b), cx - iw / 2, cy - iw / 2 - 6, sc);
         String title = WeaponSkins.BUNDLES[b] + " " + Skins.TYPE_NAMES[t];
         m.pushMatrix();
-        m.translate(cx, cy + 44);
+        m.translate(cx, cy + 40);
         m.scale(1.6f, 1.6f);
         ctx.drawTextWithShadow(tr, title, -tr.getWidth(title) / 2, 0, col);
         m.popMatrix();
-        String sub = result[2] == 0 ? Lang.t("NEU!  ·  Finisher: ", "NEW!  ·  Finisher: ") + KillFx.STYLES[b] : Lang.t("Doppelt – hast du schon", "Duplicate – already owned");
-        Ui.txt(ctx, tr, sub, cx - tr.getWidth(sub) / 2, cy + 62, result[2] == 0 ? 0xFF4ADE80 : 0xFF8B92A5);
-
-        boolean eq = Skins.equipped(t) == b;
-        Ui.btn(ctx, tr, px0 + 10, by, px0 + 10 + bw, by + 22, eq ? Lang.t("✔ Ausgerüstet", "✔ Equipped") : Lang.t("Ausrüsten", "Equip"),
-            Ui.in(mouseX, mouseY, px0 + 10, by, px0 + 10 + bw, by + 22), eq ? 0xFF15301F : Ui.ACCENT_DIM, eq ? 0xFF15301F : Ui.ACCENT_DIM_HOV, 0xFFFFFFFF);
-        Ui.btn(ctx, tr, px0 + 14 + bw, by, px0 + 14 + 2 * bw, by + 22, packs > 0 ? Lang.t("Noch eins (", "Another (") + packs + ")" : Lang.t("Fertig", "Done"),
-            Ui.in(mouseX, mouseY, px0 + 14 + bw, by, px0 + 14 + 2 * bw, by + 22), 0xFF8A5A00, 0xFFB07A10, 0xFFFFFFFF);
-        Ui.btn(ctx, tr, px0 + 18 + 2 * bw, by, px1 - 10, by + 22, Lang.t("Ansehen ›", "View ›"),
-            Ui.in(mouseX, mouseY, px0 + 18 + 2 * bw, by, px1 - 10, by + 22), 0xFF1A1E27, 0xFF252B38, 0xFFD6D9E0);
-    }
-
-    /** Pack-Kiste: zwei gedrehte Kästen mit Band und Leuchten. */
-    private static void crate(DrawContext ctx, Matrix3x2fStack m, int x, int y, float ang, float charge, int glow, long now) {
-        float pulse = 0.5f + 0.5f * (float) Math.sin(now / 300.0);
-        m.pushMatrix();
-        m.translate(x, y);
-        m.rotate(ang);
-        int g = 34 + (int) (8 * charge);
-        ctx.fill(-g - 6, -g - 6, g + 6, g + 6, (int) ((0.15f + 0.35f * charge + 0.1f * pulse) * 255) << 24 | (glow & 0xFFFFFF));
-        ctx.fill(-g, -g, g, g, 0xFF1B1408);
-        ctx.fill(-g, -g, g, -g + 3, glow);
-        ctx.fill(-g, g - 3, g, g, glow);
-        ctx.fill(-g, -g, -g + 3, g, glow);
-        ctx.fill(g - 3, -g, g, g, glow);
-        ctx.fill(-3, -g, 3, g, glow);
-        ctx.fill(-g, -3, g, 3, glow);
-        m.pushMatrix();
-        m.rotate((float) (Math.PI / 4));
-        ctx.fill(-9, -9, 9, 9, 0xFF0B0D12);
-        ctx.fill(-6, -6, 6, 6, glow);
-        m.popMatrix();
-        m.popMatrix();
+        String sub = switch (result[2]) {
+            case 0 -> Lang.t("NEU!  ·  Finisher: ", "NEW!  ·  Finisher: ") + KillFx.STYLES[b];
+            case 2 -> Lang.t("Admin  ·  Finisher: ", "Admin  ·  Finisher: ") + KillFx.STYLES[b];
+            default -> Lang.t("Doppelt – hast du schon", "Duplicate – already owned");
+        };
+        Ui.txt(ctx, tr, sub, cx - tr.getWidth(sub) / 2, cy + 58, result[2] == 1 ? 0xFF8B92A5 : 0xFF4ADE80);
     }
 }

@@ -19,7 +19,7 @@ public final class Skins {
     /** Waffen-Typen. */
     public static final String[] TYPES = {"sword", "axe", "mace", "spear", "bow", "crossbow"};
     public static final String[] TYPE_NAMES = {"Schwert", "Axt", "Streitkolben", "Speer", "Bogen", "Armbrust"};
-    /** Alle 30 Minuten Spielzeit gibt es ein Pack. */
+    /** Alle 30 Minuten Spielzeit gibt es eine Kiste. */
     public static final long PACK_MS = 30L * 60 * 1000;
 
     public static int bundles() {
@@ -84,8 +84,43 @@ public final class Skins {
         c.save();
     }
 
+    /** Name der Kiste. */
+    public static final String CASE = "Alpha-Kiste";
+    /** SHA-256 des Admin-Codes (der Code selbst steht nicht im Mod). */
+    private static final String ADMIN_SHA = "bf2c0ba5bc0889e6883ec82fd9c98b1436e25bf3f366d52c37dd328557692cca";
+
+    public static boolean admin() {
+        return Config.INSTANCE.admin;
+    }
+
+    /** Code einlösen: richtig = Admin (alle Skins, unendlich Kisten). */
+    public static boolean redeem(String code) {
+        try {
+            String n = code == null ? "" : code.trim().toUpperCase(java.util.Locale.ROOT).replace(" ", "");
+            byte[] h = java.security.MessageDigest.getInstance("SHA-256").digest(n.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder();
+            for (byte b : h) sb.append(String.format("%02x", b));
+            if (!sb.toString().equals(ADMIN_SHA)) return false;
+            Config c = Config.INSTANCE;
+            c.admin = true;
+            for (int b = 0; b < bundles(); b++)
+                for (int t = 0; t < TYPES.length; t++)
+                    if (!owns(b, t)) c.skinsOwned.add(key(b, t));
+            c.save();
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /** Anzahl als Text ("∞" für Admin). */
+    public static String packsText() {
+        return admin() ? "∞" : String.valueOf(packsAvailable());
+    }
+
     public static int packsAvailable() {
         Config c = Config.INSTANCE;
+        if (c.admin) return 999;
         return Math.max(0, c.packsBonus + (int) (c.playMs / PACK_MS) - c.packsOpened);
     }
 
@@ -103,6 +138,7 @@ public final class Skins {
             for (int t = 0; t < TYPES.length; t++)
                 if (!owns(b, t)) free.add(new int[] {b, t});
         Random r = new Random();
+        if (c.admin) return new int[] {r.nextInt(bundles()), r.nextInt(TYPES.length), 2};
         int[] res;
         if (free.isEmpty()) res = new int[] {r.nextInt(bundles()), r.nextInt(TYPES.length), 1};
         else {
@@ -124,8 +160,8 @@ public final class Skins {
             Config c = Config.INSTANCE;
             int before = packsAvailable();
             c.playMs += 50;
-            if (packsAvailable() > before && mc.player != null) {
-                SpotifyLyricsClient.chat(net.minecraft.text.Text.literal("§6§lAlpha Mod: §eNeues Skin-Pack! §7(K → PvP → Sammlung)"));
+            if (!c.admin && packsAvailable() > before && mc.player != null) {
+                SpotifyLyricsClient.chat(net.minecraft.text.Text.literal("§6§lAlpha Mod: §eNeue " + CASE + "! §7(K → PvP → Sammlung)"));
             }
             if (++ticks % 1200 == 0) c.save();
         });

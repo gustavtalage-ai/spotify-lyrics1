@@ -120,19 +120,52 @@ public final class KillFx {
         long now = System.currentTimeMillis();
         for (Fx f : ACTIVE) particles(mc, f, (now - f.start) / (float) DURATION);
         if (now - lastKill > 30000) streak = 0;
-        // Bogen/Armbrust: stirbt kurz nach deinem Schuss ein Spieler in der Nähe, zählt das als dein Kill
-        if (c.kfOn && now - lastShotMs < 5000) {
-            for (PlayerEntity p : mc.world.getPlayers()) {
-                if (p == mc.player) continue;
-                if (p.deathTime >= 1 && p.deathTime <= 2 && DEAD_SEEN.add(p.getId()) && p.squaredDistanceTo(mc.player) < 100 * 100) {
-                    if (p.getId() == targetId) fired = true;
-                    trigger(p, lastShotStyle);
+        // Speer: Benutzen (Anlauf) oder Zustechen merken
+        int heldType = Skins.typeOf(mc.player.getMainHandStack().getItem());
+        if (heldType == 3 && (mc.player.isUsingItem() || mc.options.attackKey.isPressed())) spearMs = now;
+        // Eigene Pfeile/Geschosse verfolgen: wo waren sie zuletzt?
+        for (Entity en : mc.world.getEntities()) {
+            if (en instanceof net.minecraft.entity.projectile.ProjectileEntity pr && pr.getOwner() == mc.player) {
+                double[] s = SHOTS.get(pr.getId());
+                int st = s != null ? (int) s[4] : lastShotStyle;
+                SHOTS.put(pr.getId(), new double[] {pr.getX(), pr.getY(), pr.getZ(), now, st});
+            }
+        }
+        SHOTS.values().removeIf(s -> now - (long) s[3] > 2500);
+        // Bogen, Armbrust, Speer: wer gerade stirbt und von dir getroffen wurde, bekommt den Finisher
+        if (c.kfOn) {
+            for (Entity en : mc.world.getEntities()) {
+                if (!(en instanceof LivingEntity le) || le == mc.player) continue;
+                if (!(le.isDead() || le.getHealth() <= 0f) || DEAD_SEEN.contains(le.getId())) continue;
+                if (!(le instanceof PlayerEntity) && !c.kfMobs) continue;
+                if (le.getId() == targetId && now - targetMs < 4000) continue; // Nahkampf läuft unten
+                int style = Integer.MIN_VALUE;
+                // 1) einer deiner Pfeile war gerade bei ihm
+                for (double[] s : SHOTS.values()) {
+                    if (now - (long) s[3] > 1500) continue;
+                    double dx = s[0] - le.getX(), dy = s[1] - (le.getY() + le.getHeight() / 2), dz = s[2] - le.getZ();
+                    if (dx * dx + dy * dy + dz * dz < 3.5 * 3.5) {
+                        style = (int) s[4];
+                        break;
+                    }
                 }
+                // 2) Speer in der Hand und Gegner nah
+                if (style == Integer.MIN_VALUE && now - spearMs < 2000 && le.squaredDistanceTo(mc.player) < 10 * 10)
+                    style = c.wsOn ? Skins.equipped(3) : -1;
+                // 3) Spieler stirbt kurz nach deinem Schuss vor dir
+                if (style == Integer.MIN_VALUE && now - lastShotMs < 5000 && le instanceof PlayerEntity && le.squaredDistanceTo(mc.player) < 100 * 100) {
+                    Vec3d to = le.getEyePos().subtract(mc.player.getEyePos()).normalize();
+                    if (to.dotProduct(mc.player.getRotationVec(1f)) > 0.8) style = lastShotStyle;
+                }
+                if (style == Integer.MIN_VALUE) continue;
+                DEAD_SEEN.add(le.getId());
+                if (le.getId() == targetId) fired = true;
+                trigger(le, style);
             }
         }
         if (DEAD_SEEN.size() > 0) DEAD_SEEN.removeIf(id -> {
             Entity e2 = mc.world.getEntityById(id);
-            return !(e2 instanceof LivingEntity l2) || l2.deathTime == 0;
+            return !(e2 instanceof LivingEntity l2) || (!l2.isDead() && l2.getHealth() > 0f);
         });
         if (!c.kfOn || targetId < 0 || fired || now - targetMs > 4000) return;
         Entity e = mc.world.getEntityById(targetId);
@@ -140,6 +173,7 @@ public final class KillFx {
         if (!(le instanceof PlayerEntity) && !c.kfMobs) return;
         if (le.isDead() || le.getHealth() <= 0f) {
             fired = true;
+            DEAD_SEEN.add(le.getId());
             trigger(le);
         }
     }
@@ -227,6 +261,9 @@ public final class KillFx {
 
     /** Für Bogen/Armbrust: zuletzt geschossen (Zeit und Kollektion). */
     static long lastShotMs;
+    private static long spearMs;
+    /** Eigene Geschosse: id → {x, y, z, zuletzt gesehen, Kollektion}. */
+    private static final java.util.Map<Integer, double[]> SHOTS = new java.util.HashMap<>();
     static int lastShotStyle = -1;
     private static final java.util.Set<Integer> DEAD_SEEN = new java.util.HashSet<>();
 
@@ -235,7 +272,8 @@ public final class KillFx {
     private static final Matrix4f M = new Matrix4f();
 
     private static void render(WorldRenderContext ctx) {
-        if (ACTIVE.isEmpty()) return;
+        boolean arrow = BowFx.showArrow();
+        if (ACTIVE.isEmpty() && !arrow) return;
         try {
             MinecraftClient mc = MinecraftClient.getInstance();
             Vec3d cam = mc.gameRenderer.getCamera().getCameraPos();
@@ -271,6 +309,7 @@ public final class KillFx {
                     default -> comboFx(f, t, ox, oy, oz);
                 }
             }
+            if (arrow) reloadArrow(mc);
             consumers.draw();
         } catch (Throwable ignored) {
         } finally {
@@ -1089,6 +1128,45 @@ public final class KillFx {
         pillar(x, y, y + 6 * S, z, 0.7f * S * (1 - t), 0x7FFFE0, a * 0.4f, 0f);
         float tk = (t - 0.3f) * 2;
         if (tk > 0 && tk < 1) ring(x, y + 0.06f, z, (0.5f + 6 * easeOut(tk)) * S, 0.45f * S * (1 - tk), 64, 0x7FFFE0, 1 - tk);
+    }
+
+    /** Nachladen wie in Valorant: ein leuchtender Pfeil gleitet von unten rechts in die Sehne und rastet ein. */
+    private static void reloadArrow(MinecraftClient mc) {
+        int st = BowFx.style;
+        if (st < 0 || st >= PAL.length || mc.player == null) return;
+        int[] p = PAL[st];
+        curQ = 1f;
+        float prog = BowFx.wasUsing ? BowFx.progress : 1f;
+        long now = System.currentTimeMillis();
+        Vec3d look = mc.player.getRotationVec(1f);
+        double yaw = Math.toRadians(mc.player.getYaw());
+        Vec3d side = new Vec3d(-Math.cos(yaw), 0, -Math.sin(yaw));
+        Vec3d up = side.crossProduct(look).normalize();
+        Vec3d tip0 = look.multiply(1.25), tail0 = look.multiply(0.7).add(side.multiply(0.28)).add(up.multiply(-0.22));
+        Vec3d dir = tip0.subtract(tail0).normalize();
+        float k = easeOut(prog);
+        Vec3d back = dir.multiply(-0.45 * (1 - k));
+        Vec3d tip = tip0.add(back), tail = tail0.add(back);
+        float a = 0.35f + 0.65f * k;
+        glowLine((float) tail.x, (float) tail.y, (float) tail.z, (float) tip.x, (float) tip.y, (float) tip.z, 0.006f, p[0], a);
+        Vec3d hb = tip.subtract(dir.multiply(0.06));
+        for (int s = -1; s <= 1; s += 2) {
+            Vec3d wing = hb.add(side.multiply(0.025 * s)).add(up.multiply(0.012 * s));
+            glowLine((float) tip.x, (float) tip.y, (float) tip.z, (float) wing.x, (float) wing.y, (float) wing.z, 0.005f, p[1], a);
+            Vec3d f1 = tail.add(dir.multiply(0.07)), f2 = tail.add(up.multiply(0.025 * s)).add(side.multiply(0.01 * s));
+            line((float) f1.x, (float) f1.y, (float) f1.z, (float) f2.x, (float) f2.y, (float) f2.z, 0.004f, p[2], a);
+        }
+        // Einrasten: kurzer Ring an der Spitze
+        float since = (now - BowFx.fullAt) / 400f;
+        if (prog >= 1 && since >= 0 && since < 1) {
+            float r = 0.02f + 0.08f * since;
+            for (int i = 0; i < 12; i++) {
+                double a0 = Math.PI * 2 * i / 12, a1 = Math.PI * 2 * (i + 1) / 12;
+                Vec3d q0 = tip.add(side.multiply(Math.cos(a0) * r)).add(up.multiply(Math.sin(a0) * r));
+                Vec3d q1 = tip.add(side.multiply(Math.cos(a1) * r)).add(up.multiply(Math.sin(a1) * r));
+                line((float) q0.x, (float) q0.y, (float) q0.z, (float) q1.x, (float) q1.y, (float) q1.z, 0.004f, 0xFFFFFF, 1 - since);
+            }
+        }
     }
 
     // ---------- Bausteine für die Finisher 12–21 ----------

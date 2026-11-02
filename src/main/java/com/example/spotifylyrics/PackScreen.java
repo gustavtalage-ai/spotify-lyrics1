@@ -91,8 +91,8 @@ public class PackScreen extends Screen {
             int w = (W - (n - 1) * 8) / n;
             return new int[] {px0 + 10 + j * (w + 8), y0, w, 92};
         }
-        int per = (n + 1) / 2, w = (W - (per - 1) * 6) / per, row = j / per;
-        return new int[] {px0 + 10 + (j % per) * (w + 6), y0 + row * 47, w, 44};
+        int per = 4, rows = (n + per - 1) / per, h = rows == 2 ? 44 : 29, w = (W - (per - 1) * 6) / per, row = j / per;
+        return new int[] {px0 + 10 + (j % per) * (w + 6), y0 + row * (h + 3), w, h};
     }
 
     @Override
@@ -232,12 +232,19 @@ public class PackScreen extends Screen {
                 crate(ctx, m, x + cw / 2f, y + 32 + bob, 1.1f, col, 0xFF1B1408);
                 Ui.txt(ctx, tr, tr.trimToWidth(n, cw - 6), x + (cw - Math.min(cw - 6, tr.getWidth(n))) / 2, y + 58, col);
                 Ui.txt(ctx, tr, p, x + (cw - tr.getWidth(p)) / 2, y + 72, Skins.canOpen(k) ? 0xFFFFC23D : 0xFF6F7380);
-            } else {
+            } else if (ch > 35) {
                 crate(ctx, m, x + cw - 18, y + 30 + bob, 0.45f, col, 0xFF1B1408);
                 Ui.txt(ctx, tr, tr.trimToWidth(n, cw - 8), x + 5, y + 6, col);
                 Ui.txt(ctx, tr, p, x + 5, y + 18, Skins.canOpen(k) ? 0xFFFFC23D : 0xFF6F7380);
+            } else {
+                Ui.txt(ctx, tr, tr.trimToWidth(n.replace("-Kiste", ""), cw - 8), x + 5, y + 4, col);
+                Ui.txt(ctx, tr, p, x + 5, y + 16, Skins.canOpen(k) ? 0xFFFFC23D : 0xFF6F7380);
             }
-            if (k >= 3) Ui.txt(ctx, tr, Lang.t("Saison", "Season"), x + 5, y + ch - 12, 0xFFFF8A00);
+            if (Skins.special(k) && ch > 35) {
+                int dl = Skins.daysLeft(k);
+                String tag = dl > 0 ? Lang.t("noch ", "") + dl + (dl == 1 ? Lang.t(" Tag", " day left") : Lang.t(" Tage", " days left")) : Lang.t("Admin-Vorschau", "Admin preview");
+                Ui.txt(ctx, tr, tr.trimToWidth(tag, cw - 8), x + 5, y + ch - 12, Skins.event(k) ? 0xFFFF5A9A : 0xFFFF8A00);
+            }
         }
 
         // Inhalt der gewählten Kiste

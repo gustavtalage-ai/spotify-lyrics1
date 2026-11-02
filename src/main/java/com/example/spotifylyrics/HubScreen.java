@@ -11,6 +11,7 @@ import net.minecraft.text.Text;
 public class HubScreen extends Screen {
     private static final int HEAD = 34;
     private static final int N = 4;
+    private static final int BANNER = 40;
 
     private int px0, px1, py0, py1, cardW, CARD_H = 96, COLS = 4, ROWS = 1, skinCount = 0;
     private int skX0, skX1, keyX0, keyX1, suX0, suX1;
@@ -23,6 +24,38 @@ public class HubScreen extends Screen {
         return px0 + 12 + (i % COLS) * (cardW + 8);
     }
 
+    private int bannerY() {
+        return cy(N - 1) + CARD_H + 8;
+    }
+
+    /** Großer Skins-Banner unter den vier Kacheln. */
+    private void skinBanner(DrawContext ctx, TextRenderer tr, int mx, int my) {
+        int x0 = px0 + 12, x1 = px1 - 12, y0 = bannerY(), y1 = y0 + BANNER;
+        long now = System.currentTimeMillis();
+        boolean hov = Ui.in(mx, my, x0, y0, x1, y1);
+        int b = Skins.ORDER[(int) ((now / 1500) % Skins.bundles())];
+        int col = 0xFF000000 | SkinGen.PAL[b][2], tcol = Skins.tierCol(b);
+        float pulse = 0.5f + 0.5f * (float) Math.sin(now / 300.0);
+        ctx.fill(x0 - 1, y0 - 1, x1 + 1, y1 + 1, (int) ((0.3f + 0.4f * pulse) * 255) << 24 | (col & 0xFFFFFF));
+        Ui.card(ctx, x0, y0, x1, y1, hov ? 0xFFFFFFFF : col, 0xFF0B0D12);
+        ctx.fillGradient(x0 + 1, y0 + 1, x1 - 1, y1 - 1, (0x50 << 24) | SkinGen.PAL[b][1], (0x10 << 24) | (tcol & 0xFFFFFF));
+        float sc = 2f + 0.1f * (float) Math.sin(now / 250.0);
+        int t = (int) ((now / 1500) % Skins.TYPES.length);
+        CollectionScreen.drawBig(ctx, CollectionScreen.stackFor(t, b), x0 + 6, y0 + (BANNER - (int) (16 * sc)) / 2, sc);
+        org.joml.Matrix3x2fStack m = ctx.getMatrices();
+        m.pushMatrix();
+        m.translate(x0 + 46, y0 + 6);
+        m.scale(1.4f, 1.4f);
+        ctx.drawTextWithShadow(tr, Lang.t("SKINS & KISTEN", "SKINS & CASES"), 0, 0, hov ? 0xFFFFFFFF : 0xFFFFC23D);
+        m.popMatrix();
+        int sp = Skins.currentSeasonCase();
+        String sub = Skins.coinsText() + " Coins · " + Skins.bundles() + Lang.t(" Kollektionen", " collections")
+            + (sp >= 0 ? " · " + Skins.CASES[sp] + Lang.t(" im Shop!", " in shop!") : "");
+        Ui.txt(ctx, tr, tr.trimToWidth(sub, x1 - x0 - 60), x0 + 46, y0 + 25, sp >= 0 ? Skins.CASE_COL[sp] : 0xFFD6D9E0);
+        String key = Lang.t("Taste J", "Key J");
+        Ui.txt(ctx, tr, key, x1 - 8 - tr.getWidth(key), y0 + 6, 0xFF8B92A5);
+    }
+
     private int cy(int i) {
         return py0 + HEAD + 12 + (i / COLS) * (CARD_H + 8);
     }
@@ -33,7 +66,8 @@ public class HubScreen extends Screen {
         COLS = 2;
         ROWS = (N + COLS - 1) / COLS;
         CARD_H = Math.max(30, Math.min(96, (this.height - 8 - HEAD - 12 - (ROWS - 1) * 8 - 12) / ROWS));
-        int panelH = HEAD + 12 + ROWS * CARD_H + (ROWS - 1) * 8 + 12;
+        CARD_H = Math.max(30, Math.min(96, (this.height - 8 - HEAD - 12 - (ROWS - 1) * 8 - 12 - BANNER - 8) / ROWS));
+        int panelH = HEAD + 12 + ROWS * CARD_H + (ROWS - 1) * 8 + 8 + BANNER + 12;
         skinCount = SkinScreen.skins().size();
         px0 = (this.width - panelW) / 2;
         px1 = px0 + panelW;
@@ -45,6 +79,8 @@ public class HubScreen extends Screen {
             addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> open(idx))
                 .dimensions(cx(i), cy(i), cardW, CARD_H).build());
         }
+        addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> MinecraftClient.getInstance().setScreen(new CollectionScreen()))
+            .dimensions(px0 + 12, bannerY(), panelW - 24, BANNER).build());
         // Kopfleiste rechts: [Skin] [Taste K]
         TextRenderer tr = this.textRenderer;
         String hint = Lang.t("Taste ", "Key ") + Macros.keyName(Config.INSTANCE.menuKey);
@@ -76,6 +112,7 @@ public class HubScreen extends Screen {
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
         super.render(ctx, mouseX, mouseY, delta);
         TextRenderer tr = MinecraftClient.getInstance().textRenderer;
+        skinBanner(ctx, tr, mouseX, mouseY);
 
         Config cfg = Config.INSTANCE;
         if (Ui.holo()) {

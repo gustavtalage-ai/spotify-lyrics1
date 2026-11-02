@@ -21,11 +21,101 @@ public final class BowFx {
     private BowFx() {
     }
 
-    private static boolean wasUsing;
+    static boolean wasUsing;
     private static boolean fullPlayed;
-    private static int style = -1, type = -1;
-    private static float progress;
-    private static long fullAt;
+    static int style = -1, type = -1;
+    static float progress;
+    static long fullAt;
+    private static boolean wasCharged;
+    private static long chargedAt;
+
+    /** 3D-Pfeil vor der Kamera zeigen? (Bogen/Armbrust mit Skin wird gerade geladen) */
+    static boolean showArrow() {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        return mc.player != null && style >= 0 && (wasUsing || System.currentTimeMillis() - fullAt < 400) && mc.options.getPerspective().isFirstPerson();
+    }
+
+    private static boolean charged(ItemStack s) {
+        try {
+            var c = s.get(net.minecraft.component.DataComponentTypes.CHARGED_PROJECTILES);
+            return c != null && !c.isEmpty();
+        } catch (Throwable e) {
+            return false;
+        }
+    }
+
+    private static int arrows(MinecraftClient mc) {
+        int n = 0;
+        var inv = mc.player.getInventory();
+        for (int i = 0; i < inv.size(); i++) {
+            ItemStack s = inv.getStack(i);
+            if (s.isOf(net.minecraft.item.Items.ARROW) || s.isOf(net.minecraft.item.Items.SPECTRAL_ARROW) || s.isOf(net.minecraft.item.Items.TIPPED_ARROW)) n += s.getCount();
+        }
+        return n;
+    }
+
+    /** Munitions-Anzeige wie in Valorant: Pfeile, Nachladen mit Pfeil, der einrastet, BEREIT. */
+    private static void ammo(DrawContext ctx, MinecraftClient mc) {
+        ItemStack hand = mc.player.getMainHandStack();
+        int t = Skins.typeOf(hand.getItem());
+        if (t != 4 && t != 5) return;
+        int st = Config.INSTANCE.wsOn ? Skins.equipped(t) : -1;
+        int rgb = st >= 0 ? 0xFF000000 | SkinGen.PAL[st][2] : 0xFFFFFFFF, rgb2 = st >= 0 ? 0xFF000000 | SkinGen.PAL[st][1] : 0xFF8B92A5;
+        long now = System.currentTimeMillis();
+        boolean using = wasUsing && type == t;
+        boolean ch = t == 5 && charged(hand);
+        int sw = ctx.getScaledWindowWidth(), sh = ctx.getScaledWindowHeight();
+        int x0 = sw / 2 + 100, y0 = sh - 38, w = 104, h = 32;
+        ctx.fill(x0, y0, x0 + w, y0 + h, 0x99000000);
+        ctx.fill(x0, y0, x0 + 2, y0 + h, rgb);
+        var tr = mc.textRenderer;
+        Matrix3x2fStack m = ctx.getMatrices();
+        String cnt = String.valueOf(arrows(mc));
+        m.pushMatrix();
+        m.translate(x0 + 7, y0 + 5);
+        m.scale(2f, 2f);
+        ctx.drawTextWithShadow(tr, cnt, 0, 0, 0xFFFFFFFF);
+        m.popMatrix();
+        ctx.drawTextWithShadow(tr, Lang.t("Pfeile", "Arrows"), x0 + 7, y0 + 22, 0xFF8B92A5);
+        int bx = x0 + 44, bw = w - 50;
+        String state;
+        int scol;
+        float fill;
+        if (using) {
+            state = progress >= 1 ? Lang.t("BEREIT", "READY") : Lang.t("NACHLADEN", "RELOADING");
+            scol = progress >= 1 ? rgb : 0xFFFFC23D;
+            fill = progress;
+        } else if (t == 5) {
+            state = ch ? Lang.t("GELADEN", "LOADED") : Lang.t("LEER", "EMPTY");
+            scol = ch ? rgb : 0xFF6F7380;
+            fill = ch ? 1 : 0;
+        } else {
+            state = Lang.t("BEREIT", "READY");
+            scol = 0xFF8B92A5;
+            fill = 0;
+        }
+        boolean pop = now - fullAt < 350 || now - chargedAt < 350;
+        if (pop) scol = 0xFFFFFFFF;
+        ctx.drawTextWithShadow(tr, state, bx, y0 + 4, scol);
+        // Balken
+        ctx.fill(bx, y0 + 15, bx + bw, y0 + 17, 0x55FFFFFF);
+        ctx.fill(bx, y0 + 15, bx + (int) (bw * fill), y0 + 17, rgb);
+        // Pfeil gleitet von links in die Sehne und rastet ein
+        float k = 1 - (1 - fill) * (1 - fill);
+        int ax = bx + (int) ((bw - 22) * k), ay = y0 + 22;
+        int ac = fill > 0 ? rgb : 0xFF4A5164;
+        ctx.fill(ax, ay + 2, ax + 16, ay + 3, ac);              // Schaft
+        ctx.fill(ax + 16, ay, ax + 17, ay + 5, rgb2);         // Spitze
+        ctx.fill(ax + 17, ay + 1, ax + 18, ay + 4, rgb2);
+        ctx.fill(ax + 18, ay + 2, ax + 19, ay + 3, rgb2);
+        ctx.fill(ax, ay, ax + 3, ay + 1, ac);                  // Federn
+        ctx.fill(ax, ay + 4, ax + 3, ay + 5, ac);
+        if (pop) {
+            float q = Math.min(1, Math.min(now - fullAt, now - chargedAt) / 350f);
+            int a = (int) ((1 - q) * 160) << 24;
+            ctx.fill(x0, y0, x0 + w, y0 + h, a | (rgb & 0xFFFFFF));
+        }
+    }
 
     public static void register() {
         ClientTickEvents.END_CLIENT_TICK.register(BowFx::tick);
@@ -113,12 +203,25 @@ public final class BowFx {
             KillFx.lastShotStyle = Config.INSTANCE.wsOn ? Skins.equipped(5) : -1;
         }
         wasUsing = ranged;
+        // Armbrust fertig geladen: Klick-Sound und Aufleuchten
+        ItemStack mh = mc.player.getMainHandStack();
+        boolean ch = Skins.typeOf(mh.getItem()) == 5 && charged(mh);
+        if (ch && !wasCharged) {
+            chargedAt = System.currentTimeMillis();
+            int st = Config.INSTANCE.wsOn ? Skins.equipped(5) : -1;
+            if (st >= 0) sound("kill." + SND[st] + ".k2", 1.6f, 0.5f);
+        }
+        wasCharged = ch;
     }
 
     /** Lade-Ring am Fadenkreuz. */
     public static void hud(DrawContext ctx, RenderTickCounter tick) {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null || mc.options.hudHidden) return;
+        try {
+            ammo(ctx, mc);
+        } catch (Throwable ignored) {
+        }
         boolean flash = System.currentTimeMillis() - fullAt < 300;
         if ((!wasUsing || style < 0) && !flash) return;
         int rgb = SkinGen.PAL[Math.max(0, style)][2];

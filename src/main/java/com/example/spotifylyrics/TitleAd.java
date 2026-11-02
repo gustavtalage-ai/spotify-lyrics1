@@ -60,8 +60,28 @@ public final class TitleAd {
         return ads.get((int) ((System.currentTimeMillis() / 5000) % ads.size()));
     }
 
+    /** Liste "Gerade im Shop" über der Werbung: alle Saison- und Feiertags-Kisten, die heute laufen. */
+    private static void specials(DrawContext ctx, TextRenderer tr, int x, int yBottom, long now) {
+        List<Integer> sp = Skins.specialsNow();
+        if (sp.isEmpty()) return;
+        int h = 14 + sp.size() * 12, y = yBottom - h - 6;
+        ctx.fill(x, y, x + W, y + h, 0xD80E1016);
+        ctx.fill(x, y, x + W, y + 1, 0xFFFF8A00);
+        Ui.txt(ctx, tr, Lang.t("JETZT IM SHOP", "IN THE SHOP NOW"), x + 6, y + 4, 0xFFFFC23D);
+        for (int i = 0; i < sp.size(); i++) {
+            int k = sp.get(i), ly = y + 16 + i * 12;
+            int dl = Skins.daysLeft(k);
+            boolean blink = Skins.event(k) && (now / 400) % 2 == 0;
+            ctx.fill(x + 6, ly + 2, x + 10, ly + 6, blink ? 0xFFFFFFFF : Skins.CASE_COL[k]);
+            Ui.txt(ctx, tr, Skins.CASES[k], x + 14, ly, Skins.CASE_COL[k]);
+            String d = dl == 1 ? Lang.t("nur heute!", "today only!") : Lang.t("noch ", "") + dl + Lang.t(" Tage", " days");
+            Ui.txt(ctx, tr, d, x + W - 6 - tr.getWidth(d), ly, dl <= 2 ? 0xFFFF5A5A : 0xFF8B92A5);
+        }
+    }
+
     private static void draw(DrawContext ctx, int x, int y, int mx, int my) {
         try {
+            specials(ctx, MinecraftClient.getInstance().textRenderer, x, y, System.currentTimeMillis());
             MinecraftClient mc = MinecraftClient.getInstance();
             TextRenderer tr = mc.textRenderer;
             long now = System.currentTimeMillis();

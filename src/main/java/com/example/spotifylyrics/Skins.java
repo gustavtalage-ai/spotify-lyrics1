@@ -115,6 +115,10 @@ public final class Skins {
 
     /** Kann diese Kiste diese Kollektion enthalten? */
     public static boolean inCase(int k, int b) {
+        if (k >= 7) {
+            for (int x : EVENT_POOL[k - 7]) if (x == b) return true;
+            return false;
+        }
         return k < 3 ? season(b) < 0 : season(b) == k;
     }
 
@@ -135,9 +139,29 @@ public final class Skins {
     }
 
     // ---------- Kisten ----------
-    public static final String[] CASES = {"Bronze-Kiste", "Alpha-Kiste", "Mythos-Kiste", "Halloween-Kiste", "Winter-Kiste", "Frühlings-Kiste", "Sommer-Kiste"};
-    public static final int[] CASE_PRICE = {15, 30, 80, 40, 40, 40, 40};
-    public static final int[] CASE_COL = {0xFFCD7F32, 0xFFFFC23D, 0xFFB14BFF, 0xFFFF8A00, 0xFF9AD8FF, 0xFF8AE070, 0xFFFF7A5A};
+    public static final String[] CASES = {"Bronze-Kiste", "Alpha-Kiste", "Mythos-Kiste", "Halloween-Kiste", "Winter-Kiste", "Frühlings-Kiste", "Sommer-Kiste",
+        "Nikolaus-Kiste", "Silvester-Kiste", "Valentins-Kiste", "Oster-Kiste", "Geisternacht-Kiste"};
+    public static final int[] CASE_PRICE = {15, 30, 80, 40, 40, 40, 40, 25, 25, 25, 25, 25};
+    public static final int[] CASE_COL = {0xFFCD7F32, 0xFFFFC23D, 0xFFB14BFF, 0xFFFF8A00, 0xFF9AD8FF, 0xFF8AE070, 0xFFFF7A5A,
+        0xFFFF3A4A, 0xFF9A7CFF, 0xFFFF5A9A, 0xFFFFE26A, 0xFF7FFFE0};
+    /** Feiertags-Kisten (nur 3 Tage): welche Kollektionen drin sind. */
+    private static final int[][] EVENT_POOL = {
+        {25, 26, 27, 35, 1},      // Nikolaus
+        {34, 35, 3, 7, 27, 9},    // Silvester
+        {14, 31, 5, 4},           // Valentinstag
+        {32, 28, 14, 6},          // Ostern
+        {23, 24, 10, 2, 21}       // Geisternacht
+    };
+
+    /** Saison- oder Feiertags-Kiste? */
+    public static boolean special(int k) {
+        return k >= 3;
+    }
+
+    /** Feiertags-Kiste (3 Tage)? */
+    public static boolean event(int k) {
+        return k >= 7;
+    }
     /** Chancen je Kiste und Seltenheit in Promille. */
     public static final int[][] CASE_W = {
         {700, 220, 60, 17, 3},
@@ -146,10 +170,59 @@ public final class Skins {
         {0, 450, 330, 160, 60},
         {0, 450, 330, 220, 0},
         {0, 600, 400, 0, 0},
-        {0, 600, 400, 0, 0}
+        {0, 600, 400, 0, 0},
+        {0, 500, 300, 150, 50},
+        {0, 500, 300, 150, 50},
+        {0, 500, 300, 150, 50},
+        {0, 500, 300, 150, 50},
+        {0, 500, 300, 150, 50}
     };
     /** Saison: {Startmonat, Starttag, Endmonat, Endtag} (über den Jahreswechsel möglich). */
-    private static final int[][] SEASON_DATES = {{10, 10, 11, 10}, {12, 1, 1, 10}, {3, 15, 4, 30}, {6, 15, 8, 31}};
+    private static final int[][] SEASON_DATES = {{10, 10, 11, 10}, {12, 1, 1, 10}, {3, 15, 4, 30}, {6, 15, 8, 31},
+        {12, 5, 12, 7}, {12, 30, 1, 1}, {2, 13, 2, 15}, {0, 0, 0, 0}, {10, 30, 11, 1}};
+
+    /** Ostersonntag eines Jahres. */
+    private static java.time.LocalDate easter(int y) {
+        int a = y % 19, b = y / 100, c = y % 100, d = b / 4, e = b % 4, f = (b + 8) / 25, g = (b - f + 1) / 3;
+        int h = (19 * a + b - d - g + 15) % 30, i = c / 4, k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = (a + 11 * h + 22 * l) / 451;
+        int month = (h + l - 7 * m + 114) / 31, day = (h + l - 7 * m + 114) % 31 + 1;
+        return java.time.LocalDate.of(y, month, day);
+    }
+
+    /** Zeitraum der Kiste, der heute läuft oder als nächstes kommt: {Start, Ende}. */
+    private static java.time.LocalDate[] window(int k) {
+        java.time.LocalDate now = java.time.LocalDate.now();
+        int y = now.getYear();
+        if (k == 10) {
+            java.time.LocalDate e = easter(y);
+            if (now.isAfter(e.plusDays(1))) e = easter(y + 1);
+            return new java.time.LocalDate[] {e.minusDays(1), e.plusDays(1)};
+        }
+        int[] d = SEASON_DATES[k - 3];
+        java.time.LocalDate s = java.time.LocalDate.of(y, d[0], d[1]), e = java.time.LocalDate.of(y, d[2], d[3]);
+        if (e.isBefore(s)) { // über Silvester
+            if (!now.isAfter(e)) s = s.minusYears(1);
+            else e = e.plusYears(1);
+        }
+        if (now.isAfter(e)) {
+            s = s.plusYears(1);
+            e = e.plusYears(1);
+        }
+        return new java.time.LocalDate[] {s, e};
+    }
+
+    /** Wie viele Tage die Kiste noch im Shop ist (inklusive heute), 0 = gerade nicht. */
+    public static int daysLeft(int k) {
+        if (!special(k) || !inSeason(k)) return 0;
+        return (int) java.time.temporal.ChronoUnit.DAYS.between(java.time.LocalDate.now(), window(k)[1]) + 1;
+    }
+
+    /** Saison- und Feiertags-Kisten, die heute wirklich laufen (ohne Admin). */
+    public static List<Integer> specialsNow() {
+        List<Integer> l = new ArrayList<>();
+        for (int k = 3; k < CASES.length; k++) if (inSeason(k)) l.add(k);
+        return l;
+    }
 
     /** Ist die Saison-Kiste gerade im Shop? (Normale Kisten immer; Admin sieht alle.) */
     public static boolean caseActive(int k) {
@@ -159,10 +232,9 @@ public final class Skins {
 
     public static boolean inSeason(int k) {
         if (k < 3) return true;
-        int[] d = SEASON_DATES[k - 3];
         java.time.LocalDate now = java.time.LocalDate.now();
-        int v = now.getMonthValue() * 100 + now.getDayOfMonth(), a = d[0] * 100 + d[1], e = d[2] * 100 + d[3];
-        return a <= e ? v >= a && v <= e : v >= a || v <= e;
+        java.time.LocalDate[] w = window(k);
+        return !now.isBefore(w[0]) && !now.isAfter(w[1]);
     }
 
     /** Kisten, die gerade im Shop sind. */
@@ -174,7 +246,7 @@ public final class Skins {
 
     /** Erste Saison-Kiste, die gerade läuft (-1 = keine). */
     public static int currentSeasonCase() {
-        for (int k = 3; k < CASES.length; k++) if (inSeason(k)) return k;
+        for (int k = CASES.length - 1; k >= 3; k--) if (inSeason(k)) return k;
         return -1;
     }
 
@@ -315,6 +387,7 @@ public final class Skins {
     }
 
     private static int ticks;
+    private static boolean jWasDown;
 
     public static void register() {
         Config cfg = Config.INSTANCE;
@@ -335,6 +408,13 @@ public final class Skins {
         }
         cfg.save();
         ClientTickEvents.END_CLIENT_TICK.register(mc -> {
+            // Taste J: Skins & Kisten
+            long win = org.lwjgl.glfw.GLFW.glfwGetCurrentContext();
+            if (win != 0) {
+                boolean down = org.lwjgl.glfw.GLFW.glfwGetKey(win, org.lwjgl.glfw.GLFW.GLFW_KEY_J) == org.lwjgl.glfw.GLFW.GLFW_PRESS;
+                if (down && !jWasDown && mc.currentScreen == null && mc.player != null) mc.setScreen(new CollectionScreen());
+                jWasDown = down;
+            }
             if (mc.world == null || mc.player == null || mc.isPaused()) return;
             Config c = Config.INSTANCE;
             int before = pending();

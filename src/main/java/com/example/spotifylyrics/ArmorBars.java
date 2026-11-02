@@ -129,9 +129,9 @@ public final class ArmorBars {
                     if (s.isEmpty() || !s.isDamageable() || s.getMaxDamage() <= 0) continue;
                     int col = s.getItemBarColor() & 0xFFFFFF;
                     float e = 0.07f;
-                    float yaw = i == 0 ? hy : by;
+                    float pyaw = i == 0 ? hy : by;
                     float[] b = BOXES[i];
-                    shell(vc, mat, px, py + b[0] * sc, pz, yaw, b[1] + e, b[2] * sc + e, b[3] + e, col, time, px, py, pz);
+                    shell(vc, mat, px, py + b[0] * sc, pz, pyaw, b[1] + e, b[2] * sc + e, b[3] + e, col, time, px, py, pz);
                     any = true;
                 }
             }

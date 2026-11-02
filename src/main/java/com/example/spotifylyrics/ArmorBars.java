@@ -14,7 +14,7 @@ import org.joml.Matrix4f;
 
 /**
  * Gegner-Rüstung: zeigt bei anderen Spielern für jedes Rüstungsteil einen Haltbarkeits-Balken
- * (grün = voll, rot = fast kaputt) – direkt neben dem Teil oder gestapelt über dem Kopf.
+ * (grün = voll, rot = fast kaputt) – direkt auf dem Teil oder gestapelt über dem Kopf.
  */
 public final class ArmorBars {
     private ArmorBars() {
@@ -22,7 +22,7 @@ public final class ArmorBars {
 
     private static final EquipmentSlot[] SLOTS = {EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET};
     /** Höhe der Rüstungsteile (Anteil der Körperhöhe). */
-    private static final float[] HEIGHTS = {0.90f, 0.66f, 0.42f, 0.12f};
+    private static final float[] HEIGHTS = {0.86f, 0.62f, 0.38f, 0.10f};
 
     public static void register() {
         WorldRenderEvents.BEFORE_TRANSLUCENT.register(ArmorBars::render);
@@ -70,13 +70,13 @@ public final class ArmorBars {
                         x0 = -0.4f;
                         x1 = 0.4f;
                     } else {
-                        // neben dem Rüstungsteil
-                        bh = 0.07f;
+                        // direkt auf dem Rüstungsteil (vor dem Körper, zu dir hin)
+                        bh = 0.06f;
                         y = py + h * HEIGHTS[i];
-                        x0 = 0.42f;
-                        x1 = 0.86f;
-                        fx += tx * 0.15f;
-                        fz += tz * 0.15f;
+                        x0 = -0.26f;
+                        x1 = 0.26f;
+                        fx += tx * 0.45f;
+                        fz += tz * 0.45f;
                     }
                     bar(vc, mat, fx, y, fz, rx, rz, tx, tz, x0, x1, bh, frac, col);
                     row++;

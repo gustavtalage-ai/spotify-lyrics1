@@ -417,6 +417,58 @@ public final class Soundboard {
         }
     }
 
+    // ---------- Item-Sounds (nur bei dir, unabhängig vom Soundboard) ----------
+
+    private static volatile int fxToken = 0;
+
+    /** Spielt eine Sound-Datei einmal nur bei dir ab (für eigene Item-/Block-Sounds). Ein neuer Sound stoppt den alten. */
+    public static void playFx(Path file, float vol) {
+        Loader l = loader;
+        if (l == null || file == null || !Files.exists(file)) return;
+        final int token = ++fxToken;
+        Thread t = new Thread(() -> {
+            SourceDataLine line = null;
+            try {
+                String key = file + ":" + Files.size(file);
+                short[] pcm = CACHE.get(key);
+                if (pcm == null) {
+                    pcm = toMono48k(l.load(file));
+                    if (pcm.length <= SAMPLE_RATE * 30) CACHE.put(key, pcm);
+                }
+                if (token != fxToken) return;
+                AudioFormat fmt = new AudioFormat(SAMPLE_RATE, 16, 1, true, false);
+                line = AudioSystem.getSourceDataLine(fmt);
+                line.open(fmt, 19200);
+                line.start();
+                byte[] buf = new byte[1920];
+                int p = 0;
+                while (p < pcm.length && token == fxToken) {
+                    int n = Math.min(960, pcm.length - p);
+                    for (int i = 0; i < n; i++) {
+                        int s = Math.max(-32768, Math.min(32767, Math.round(pcm[p + i] * vol)));
+                        buf[2 * i] = (byte) s;
+                        buf[2 * i + 1] = (byte) (s >> 8);
+                    }
+                    line.write(buf, 0, n * 2);
+                    p += n;
+                }
+                if (token == fxToken) line.drain(); else line.flush();
+            } catch (Throwable e) {
+                SpotifyLyricsClient.LOGGER.warn("Item-Sound nicht abspielbar: " + file, e);
+            } finally {
+                if (line != null) {
+                    try { line.close(); } catch (Throwable ignored) { }
+                }
+            }
+        }, "alphamod-item-sound");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    public static void stopFx() {
+        fxToken++;
+    }
+
     // ---------- Umrechnung ----------
 
     /** Beliebiges PCM -> Mono, 48 kHz (lineare Interpolation). */

@@ -39,10 +39,29 @@ public final class ReachCircles {
         WorldRenderEvents.BEFORE_TRANSLUCENT.register(ReachCircles::render);
     }
 
+    /** Entity-IDs der Gegner, die du gerade treffen kannst (leuchten grün). */
+    private static volatile java.util.Set<Integer> glow = java.util.Set.of();
+
+    public static boolean glowing(int entityId) {
+        return glow.contains(entityId);
+    }
+
     private static void tick(MinecraftClient mc) {
         if (mc.world == null || mc.player == null) {
             CACHE.clear();
+            glow = java.util.Set.of();
             return;
+        }
+        Config cfg = Config.INSTANCE;
+        if (cfg.rcOn && cfg.rcGlow && !(cfg.rcWeapon && HitAssist.kindOf(mc.player.getMainHandStack()) < 0)) {
+            java.util.Set<Integer> g = new java.util.HashSet<>();
+            double eye = mc.player.getY() + mc.player.getEyeHeight(mc.player.getPose());
+            for (PlayerEntity o : mc.world.getPlayers()) {
+                if (o != mc.player && !o.isSpectator() && !o.isInvisible() && reaches(o, mc.player.getX(), eye, mc.player.getZ(), Math.max(0.5f, cfg.rcRadius), 1f)) g.add(o.getId());
+            }
+            glow = g;
+        } else if (!glow.isEmpty()) {
+            glow = java.util.Set.of();
         }
         if (++ticks % 20 != 0 || mc.getNetworkHandler() == null) return;
         for (PlayerEntity p : mc.world.getPlayers()) {

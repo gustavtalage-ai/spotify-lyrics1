@@ -75,42 +75,10 @@ public class ReachCirclesScreen extends ItemScreen {
     protected void build() {
         Config c = Config.INSTANCE;
         row(t(Lang.t("Kreise an", "Enable circles"), c.rcOn, () -> c.rcOn = !c.rcOn));
-        row(t(Lang.t("Ping-Ausgleich", "Ping compensation"), c.rcPing, () -> c.rcPing = !c.rcPing),
-            t(Lang.t("Gefüllter Kreis", "Filled circle"), c.rcFilled, () -> c.rcFilled = !c.rcFilled));
+        row(t(Lang.t("Gegner leuchten grün, wenn du sie treffen kannst", "Enemies glow green when you can hit them"), c.rcGlow, () -> c.rcGlow = !c.rcGlow));
         row(t(Lang.t("Nur mit Waffe in der Hand", "Only while holding a weapon"), c.rcWeapon, () -> c.rcWeapon = !c.rcWeapon));
         gap(4);
-
-        sec(Lang.t("Anzeige", "Indicators"));
-        row(t(Lang.t("Zeigen, wenn du jemanden treffen kannst", "Show when you can reach someone"), c.rcLocalGreen, () -> c.rcLocalGreen = !c.rcLocalGreen));
-        row(t(Lang.t("Zeigen, wenn ein Gegner dich treffen kann", "Show when another player can reach you"), c.rcOtherGreen, () -> c.rcOtherGreen = !c.rcOtherGreen));
-        row(t(Lang.t("Nur wenn du ihn auch treffen kannst", "Only when you can reach them too"), c.rcOtherGreen2, () -> c.rcOtherGreen2 = !c.rcOtherGreen2));
-        gap(4);
-
-        sec(Lang.t("Aussehen", "Look"));
-        step(Lang.t("Radius: ", "Radius: ") + String.format(Locale.ROOT, "%.1f", c.rcRadius),
-            () -> c.rcRadius = Math.max(0.5f, Math.round((c.rcRadius - 0.1f) * 10) / 10f),
-            () -> c.rcRadius = Math.min(10f, Math.round((c.rcRadius + 0.1f) * 10) / 10f));
-        step(Lang.t("Dicke: ", "Thickness: ") + String.format(Locale.ROOT, "%.2f", c.rcThick / 100f),
-            () -> c.rcThick = Math.max(1, c.rcThick - 1), () -> c.rcThick = Math.min(100, c.rcThick + 1));
-        step(Lang.t("Deckkraft: ", "Opacity: ") + c.rcOpacity + "%",
-            () -> c.rcOpacity = Math.max(0, c.rcOpacity - 5), () -> c.rcOpacity = Math.min(100, c.rcOpacity + 5));
-        step(Lang.t("Segmente: ", "Segments: ") + c.rcSegments,
-            () -> c.rcSegments = Math.max(8, c.rcSegments - 8), () -> c.rcSegments = Math.min(256, c.rcSegments + 8));
-        step(Lang.t("Max. Entfernung: ", "Max distance: ") + c.rcMaxDist,
-            () -> c.rcMaxDist = Math.max(8, c.rcMaxDist - 8), () -> c.rcMaxDist = Math.min(256, c.rcMaxDist + 8));
-        step(Lang.t("Glättung: ", "Smoothing: ") + c.rcSmooth,
-            () -> c.rcSmooth = Math.max(1, c.rcSmooth - 1), () -> c.rcSmooth = Math.min(100, c.rcSmooth + 1));
-        row(t("LOD", c.rcLod, () -> c.rcLod = !c.rcLod));
-        step(Lang.t("LOD-Stärke: ", "LOD strength: ") + c.rcLodStrength,
-            () -> c.rcLodStrength = Math.max(0, c.rcLodStrength - 5), () -> c.rcLodStrength = Math.min(100, c.rcLodStrength + 5));
-        gap(4);
-
-        sec(Lang.t("Farben", "Colors"));
-        int[] argb = new int[COLORS.length];
-        for (int i = 0; i < argb.length; i++) argb[i] = 0xFF000000 | COLORS[i];
-        colorPick(Lang.t("Dein Kreis", "Your circle"), argb, COLOR_NAMES, idx(c.rcSelf), k -> c.rcSelf = COLORS[k]);
-        colorPick(Lang.t("Dein Kreis, wenn du triffst", "Your circle when you can reach"), argb, COLOR_NAMES, idx(c.rcSelfCan), k -> c.rcSelfCan = COLORS[k]);
-        colorPick(Lang.t("Gegner-Kreis", "Enemy circle"), argb, COLOR_NAMES, idx(c.rcOther), k -> c.rcOther = COLORS[k]);
-        colorPick(Lang.t("Gegner-Kreis, wenn er trifft", "Enemy circle when they can reach"), argb, COLOR_NAMES, idx(c.rcOtherCan), k -> c.rcOtherCan = COLORS[k]);
+        text(Lang.t("Dein Kreis wird grün, wenn du jemanden treffen kannst,", "Your circle turns green when you can hit someone,"), 0xFF8A93A6);
+        text(Lang.t("der Kreis eines Gegners, wenn er dich treffen kann.", "an enemy's circle when they can hit you."), 0xFF8A93A6);
     }
 }

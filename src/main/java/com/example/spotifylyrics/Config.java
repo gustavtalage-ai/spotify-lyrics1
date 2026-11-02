@@ -225,6 +225,18 @@ public class Config {
 
     public java.util.List<Macro> macros = new java.util.ArrayList<>();
 
+    /** Item-Designer: eigenes Bild und eigener Sound für ein Item oder einen Block. */
+    public static class Design {
+        public String item = "";
+        public String image = "";
+        public String sound = "";
+        public int volume = 100;
+    }
+
+    public java.util.List<Design> designs = new java.util.ArrayList<>();
+    /** Reichweite: Gegner leuchten grün, wenn du sie treffen kannst. */
+    public boolean rcGlow = true;
+
     /** Pack-Sets: bis zu 4 Plätze, je die Pack-IDs getrennt mit "|" (leer = frei). */
     public java.util.List<String> packSets = new java.util.ArrayList<>();
 
@@ -248,6 +260,7 @@ public class Config {
                     if (c.deathDim == null) c.deathDim = "";
                     if (c.lyPos == null || c.lyPos.length < 6) c.lyPos = lyPosInit();
                     if (c.macros == null) c.macros = new java.util.ArrayList<>();
+                    if (c.designs == null) c.designs = new java.util.ArrayList<>();
                     if (c.crossPix == null || c.crossPix.length != 225) c.crossPix = crossDefault();
                     if (c.pvpVer < 2) {
                         c.pvpMods &= ~((1 << 14) | (1 << 15));

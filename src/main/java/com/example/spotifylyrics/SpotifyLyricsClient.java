@@ -44,6 +44,7 @@ public class SpotifyLyricsClient implements ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(PopChams::tick);
         ReachCircles.register();
         ArmorBars.register();
+        Designer.register();
         // Kampf-Effekte (aus MasEffects portiert)
         com.example.spotifylyrics.fx.MasConfig.init();
         com.example.spotifylyrics.fx.ModParticles.Register();

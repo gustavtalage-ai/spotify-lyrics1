@@ -71,5 +71,7 @@ public class ToolsScreen extends CardGridScreen {
             }, LightScreen::new));
         out.add(new Card(Lang.t("Auto-Klick", "Auto click"), AutoClick.describe() + Lang.t(" · Taste ", " · key ") + AutoClick.keyName(), "mouse",
             () -> AutoClick.active, () -> AutoClick.setActive(!AutoClick.active), AutoClickScreen::new));
+        out.add(new Card(Lang.t("Item-Designer", "Item designer"), c.designs.size() + Lang.t(" Items · Bild & Sound", " items · picture & sound"), "packs",
+            () -> false, null, DesignerScreen::new));
     }
 }

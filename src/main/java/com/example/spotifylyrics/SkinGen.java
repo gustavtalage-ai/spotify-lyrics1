@@ -25,7 +25,17 @@ final class SkinGen {
         {0x0B1424, 0x2A4A8C, 0x5AD1FF, 0xFFF35A, 0x14161E, 0x5AD1FF},   // Gewittersturm
         {0x0E0302, 0x3A0E06, 0xFF6A00, 0xFFE070, 0x1A0C08, 0xFF8A20},   // Magmakern
         {0x0A0E2A, 0x3A3590, 0xFFB8F0, 0xFFFFFF, 0x141630, 0xA8C8FF},   // Sternenstaub
-        {0x061A1A, 0x1E5A5A, 0x7FFFE0, 0xE8FFFA, 0x0C1414, 0x7FFFE0}    // Geisterhauch
+        {0x061A1A, 0x1E5A5A, 0x7FFFE0, 0xE8FFFA, 0x0C1414, 0x7FFFE0},   // Geisterhauch
+        {0x021226, 0x0B4A7A, 0x2EE6E6, 0xCFFFFF, 0x0A1420, 0x2EC4E6},   // Tiefsee
+        {0x2A1206, 0xB0602A, 0xE8945A, 0x7FE0C0, 0x1A0E08, 0x3FB89A},   // Kupferrost
+        {0x4A2E10, 0xC8A060, 0xF4D896, 0xFFF6DC, 0x2A1A0A, 0xE0B060},   // Wüstensand
+        {0x5A1A3A, 0xF08CB8, 0xFFD0E4, 0xFFFFFF, 0x3A1A10, 0xFFB0D0},   // Kirschblüte
+        {0x040A1A, 0x0E2A4A, 0x4AFFA0, 0xC07CFF, 0x0A0E18, 0x4AFFA0},   // Polarlicht
+        {0x050506, 0x1C1C24, 0x5A5A6E, 0xFF2A3A, 0x08080A, 0xFF2A3A},   // Schattenklinge
+        {0x1A0630, 0x7A2FD0, 0xD08CFF, 0xFFE0FF, 0x140A20, 0xFF5AD0},   // Kristallherz
+        {0x061A0C, 0x1E6A3A, 0x4AD07A, 0xFFD45A, 0x14100A, 0xFFD45A},   // Drachenschuppe
+        {0x000000, 0x101014, 0xFFB040, 0xFFFFFF, 0x0A0A0C, 0xFFFFFF},   // Sonnenfinsternis
+        {0xB8B0A0, 0xF4F0E6, 0xFFD45A, 0xFFFFFF, 0x8A7A5A, 0xFFD45A}    // Himmelsthron
     };
 
     static BufferedImage make(BufferedImage src, int style, int seed) {
@@ -192,6 +202,83 @@ final class SkinGen {
                 float n = fbm(x * 0.25f, yy * 0.25f, seed + 21, Math.max(1, h / 4));
                 col = mix(col, n > 0.62f ? P[3] : P[2], clamp((n - 0.46f) * 2.5f) * 0.75f);
             }
+            case 11 -> { // Tiefsee: Lichtwellen wie unter Wasser, Blasen steigen
+                col = mix(P[0], P[1], (float) Math.pow(l, 0.85));
+                float c1 = (float) Math.sin(x * 0.9f + ft * Math.PI * 2) + (float) Math.sin(y * 0.7f - ft * Math.PI * 2 + x * 0.3f);
+                if (c1 > 1.3f) col = mix(col, P[2], (c1 - 1.3f) / 0.7f * 0.7f);
+                int bx = hash(seed, x, 41) % 9;
+                if (bx == 0) {
+                    float pos = ((y / (float) h) + ft + (hash(seed, x, 43) % 100) / 100f) % 1f;
+                    if (pos < 0.12f) col = mix(col, P[3], 0.8f);
+                }
+            }
+            case 12 -> { // Kupferrost: Kupfer mit grüner Patina, Glanz wandert
+                col = mix(P[0], P[1], (float) Math.pow(l, 0.8));
+                float n = fbm(x * 0.25f, y * 0.25f, seed + 51, Math.max(1, h / 4));
+                if (n > 0.55f) col = mix(col, P[5], clamp((n - 0.55f) * 4) * 0.85f);
+                if (hash(seed, x * 5 + y * 3, 53) % 29 == 0) col = mix(col, P[2], 0.6f);
+            }
+            case 13 -> { // Wüstensand: Dünen ziehen vorbei, Körner glitzern
+                col = mix(P[0], P[1], (float) Math.pow(l, 0.75));
+                float dune = (float) Math.sin((x * 0.5f + y * 0.9f) - ft * Math.PI * 2);
+                col = mix(col, dune > 0 ? P[2] : P[0], Math.abs(dune) * 0.35f);
+                if (hash(seed, x * 13 + y, 61) % 17 == 0) {
+                    float tw = (float) Math.max(0, Math.sin((ft * 2 + (hash(seed, x, y) % 100) / 100f) * Math.PI * 2));
+                    col = mix(col, P[3], tw);
+                }
+            }
+            case 14 -> { // Kirschblüte: rosa, Blütenblätter fallen schräg
+                col = mix(P[1], P[2], (float) Math.pow(l, 0.9));
+                col = mix(col, P[0], 0.25f * (1 - l));
+                int lane = Math.floorMod(x + y, 7);
+                int pid = Math.floorDiv(x + y, 7);
+                float pos = ((y / (float) h) + ft + (hash(seed, pid, 71) % 100) / 100f) % 1f;
+                if (lane < 2 && pos < 0.1f) col = mix(P[3], P[5], lane * 0.5f);
+            }
+            case 15 -> { // Polarlicht: grün-lila Lichtbänder wogen über dunklen Himmel
+                col = mix(P[0], P[1], (float) Math.pow(l, 0.9));
+                float band = (float) Math.sin(y * 0.45f + (float) Math.sin(x * 0.4f + ft * Math.PI * 2) * 1.8f);
+                float k = clamp((band - 0.4f) * 2.2f);
+                int ac = mix(P[2], P[3], 0.5f + 0.5f * (float) Math.sin(x * 0.3f + ft * Math.PI * 2));
+                col = mix(col, ac, k * 0.8f);
+                if (hash(seed, x * 19 + y * 11, 73) % 37 == 0) col = mix(col, 0xFFFFFF, 0.6f);
+            }
+            case 16 -> { // Schattenklinge: schwarzer Rauch, rote Funken
+                col = mix(P[0], P[1], (float) Math.pow(l, 0.9));
+                float yy = (y + (1 - ft) * h) % h;
+                float n = fbm(x * 0.25f, yy * 0.25f, seed + 81, Math.max(1, h / 4));
+                col = mix(col, P[2], clamp((n - 0.5f) * 2.5f) * 0.6f);
+                if (hash(seed, x * 7 + y * 17, 83) % 31 == 0) col = mix(col, P[3], 0.5f + 0.5f * (float) Math.sin((ft * 3 + x) * Math.PI));
+            }
+            case 17 -> { // Kristallherz: Amethyst-Facetten, inneres Pochen
+                int band = Math.floorDiv(x + y, 4);
+                float facet = (hash(seed, band, 91) % 100) / 100f;
+                col = mix(P[0], facet > 0.5f ? P[2] : P[1], 0.55f + 0.4f * l);
+                float beat = (float) Math.pow(Math.max(0, Math.sin(ft * Math.PI * 4)), 6);
+                col = mix(col, P[5], beat * 0.35f * l);
+                if (hash(seed, x * 31 + y, 93) % 23 == 0) col = mix(col, P[3], 0.7f);
+            }
+            case 18 -> { // Drachenschuppe: Schuppenmuster mit goldenem Rand, Schimmer
+                col = mix(P[0], P[1], (float) Math.pow(l, 0.85));
+                int sx = Math.floorMod(x + ((y / 3) % 2) * 2, 4), sy = Math.floorMod(y, 3);
+                if (sy == 2 || sx == 0) col = mix(col, P[5], 0.45f);
+                else col = mix(col, P[2], 0.25f * (float) Math.max(0, Math.sin((diag * 2 - ft * 2) * Math.PI * 2)));
+            }
+            case 19 -> { // Sonnenfinsternis: schwarzer Kern, Korona leuchtet am Rand
+                col = mix(P[0], P[1], l * 0.6f);
+                float cor = (float) Math.sin((diag * 6 - ft * 2) * Math.PI * 2);
+                if (cor > 0.7f) col = mix(col, P[2], (cor - 0.7f) / 0.3f * 0.5f);
+            }
+            case 20 -> { // Himmelsthron: weiß-goldener Marmor, Lichtstrahlen, Funkeln
+                col = mix(P[0], P[1], (float) Math.pow(l, 0.7));
+                float n = fbm(x * 0.25f, y * 0.25f, seed + 101, Math.max(1, h / 4));
+                float vein = clamp(1 - Math.abs(n - 0.5f) * 16);
+                col = mix(col, P[2], vein * 0.85f);
+                if (hash(seed, x * 23 + y * 13, 103) % 19 == 0) {
+                    float tw = (float) Math.max(0, Math.sin((ft * 2 + (hash(seed, x, y) % 100) / 100f) * Math.PI * 2));
+                    col = mix(col, 0xFFFFFF, tw);
+                }
+            }
             default -> { // Königsglanz: roter Kern, goldene Kanten, Juwel-Funkeln
                 col = mix(P[0], P[1], (float) Math.pow(l, 0.8));
                 if (hash(seed, x * 13 + y * 7, 2) % 29 == 0) {
@@ -203,7 +290,7 @@ final class SkinGen {
         // Umriss: dunkel mit farbigem Schimmer (Neon/Gold leuchten stärker)
         if (edge) {
             int glow = style == 3 ? ((int) ((ft * 2 + diag * 2) * 3) % 3 == 0 ? P[1] : (int) ((ft * 2 + diag * 2) * 3) % 3 == 1 ? P[2] : P[3])
-                : style == 4 || style == 7 ? P[2] : style == 5 ? P[2] : P[1];
+                : style == 16 || style == 19 ? P[3] : style == 4 || style == 7 || style == 11 || style == 15 || style == 17 || style == 18 || style == 20 ? P[2] : style == 5 ? P[2] : P[1];
             float pulse = 0.5f + 0.5f * (float) Math.sin((ft * 2 + diag) * Math.PI * 2);
             col = mix(mix(P[0], 0x000000, 0.25f), glow, style >= 3 ? 0.75f + 0.25f * pulse : 0.3f + 0.45f * pulse);
         }

@@ -38,8 +38,9 @@ public final class WeaponSkins {
     }
 
     /** Name der Kollektion je Finisher (gleiche Reihenfolge wie KillFx.STYLES). */
-    public static final String[] BUNDLES = {"Sonnenfeuer", "Frostkristall", "Leere", "Neon-Glitch", "Königsglanz", "Blutmond", "Giftranke", "Gewittersturm", "Magmakern", "Sternenstaub", "Geisterhauch"};
-    static final String VERSION = "v4";
+    public static final String[] BUNDLES = {"Sonnenfeuer", "Frostkristall", "Leere", "Neon-Glitch", "Königsglanz", "Blutmond", "Giftranke", "Gewittersturm", "Magmakern", "Sternenstaub", "Geisterhauch",
+        "Tiefsee", "Kupferrost", "Wüstensand", "Kirschblüte", "Polarlicht", "Schattenklinge", "Kristallherz", "Drachenschuppe", "Sonnenfinsternis", "Himmelsthron"};
+    static final String VERSION = "v5";
     private static final String NS = "spotifylyrics";
 
     /** Waffen (Pfad), für die Skins im Pack liegen. */

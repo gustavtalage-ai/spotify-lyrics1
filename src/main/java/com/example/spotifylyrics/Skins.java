@@ -90,9 +90,9 @@ public final class Skins {
     /** Wie stark der Finisher ist (Größe, Teilchen, Effekte). */
     private static final float[] QUALITY = {0.55f, 0.7f, 0.85f, 1f, 1.15f};
     /** Seltenheit je Kollektion (Reihenfolge wie WeaponSkins.BUNDLES). */
-    private static final int[] TIER = {1, 1, 3, 0, 4, 2, 0, 2, 2, 1, 3};
+    private static final int[] TIER = {1, 1, 3, 0, 4, 2, 0, 2, 2, 1, 3, 0, 0, 0, 1, 1, 1, 2, 2, 3, 4};
     /** Kollektionen sortiert: seltenste zuerst. */
-    public static final int[] ORDER = {4, 2, 10, 5, 7, 8, 0, 1, 9, 3, 6};
+    public static final int[] ORDER = {4, 20, 2, 10, 19, 5, 7, 8, 17, 18, 0, 1, 9, 14, 15, 16, 3, 6, 11, 12, 13};
 
     public static int tier(int b) {
         return b < 0 || b >= TIER.length ? 0 : TIER[b];

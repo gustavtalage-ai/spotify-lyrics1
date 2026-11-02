@@ -31,7 +31,8 @@ public class PackScreen extends Screen {
     private static boolean revealPlayed;
     private int px0, px1, py0, py1;
 
-    private static final String[] SND = {"sonnenfeuer", "frostkristall", "leere", "neonglitch", "koenigsglanz", "blutmond", "giftranke", "gewitter", "magmakern", "sternenstaub", "geisterhauch"};
+    private static final String[] SND = {"sonnenfeuer", "frostkristall", "leere", "neonglitch", "koenigsglanz", "blutmond", "giftranke", "gewitter", "magmakern", "sternenstaub", "geisterhauch",
+        "tiefsee", "kupferrost", "wuestensand", "kirschbluete", "polarlicht", "schattenklinge", "kristallherz", "drachenschuppe", "finsternis", "himmelsthron"};
 
     public PackScreen() {
         super(Text.literal("Kisten"));
@@ -216,13 +217,15 @@ public class PackScreen extends Screen {
         int iy = cy0 + 100;
         String l = Lang.t("Inhalt: ein Skin aus diesen Kollektionen", "Contains one skin from these collections");
         Ui.txt(ctx, tr, l, cx - tr.getWidth(l) / 2, iy, 0xFF8B92A5);
-        int n8 = Skins.bundles(), tw = Math.min(34, (px1 - px0 - 20 - (n8 - 1) * 4) / n8), tot = n8 * tw + (n8 - 1) * 4;
-        int x0 = cx - tot / 2, ty = iy + 12;
+        int n8 = Skins.bundles(), per = (n8 + 1) / 2, tw = Math.min(34, (px1 - px0 - 20 - (per - 1) * 4) / per), tot = per * tw + (per - 1) * 4;
+        int x0 = cx - tot / 2, ty0 = iy + 12, ty = ty0;
         String tip = null;
         int[] w = Skins.CASE_W[sel];
         for (int j = 0; j < n8; j++) {
             int i = Skins.ORDER[j];
-            int x = x0 + j * (tw + 4);
+            int row = j / per, inRow = row == 0 ? per : n8 - per;
+            int x = cx - (inRow * tw + (inRow - 1) * 4) / 2 + (j % per) * (tw + 4);
+            ty = ty0 + row * (tw + 4);
             int col = Skins.tierCol(i);
             Ui.card(ctx, x, ty, x + tw, ty + tw, col, 0xFF07080B);
             ctx.fillGradient(x + 1, ty + 1, x + tw - 1, ty + tw - 1, 0x05000000, (0x50 << 24) | (col & 0xFFFFFF));
@@ -241,7 +244,7 @@ public class PackScreen extends Screen {
         // Chancen
         int lx = 0;
         for (int q = 0; q < Skins.TIER_NAMES.length; q++) lx += tr.getWidth(Skins.TIER_NAMES[q] + " " + Skins.pct(w[q])) + (q > 0 ? 8 : 0);
-        int lxx = cx - lx / 2, ly = ty + tw + 6;
+        int lxx = cx - lx / 2, ly = ty0 + 2 * (tw + 4) + 2;
         for (int q = 0; q < Skins.TIER_NAMES.length; q++) {
             String s = Skins.TIER_NAMES[q] + " " + Skins.pct(w[q]);
             Ui.txt(ctx, tr, s, lxx, ly, Skins.TIER_COL[q]);

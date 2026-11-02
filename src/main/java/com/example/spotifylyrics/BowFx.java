@@ -51,7 +51,8 @@ public final class BowFx {
         }
     }
 
-    private static final String[] SND = {"sonnenfeuer", "frostkristall", "leere", "neonglitch", "koenigsglanz", "blutmond", "giftranke", "gewitter", "magmakern", "sternenstaub", "geisterhauch"};
+    private static final String[] SND = {"sonnenfeuer", "frostkristall", "leere", "neonglitch", "koenigsglanz", "blutmond", "giftranke", "gewitter", "magmakern", "sternenstaub", "geisterhauch",
+        "tiefsee", "kupferrost", "wuestensand", "kirschbluete", "polarlicht", "schattenklinge", "kristallherz", "drachenschuppe", "finsternis", "himmelsthron"};
 
     private static void tick(MinecraftClient mc) {
         if (mc.player == null || mc.world == null) {

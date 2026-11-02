@@ -33,15 +33,15 @@ public class WeaponSkinScreen extends Screen {
         py1 = py0 + ph;
         top = py0 + HEAD + 6;
         lx0 = px0 + 10;
-        lx1 = px0 + pw / 2 + 10;
+        lx1 = px0 + pw * 2 / 5;
         rx0 = lx1 + 8;
         rx1 = px1 - 10;
         MinecraftClient mc = MinecraftClient.getInstance();
         btn(px1 - 10 - 86, py0 + 5, 86, 18, () -> mc.setScreen(new CollectionScreen()));
-        int rows = Skins.bundles() + 1, rh = Math.min(22, (py1 - 10 - top) / rows);
-        for (int i = -1; i < Skins.bundles(); i++) {
-            final int b = i < 0 ? -1 : Skins.ORDER[i];
-            btn(rx0, top + (i + 1) * rh, rx1 - rx0, rh - 2, () -> view = b);
+        int n = Skins.bundles() + 1, rows = (n + 1) / 2, rh = Math.min(22, (py1 - 10 - top) / rows), cw = (rx1 - rx0 - 4) / 2;
+        for (int e = 0; e < n; e++) {
+            final int b = e == 0 ? -1 : Skins.ORDER[e - 1];
+            btn(rx0 + (e / rows) * (cw + 4), top + (e % rows) * rh, cw, rh - 2, () -> view = b);
         }
         int by = py1 - 30, bw = (lx1 - lx0 - 6) / 2;
         btn(lx0, by, bw, 20, () -> {
@@ -116,9 +116,9 @@ public class WeaponSkinScreen extends Screen {
             Ui.txt(ctx, tr, l, (lx0 + lx1 - tr.getWidth(l)) / 2, boxBot - 14, 0xFFFFC23D);
         }
         String nm = view >= 0 ? WeaponSkins.BUNDLES[view] + " " + Skins.TYPE_NAMES[type] : Lang.t("Standard", "Default");
-        Ui.txt(ctx, tr, nm, lx0 + 2, boxBot + 5, view >= 0 ? accent : Ui.TEXT);
+        Ui.txt(ctx, tr, tr.trimToWidth(nm, lx1 - lx0 - 8 - (view >= 0 ? tr.getWidth(Skins.tierName(view)) : 0)), lx0 + 2, boxBot + 5, view >= 0 ? accent : Ui.TEXT);
         if (view >= 0) Ui.txt(ctx, tr, Skins.tierName(view), lx1 - 2 - tr.getWidth(Skins.tierName(view)), boxBot + 5, Skins.tierCol(view));
-        if (view >= 0) Ui.txt(ctx, tr, Lang.t("Finisher: ", "Finisher: ") + (owned ? KillFx.STYLES[view] : "???") + (type >= 4 ? Lang.t(" · eigene Nachlade-Animation", " · custom reload") : ""),
+        if (view >= 0) Ui.txt(ctx, tr, tr.trimToWidth(Lang.t("Finisher: ", "Finisher: ") + (owned ? KillFx.STYLES[view] : "???") + (type >= 4 ? Lang.t(" · Nachladen", " · reload") : ""), lx1 - lx0 - 4),
             lx0 + 2, boxBot + 16, 0xFF8B92A5);
 
         int bw = (lx1 - lx0 - 6) / 2;
@@ -130,28 +130,27 @@ public class WeaponSkinScreen extends Screen {
         Ui.btn(ctx, tr, lx0 + bw + 6, by, lx1, by + 20, Lang.t("▶ Finisher ansehen", "▶ View finisher"), Ui.in(mouseX, mouseY, lx0 + bw + 6, by, lx1, by + 20),
             canFin ? 0xFF2A1E40 : 0xFF1A1E27, canFin ? 0xFF3A2A5A : 0xFF1A1E27, canFin ? 0xFFFFFFFF : 0xFF6F7380);
 
-        // Liste aller Skins
-        int rows = Skins.bundles() + 1, rh = Math.min(22, (py1 - 10 - top) / rows);
-        for (int row = -1; row < Skins.bundles(); row++) {
-            int i = row < 0 ? -1 : Skins.ORDER[row];
-            int y = top + (row + 1) * rh;
+        // Liste aller Skins (zwei Spalten)
+        int n = Skins.bundles() + 1, rows = (n + 1) / 2, rh = Math.min(22, (py1 - 10 - top) / rows), cw = (rx1 - rx0 - 4) / 2;
+        for (int e = 0; e < n; e++) {
+            int i = e == 0 ? -1 : Skins.ORDER[e - 1];
+            int x = rx0 + (e / rows) * (cw + 4), y = top + (e % rows) * rh, x1 = x + cw;
             boolean has = i < 0 || Skins.owns(i, type);
-            boolean sel = view == i, hov = Ui.in(mouseX, mouseY, rx0, y, rx1, y + rh - 2);
+            boolean sel = view == i, hov = Ui.in(mouseX, mouseY, x, y, x1, y + rh - 2);
             int col = i >= 0 ? 0xFF000000 | SkinGen.PAL[i][2] : 0xFF8B92A5;
-            Ui.card(ctx, rx0, y, rx1, y + rh - 2, sel ? col : (hov ? 0xFF3A4152 : Ui.BORDER), sel ? Ui.CARD_HOV : Ui.CARD);
-            if (i >= 0) ctx.fill(rx0 + 1, y + 1, rx0 + 3, y + rh - 3, Skins.tierCol(i));
+            Ui.card(ctx, x, y, x1, y + rh - 2, sel ? col : (hov ? 0xFF3A4152 : Ui.BORDER), sel ? Ui.CARD_HOV : Ui.CARD);
+            if (i >= 0) ctx.fill(x + 1, y + 1, x + 3, y + rh - 3, Skins.tierCol(i));
             int iy = y + (rh - 2 - 16) / 2;
-            if (has) ctx.drawItem(CollectionScreen.stackFor(type, i), rx0 + 5, iy);
+            if (has) ctx.drawItem(CollectionScreen.stackFor(type, i), x + 5, iy);
             else {
-                ctx.fill(rx0 + 5, iy, rx0 + 21, iy + 16, 0xFF050608);
-                ctx.drawTextWithShadow(tr, "?", rx0 + 13 - tr.getWidth("?") / 2, iy + 4, 0xFF8B92A5);
+                ctx.fill(x + 5, iy, x + 21, iy + 16, 0xFF050608);
+                ctx.drawTextWithShadow(tr, "?", x + 13 - tr.getWidth("?") / 2, iy + 4, 0xFF8B92A5);
             }
-            String n = i < 0 ? Lang.t("Standard", "Default") : WeaponSkins.BUNDLES[i];
-            Ui.txt(ctx, tr, n, rx0 + 25, y + (rh - 2 - 8) / 2, has ? (i >= 0 ? col : Ui.TEXT) : 0xFF5A6070);
             boolean eqd = Skins.equipped(type) == i;
-            String tag = eqd ? "✔" : i >= 0 ? Skins.tierName(i) : "";
-            int tc = eqd ? 0xFF4ADE80 : i >= 0 ? (has ? Skins.tierCol(i) : Ui.mix(Skins.tierCol(i), 0xFF0B0D12, 0.45f)) : 0;
-            if (!tag.isEmpty()) Ui.txt(ctx, tr, tag, rx1 - 6 - tr.getWidth(tag), y + (rh - 2 - 8) / 2, tc);
+            String nm2 = i < 0 ? Lang.t("Standard", "Default") : WeaponSkins.BUNDLES[i];
+            nm2 = tr.trimToWidth(nm2, cw - 26 - (eqd ? 12 : 4));
+            Ui.txt(ctx, tr, nm2, x + 24, y + (rh - 2 - 8) / 2, has ? (i >= 0 ? col : Ui.TEXT) : 0xFF5A6070);
+            if (eqd) Ui.txt(ctx, tr, "✔", x1 - 10, y + (rh - 2 - 8) / 2, 0xFF4ADE80);
         }
     }
 }

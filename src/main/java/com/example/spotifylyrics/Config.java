@@ -264,6 +264,8 @@ public class Config {
     /** Coins aus Spielzeit und wie viel Spielzeit schon umgewandelt ist. */
     public int coins = 0;
     public long convertedMs = 0;
+    /** Eigene Support-Nachrichten (Zeit|Art|Name|Text). */
+    public java.util.List<String> supportMsgs = new java.util.ArrayList<>();
 
     /** Pack-Sets: bis zu 4 Plätze, je die Pack-IDs getrennt mit "|" (leer = frei). */
     public java.util.List<String> packSets = new java.util.ArrayList<>();
@@ -289,6 +291,7 @@ public class Config {
                     if (c.lyPos == null || c.lyPos.length < 6) c.lyPos = lyPosInit();
                     if (c.macros == null) c.macros = new java.util.ArrayList<>();
                     if (c.designs == null) c.designs = new java.util.ArrayList<>();
+                    if (c.supportMsgs == null) c.supportMsgs = new java.util.ArrayList<>();
                     if (c.skinsOwned == null) c.skinsOwned = new java.util.ArrayList<>();
                     if (c.skinsEquipped == null) c.skinsEquipped = new java.util.HashMap<>();
                     if (c.crossPix == null || c.crossPix.length != 225) c.crossPix = crossDefault();

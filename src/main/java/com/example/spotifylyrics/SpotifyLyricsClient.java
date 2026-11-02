@@ -50,6 +50,8 @@ public class SpotifyLyricsClient implements ClientModInitializer {
         KillFx.register();
         Skins.register();
         BowFx.register();
+        TitleAd.register();
+        Support.load();
         // Kampf-Effekte (aus MasEffects portiert)
         com.example.spotifylyrics.fx.MasConfig.init();
         com.example.spotifylyrics.fx.ModParticles.Register();

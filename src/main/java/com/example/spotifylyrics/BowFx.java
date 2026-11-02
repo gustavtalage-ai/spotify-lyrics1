@@ -52,7 +52,9 @@ public final class BowFx {
     }
 
     private static final String[] SND = {"sonnenfeuer", "frostkristall", "leere", "neonglitch", "koenigsglanz", "blutmond", "giftranke", "gewitter", "magmakern", "sternenstaub", "geisterhauch",
-        "tiefsee", "kupferrost", "wuestensand", "kirschbluete", "polarlicht", "schattenklinge", "kristallherz", "drachenschuppe", "finsternis", "himmelsthron"};
+        "tiefsee", "kupferrost", "wuestensand", "kirschbluete", "polarlicht", "schattenklinge", "kristallherz", "drachenschuppe", "finsternis", "himmelsthron",
+        "kuerbisfluch", "spinnennetz", "knochenmond", "hexenkessel", "zuckerstange", "schneesturm", "nordstern", "fruehlingstau", "tropenwelle",
+        "sonnenuntergang", "rubinglut", "osterglanz", "mitternacht", "plasmakern", "goldrausch"};
 
     private static void tick(MinecraftClient mc) {
         if (mc.player == null || mc.world == null) {

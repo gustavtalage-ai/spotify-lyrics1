@@ -90,9 +90,33 @@ public final class Skins {
     /** Wie stark der Finisher ist (Größe, Teilchen, Effekte). */
     private static final float[] QUALITY = {0.55f, 0.7f, 0.85f, 1f, 1.15f};
     /** Seltenheit je Kollektion (Reihenfolge wie WeaponSkins.BUNDLES). */
-    private static final int[] TIER = {1, 1, 3, 0, 4, 2, 0, 2, 2, 1, 3, 0, 0, 0, 1, 1, 1, 2, 2, 3, 4};
+    private static final int[] TIER = {1, 1, 3, 0, 4, 2, 0, 2, 2, 1, 3, 0, 0, 0, 1, 1, 1, 2, 2, 3, 4,
+        2, 1, 3, 4, 1, 2, 3, 1, 1, 2, 2, 2, 0, 3, 4};
+    /** Saison-Kollektionen: Index der Kiste, aus der sie kommen (-1 = normale Kisten). */
+    private static final int[] SEASON = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+        3, 3, 3, 3, 4, 4, 4, 5, 6, 6, -1, 5, -1, -1, -1};
     /** Kollektionen sortiert: seltenste zuerst. */
-    public static final int[] ORDER = {4, 20, 2, 10, 19, 5, 7, 8, 17, 18, 0, 1, 9, 14, 15, 16, 3, 6, 11, 12, 13};
+    public static final int[] ORDER = order();
+
+    private static int[] order() {
+        int n = WeaponSkins.BUNDLES.length;
+        Integer[] o = new Integer[n];
+        for (int i = 0; i < n; i++) o[i] = i;
+        java.util.Arrays.sort(o, (a, b) -> tier(b) != tier(a) ? tier(b) - tier(a) : a - b);
+        int[] r = new int[n];
+        for (int i = 0; i < n; i++) r[i] = o[i];
+        return r;
+    }
+
+    /** Aus welcher Kiste eine Kollektion kommt (-1 = normale Kisten). */
+    public static int season(int b) {
+        return b < 0 || b >= SEASON.length ? -1 : SEASON[b];
+    }
+
+    /** Kann diese Kiste diese Kollektion enthalten? */
+    public static boolean inCase(int k, int b) {
+        return k < 3 ? season(b) < 0 : season(b) == k;
+    }
 
     public static int tier(int b) {
         return b < 0 || b >= TIER.length ? 0 : TIER[b];
@@ -111,15 +135,48 @@ public final class Skins {
     }
 
     // ---------- Kisten ----------
-    public static final String[] CASES = {"Bronze-Kiste", "Alpha-Kiste", "Mythos-Kiste"};
-    public static final int[] CASE_PRICE = {15, 30, 80};
-    public static final int[] CASE_COL = {0xFFCD7F32, 0xFFFFC23D, 0xFFB14BFF};
+    public static final String[] CASES = {"Bronze-Kiste", "Alpha-Kiste", "Mythos-Kiste", "Halloween-Kiste", "Winter-Kiste", "Frühlings-Kiste", "Sommer-Kiste"};
+    public static final int[] CASE_PRICE = {15, 30, 80, 40, 40, 40, 40};
+    public static final int[] CASE_COL = {0xFFCD7F32, 0xFFFFC23D, 0xFFB14BFF, 0xFFFF8A00, 0xFF9AD8FF, 0xFF8AE070, 0xFFFF7A5A};
     /** Chancen je Kiste und Seltenheit in Promille. */
     public static final int[][] CASE_W = {
         {700, 220, 60, 17, 3},
         {550, 250, 120, 60, 20},
-        {200, 300, 280, 160, 60}
+        {200, 300, 280, 160, 60},
+        {0, 450, 330, 160, 60},
+        {0, 450, 330, 220, 0},
+        {0, 600, 400, 0, 0},
+        {0, 600, 400, 0, 0}
     };
+    /** Saison: {Startmonat, Starttag, Endmonat, Endtag} (über den Jahreswechsel möglich). */
+    private static final int[][] SEASON_DATES = {{10, 10, 11, 10}, {12, 1, 1, 10}, {3, 15, 4, 30}, {6, 15, 8, 31}};
+
+    /** Ist die Saison-Kiste gerade im Shop? (Normale Kisten immer; Admin sieht alle.) */
+    public static boolean caseActive(int k) {
+        if (k < 3 || adminOn()) return true;
+        return inSeason(k);
+    }
+
+    public static boolean inSeason(int k) {
+        if (k < 3) return true;
+        int[] d = SEASON_DATES[k - 3];
+        java.time.LocalDate now = java.time.LocalDate.now();
+        int v = now.getMonthValue() * 100 + now.getDayOfMonth(), a = d[0] * 100 + d[1], e = d[2] * 100 + d[3];
+        return a <= e ? v >= a && v <= e : v >= a || v <= e;
+    }
+
+    /** Kisten, die gerade im Shop sind. */
+    public static List<Integer> activeCases() {
+        List<Integer> l = new ArrayList<>();
+        for (int k = 0; k < CASES.length; k++) if (caseActive(k)) l.add(k);
+        return l;
+    }
+
+    /** Erste Saison-Kiste, die gerade läuft (-1 = keine). */
+    public static int currentSeasonCase() {
+        for (int k = 3; k < CASES.length; k++) if (inSeason(k)) return k;
+        return -1;
+    }
 
     /** Chance als Text, z. B. "5,5%". */
     public static String pct(int permille) {
@@ -137,11 +194,16 @@ public final class Skins {
         return 0;
     }
 
-    /** Zufällige Kollektion einer Seltenheit. */
-    static int bundleOfTier(int tier, Random r) {
-        List<Integer> l = new ArrayList<>();
-        for (int b = 0; b < bundles(); b++) if (tier(b) == tier) l.add(b);
-        return l.isEmpty() ? r.nextInt(bundles()) : l.get(r.nextInt(l.size()));
+    /** Zufällige Kollektion einer Seltenheit aus einer Kiste (gibt es die Seltenheit dort nicht, die nächste passende). */
+    static int bundleOfTier(int tier, Random r, int k) {
+        for (int d = 0; d < 5; d++) {
+            for (int t : new int[] {tier - d, tier + d}) {
+                List<Integer> l = new ArrayList<>();
+                for (int b = 0; b < bundles(); b++) if (tier(b) == t && inCase(k, b)) l.add(b);
+                if (!l.isEmpty()) return l.get(r.nextInt(l.size()));
+            }
+        }
+        return r.nextInt(bundles());
     }
 
     // ---------- Admin ----------
@@ -219,7 +281,7 @@ public final class Skins {
     }
 
     public static boolean canOpen(int k) {
-        return adminOn() || Config.INSTANCE.coins >= CASE_PRICE[k];
+        return caseActive(k) && (adminOn() || Config.INSTANCE.coins >= CASE_PRICE[k]);
     }
 
     /** Für das PvP-Menü: wie viele Alpha-Kisten man sich leisten kann. */
@@ -232,14 +294,14 @@ public final class Skins {
         if (!canOpen(k)) return null;
         Config c = Config.INSTANCE;
         Random r = new Random();
-        int tier = rollTier(r, k);
+        int tier = tier(bundleOfTier(rollTier(r, k), r, k));
         List<int[]> free = new ArrayList<>();
         for (int b = 0; b < bundles(); b++)
-            if (tier(b) == tier)
+            if (tier(b) == tier && inCase(k, b))
                 for (int t = 0; t < TYPES.length; t++)
                     if (!owns(b, t)) free.add(new int[] {b, t});
         int[] res;
-        if (free.isEmpty()) res = new int[] {bundleOfTier(tier, r), r.nextInt(TYPES.length), 1};
+        if (free.isEmpty()) res = new int[] {bundleOfTier(tier, r, k), r.nextInt(TYPES.length), 1};
         else {
             int[] p = free.get(r.nextInt(free.size()));
             res = new int[] {p[0], p[1], 0};

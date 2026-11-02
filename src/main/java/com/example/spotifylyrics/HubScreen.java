@@ -13,7 +13,7 @@ public class HubScreen extends Screen {
     private static final int N = 4;
 
     private int px0, px1, py0, py1, cardW, CARD_H = 96, COLS = 4, ROWS = 1, skinCount = 0;
-    private int skX0, skX1, keyX0, keyX1;
+    private int skX0, skX1, keyX0, keyX1, suX0, suX1;
 
     public HubScreen() {
         super(Text.literal("Menü"));
@@ -54,6 +54,10 @@ public class HubScreen extends Screen {
         skX0 = skX1 - (tr.getWidth("Skin") + 30);
         addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> MinecraftClient.getInstance().setScreen(new SkinScreen()))
             .dimensions(skX0, py0 + 9, skX1 - skX0, 16).build());
+        suX1 = skX0 - 6;
+        suX0 = suX1 - (tr.getWidth("Support") + 12);
+        addDrawableChild(ButtonWidget.builder(Text.literal(""), b -> MinecraftClient.getInstance().setScreen(new SupportScreen()))
+            .dimensions(suX0, py0 + 9, suX1 - suX0, 16).build());
     }
 
     private static void open(int i) {
@@ -92,6 +96,10 @@ public class HubScreen extends Screen {
         Ui.card(ctx, skX0, py0 + 9, skX1, py0 + 25, skHov ? 0xFF60A5FA : Ui.BORDER, skHov ? Ui.SURFACE_HOV : Ui.SURFACE);
         Icons.draw(ctx, "people", skX0 + 5, py0 + 11, 1, skHov ? 0xFFFFFFFF : 0xFF60A5FA);
         Ui.txt(ctx, tr, "Skin", skX0 + 22, py0 + 13, skHov ? Ui.TEXT : 0xFFD6D9E0);
+        boolean suHov = Ui.in(mouseX, mouseY, suX0, py0 + 9, suX1, py0 + 25);
+        ctx.fill(suX0, py0 + 9, suX1, py0 + 25, Ui.HEAD_BG);
+        Ui.card(ctx, suX0, py0 + 9, suX1, py0 + 25, suHov ? 0xFF4ADE80 : Ui.BORDER, suHov ? Ui.SURFACE_HOV : Ui.SURFACE);
+        Ui.txt(ctx, tr, "Support", suX0 + 6, py0 + 13, suHov ? Ui.TEXT : 0xFF4ADE80);
 
         boolean playing = Soundboard.nowPlaying != null;
         int build = BuildHelper.activeCount();

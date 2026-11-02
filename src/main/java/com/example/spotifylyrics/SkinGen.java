@@ -35,8 +35,30 @@ final class SkinGen {
         {0x1A0630, 0x7A2FD0, 0xD08CFF, 0xFFE0FF, 0x140A20, 0xFF5AD0},   // Kristallherz
         {0x061A0C, 0x1E6A3A, 0x4AD07A, 0xFFD45A, 0x14100A, 0xFFD45A},   // Drachenschuppe
         {0x000000, 0x101014, 0xFFB040, 0xFFFFFF, 0x0A0A0C, 0xFFFFFF},   // Sonnenfinsternis
-        {0xB8B0A0, 0xF4F0E6, 0xFFD45A, 0xFFFFFF, 0x8A7A5A, 0xFFD45A}    // Himmelsthron
+        {0xB8B0A0, 0xF4F0E6, 0xFFD45A, 0xFFFFFF, 0x8A7A5A, 0xFFD45A},   // Himmelsthron
+        {0x120600, 0x3A1404, 0xFF8A00, 0xFFE070, 0x1A2A08, 0x5AA020},   // Kürbisfluch
+        {0x0C0614, 0x2A2236, 0xB8B8C8, 0xFFFFFF, 0x100A16, 0x9A5AFF},   // Spinnennetz
+        {0x101A10, 0x6A7A5A, 0xE8E6D0, 0xB6FF8A, 0x14140E, 0xB6FF8A},   // Knochenmond
+        {0x12061E, 0x4A1A6A, 0x7CFF4F, 0xE0FFB0, 0x180E10, 0xB14BFF},   // Hexenkessel
+        {0xFFFFFF, 0xE8102A, 0xFFFFFF, 0xFFE0E0, 0x2A1010, 0x2ECC71},   // Zuckerstange
+        {0x0A1A3A, 0x7AA8E0, 0xFFFFFF, 0xE0F4FF, 0x1A2238, 0xBFEFFF},   // Schneesturm
+        {0x050A24, 0x1A2A6A, 0xFFD45A, 0xFFFFFF, 0x0A0E1A, 0xFFD45A},   // Nordstern
+        {0x1A3A14, 0x8AE070, 0xFFF59A, 0xFFFFFF, 0x2A2010, 0xFFB0E0},   // Frühlingstau
+        {0x04303A, 0x0FB8C8, 0xFF7A5A, 0xFFFFFF, 0x1A1408, 0xFFD45A},   // Tropenwelle
+        {0x2A0A3A, 0xE0508A, 0xFFB040, 0xFFF0C0, 0x1A0A14, 0xFF7A3A},   // Sonnenuntergang
+        {0x2A0004, 0xB0081E, 0xFF4A5A, 0xFFD0D8, 0x1A0A0A, 0xFFD45A},   // Rubinglut
+        {0xFFD0E8, 0xA8E0FF, 0xFFF59A, 0xFFFFFF, 0x6A5A8A, 0xC8A8FF},   // Osterglanz
+        {0x02040E, 0x0E1A3A, 0xC8D0E0, 0xFFFFFF, 0x080A12, 0xC8D0E0},   // Mitternacht
+        {0x0A0018, 0xE600D0, 0x00E5FF, 0xFFFFFF, 0x0E0A16, 0x00E5FF},   // Plasmakern
+        {0x5A3A00, 0xC89010, 0xFFE070, 0xFFFFF0, 0x3A2408, 0xFFE070}    // Goldrausch
     };
+
+    /** Muster je Kollektion: 0–20 eigenes Muster, ab 21 ein Muster mit eigenen Farben (21 = Netz, 22 = Streifen). */
+    private static final int[] PATTERN = {8, 21, 10, 11, 22, 14, 9, 6, 11, 15, 17, 22, 2, 0, 4};
+
+    static int pattern(int style) {
+        return style < 21 ? style : PATTERN[Math.min(PATTERN.length - 1, style - 21)];
+    }
 
     static BufferedImage make(BufferedImage src, int style, int seed) {
         return make(src, style, seed, false);
@@ -45,6 +67,7 @@ final class SkinGen {
     /** woodIsBody: bei Bogen/Armbrust ist das Holz der Hauptteil (bekommt das Muster). */
     static BufferedImage make(BufferedImage src, int style, int seed, boolean woodIsBody) {
         int[] P = PAL[style];
+        style = pattern(style);
         int sw = src.getWidth(), sh = src.getHeight();
         int sc = sw <= 16 ? 2 : 1;
         int w = sw * sc, h = sh * sc;
@@ -201,6 +224,18 @@ final class SkinGen {
                 float yy = (y + (1 - ft) * h) % h;
                 float n = fbm(x * 0.25f, yy * 0.25f, seed + 21, Math.max(1, h / 4));
                 col = mix(col, n > 0.62f ? P[3] : P[2], clamp((n - 0.46f) * 2.5f) * 0.75f);
+            }
+            case 21 -> { // Netz: Fäden strahlen aus einer Ecke, Ringe, Tautropfen glitzern
+                col = mix(P[0], P[1], (float) Math.pow(l, 0.9));
+                double ang = Math.atan2(y, x), dist = Math.sqrt(x * x + y * y);
+                boolean thread = Math.abs(Math.sin(ang * 8)) < 0.12 || Math.abs(Math.sin(dist * 0.9)) < 0.12;
+                if (thread) col = mix(col, P[2], 0.75f);
+                if (thread && hash(seed, x * 3 + y, 111) % 13 == 0) col = mix(col, P[5], 0.5f + 0.5f * (float) Math.sin((ft * 2 + x * 0.1f) * Math.PI * 2));
+            }
+            case 22 -> { // Streifen laufen schräg über die Klinge
+                int st = Math.floorMod(x + y + (int) (ft * 8), 8);
+                col = st < 4 ? mix(P[1], P[0], 0.15f * (1 - l)) : mix(P[2], P[5], 0.3f);
+                if (st == 3 || st == 7) col = mix(col, P[3], 0.4f);
             }
             case 11 -> { // Tiefsee: Lichtwellen wie unter Wasser, Blasen steigen
                 col = mix(P[0], P[1], (float) Math.pow(l, 0.85));

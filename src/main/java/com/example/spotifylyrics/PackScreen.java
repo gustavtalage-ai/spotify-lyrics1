@@ -32,7 +32,9 @@ public class PackScreen extends Screen {
     private int px0, px1, py0, py1;
 
     private static final String[] SND = {"sonnenfeuer", "frostkristall", "leere", "neonglitch", "koenigsglanz", "blutmond", "giftranke", "gewitter", "magmakern", "sternenstaub", "geisterhauch",
-        "tiefsee", "kupferrost", "wuestensand", "kirschbluete", "polarlicht", "schattenklinge", "kristallherz", "drachenschuppe", "finsternis", "himmelsthron"};
+        "tiefsee", "kupferrost", "wuestensand", "kirschbluete", "polarlicht", "schattenklinge", "kristallherz", "drachenschuppe", "finsternis", "himmelsthron",
+        "kuerbisfluch", "spinnennetz", "knochenmond", "hexenkessel", "zuckerstange", "schneesturm", "nordstern", "fruehlingstau", "tropenwelle",
+        "sonnenuntergang", "rubinglut", "osterglanz", "mitternacht", "plasmakern", "goldrausch"};
 
     public PackScreen() {
         super(Text.literal("Kisten"));
@@ -57,6 +59,12 @@ public class PackScreen extends Screen {
         return result != null && System.currentTimeMillis() - openStart >= SPIN_MS + PAUSE_MS;
     }
 
+    /** Kiste vorwählen (z. B. aus der Werbung im Hauptmenü). */
+    public static void select(int k) {
+        sel = k;
+        result = null;
+    }
+
     /** Gewählte Kiste kaufen und das Band mit dem Gewinn an Stelle WIN bauen. */
     private static void start() {
         int[] r = Skins.openCase(sel);
@@ -67,7 +75,7 @@ public class PackScreen extends Screen {
         result = r;
         Random rnd = new Random();
         strip = new int[TILES][];
-        for (int i = 0; i < TILES; i++) strip[i] = new int[] {Skins.bundleOfTier(Skins.rollTier(rnd, sel), rnd), rnd.nextInt(Skins.TYPES.length)};
+        for (int i = 0; i < TILES; i++) strip[i] = new int[] {Skins.bundleOfTier(Skins.rollTier(rnd, sel), rnd, sel), rnd.nextInt(Skins.TYPES.length)};
         strip[WIN] = new int[] {r[0], r[1]};
         target = WIN * STEP + (rnd.nextFloat() - 0.5f) * (TW - 14);
         openStart = System.currentTimeMillis();
@@ -76,8 +84,15 @@ public class PackScreen extends Screen {
         sound("spotifylyrics", "pack.open", 1f, 0.8f);
     }
 
-    private int cardW() {
-        return (px1 - px0 - 20 - 16) / 3;
+    /** Platz einer Kisten-Karte: bis 4 Kisten in einer Reihe, sonst zwei Reihen. {x, y, breite, höhe} */
+    private int[] card(int j, int n) {
+        int y0 = py0 + HEAD + 6, W = px1 - px0 - 20;
+        if (n <= 4) {
+            int w = (W - (n - 1) * 8) / n;
+            return new int[] {px0 + 10 + j * (w + 8), y0, w, 92};
+        }
+        int per = (n + 1) / 2, w = (W - (per - 1) * 6) / per, row = j / per;
+        return new int[] {px0 + 10 + (j % per) * (w + 6), y0 + row * 47, w, 44};
     }
 
     @Override
@@ -95,10 +110,12 @@ public class PackScreen extends Screen {
         });
         int by = py1 - 32, bw = (pw - 20 - 8) / 3;
         if (result == null) {
-            int cw = cardW(), cy0 = py0 + HEAD + 6;
-            for (int k = 0; k < Skins.CASES.length; k++) {
-                final int kk = k;
-                btn(px0 + 10 + k * (cw + 8), cy0, cw, 92, () -> sel = kk);
+            List<Integer> cs = Skins.activeCases();
+            if (!cs.contains(sel)) sel = 1;
+            for (int j = 0; j < cs.size(); j++) {
+                final int kk = cs.get(j);
+                int[] r = card(j, cs.size());
+                btn(r[0], r[1], r[2], r[3], () -> sel = kk);
             }
             btn((px0 + px1) / 2 - 85, by, 170, 22, () -> {
                 start();
@@ -198,31 +215,43 @@ public class PackScreen extends Screen {
 
     /** Drei Kisten zur Auswahl, darunter Inhalt und Chancen der gewählten. */
     private void shop(DrawContext ctx, TextRenderer tr, Matrix3x2fStack m, int cx, long now, int mx, int my) {
-        int cw = cardW(), cy0 = py0 + HEAD + 6;
-        for (int k = 0; k < Skins.CASES.length; k++) {
-            int x = px0 + 10 + k * (cw + 8);
-            boolean s = sel == k, h = Ui.in(mx, my, x, cy0, x + cw, cy0 + 92);
+        int cy0 = py0 + HEAD + 6;
+        List<Integer> cs = Skins.activeCases();
+        for (int j = 0; j < cs.size(); j++) {
+            int k = cs.get(j);
+            int[] r = card(j, cs.size());
+            int x = r[0], y = r[1], cw = r[2], ch = r[3];
+            boolean s = sel == k, h = Ui.in(mx, my, x, y, x + cw, y + ch);
             int col = Skins.CASE_COL[k];
-            Ui.card(ctx, x, cy0, x + cw, cy0 + 92, s ? col : (h ? 0xFF3A4152 : Ui.BORDER), s ? Ui.CARD_HOV : Ui.CARD);
-            if (s) ctx.fillGradient(x + 1, cy0 + 1, x + cw - 1, cy0 + 91, 0x05000000, (0x40 << 24) | (col & 0xFFFFFF));
+            Ui.card(ctx, x, y, x + cw, y + ch, s ? col : (h ? 0xFF3A4152 : Ui.BORDER), s ? Ui.CARD_HOV : Ui.CARD);
+            if (s) ctx.fillGradient(x + 1, y + 1, x + cw - 1, y + ch - 1, 0x05000000, (0x40 << 24) | (col & 0xFFFFFF));
             float bob = s ? (float) Math.sin(now / 400.0) * 2 : 0;
-            crate(ctx, m, x + cw / 2f, cy0 + 32 + bob, 1.1f, col, 0xFF1B1408);
             String n = Skins.CASES[k];
-            Ui.txt(ctx, tr, n, x + (cw - tr.getWidth(n)) / 2, cy0 + 58, col);
             String p = Skins.adminOn() ? Lang.t("gratis", "free") : Skins.CASE_PRICE[k] + " Coins";
-            Ui.txt(ctx, tr, p, x + (cw - tr.getWidth(p)) / 2, cy0 + 72, Skins.canOpen(k) ? 0xFFFFC23D : 0xFF6F7380);
+            if (ch > 60) {
+                crate(ctx, m, x + cw / 2f, y + 32 + bob, 1.1f, col, 0xFF1B1408);
+                Ui.txt(ctx, tr, tr.trimToWidth(n, cw - 6), x + (cw - Math.min(cw - 6, tr.getWidth(n))) / 2, y + 58, col);
+                Ui.txt(ctx, tr, p, x + (cw - tr.getWidth(p)) / 2, y + 72, Skins.canOpen(k) ? 0xFFFFC23D : 0xFF6F7380);
+            } else {
+                crate(ctx, m, x + cw - 18, y + 30 + bob, 0.45f, col, 0xFF1B1408);
+                Ui.txt(ctx, tr, tr.trimToWidth(n, cw - 8), x + 5, y + 6, col);
+                Ui.txt(ctx, tr, p, x + 5, y + 18, Skins.canOpen(k) ? 0xFFFFC23D : 0xFF6F7380);
+            }
+            if (k >= 3) Ui.txt(ctx, tr, Lang.t("Saison", "Season"), x + 5, y + ch - 12, 0xFFFF8A00);
         }
 
         // Inhalt der gewählten Kiste
         int iy = cy0 + 100;
         String l = Lang.t("Inhalt: ein Skin aus diesen Kollektionen", "Contains one skin from these collections");
         Ui.txt(ctx, tr, l, cx - tr.getWidth(l) / 2, iy, 0xFF8B92A5);
-        int n8 = Skins.bundles(), per = (n8 + 1) / 2, tw = Math.min(34, (px1 - px0 - 20 - (per - 1) * 4) / per), tot = per * tw + (per - 1) * 4;
-        int x0 = cx - tot / 2, ty0 = iy + 12, ty = ty0;
+        List<Integer> pool = new java.util.ArrayList<>();
+        for (int b : Skins.ORDER) if (Skins.inCase(sel, b)) pool.add(b);
+        int n8 = pool.size(), per = n8 > 12 ? (n8 + 1) / 2 : Math.max(1, n8), tw = Math.min(34, (px1 - px0 - 20 - (per - 1) * 4) / per);
+        int ty0 = iy + 12, ty = ty0;
         String tip = null;
         int[] w = Skins.CASE_W[sel];
         for (int j = 0; j < n8; j++) {
-            int i = Skins.ORDER[j];
+            int i = pool.get(j);
             int row = j / per, inRow = row == 0 ? per : n8 - per;
             int x = cx - (inRow * tw + (inRow - 1) * 4) / 2 + (j % per) * (tw + 4);
             ty = ty0 + row * (tw + 4);
@@ -237,15 +266,16 @@ public class PackScreen extends Screen {
             m.popMatrix();
             if (Ui.in(mx, my, x, ty, x + tw, ty + tw)) {
                 int t0 = Skins.tier(i), same = 0;
-                for (int q = 0; q < n8; q++) if (Skins.tier(q) == t0) same++;
+                for (int q : pool) if (Skins.tier(q) == t0) same++;
                 tip = WeaponSkins.BUNDLES[i] + " · " + Skins.TIER_NAMES[t0] + " · " + String.format(java.util.Locale.ROOT, "%.1f%%", w[t0] / 10f / same);
             }
         }
         // Chancen
         int lx = 0;
-        for (int q = 0; q < Skins.TIER_NAMES.length; q++) lx += tr.getWidth(Skins.TIER_NAMES[q] + " " + Skins.pct(w[q])) + (q > 0 ? 8 : 0);
-        int lxx = cx - lx / 2, ly = ty0 + 2 * (tw + 4) + 2;
+        for (int q = 0; q < Skins.TIER_NAMES.length; q++) if (w[q] > 0) lx += tr.getWidth(Skins.TIER_NAMES[q] + " " + Skins.pct(w[q])) + 8;
+        int lxx = cx - lx / 2, ly = ty0 + ((n8 + per - 1) / per) * (tw + 4) + 2;
         for (int q = 0; q < Skins.TIER_NAMES.length; q++) {
+            if (w[q] == 0) continue;
             String s = Skins.TIER_NAMES[q] + " " + Skins.pct(w[q]);
             Ui.txt(ctx, tr, s, lxx, ly, Skins.TIER_COL[q]);
             lxx += tr.getWidth(s) + 8;

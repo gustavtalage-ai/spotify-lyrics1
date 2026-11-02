@@ -77,6 +77,7 @@ public class ReachCirclesScreen extends ItemScreen {
         row(t(Lang.t("Kreise an", "Enable circles"), c.rcOn, () -> c.rcOn = !c.rcOn));
         row(t(Lang.t("Ping-Ausgleich", "Ping compensation"), c.rcPing, () -> c.rcPing = !c.rcPing),
             t(Lang.t("Gefüllter Kreis", "Filled circle"), c.rcFilled, () -> c.rcFilled = !c.rcFilled));
+        row(t(Lang.t("Nur mit Waffe in der Hand", "Only while holding a weapon"), c.rcWeapon, () -> c.rcWeapon = !c.rcWeapon));
         gap(4);
 
         sec(Lang.t("Anzeige", "Indicators"));

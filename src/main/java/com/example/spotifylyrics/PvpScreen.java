@@ -119,6 +119,10 @@ public class PvpScreen extends CardGridScreen {
             c.rcOn = !c.rcOn;
             c.save();
         }, ReachCirclesScreen::new));
+        out.add(new Card(Lang.t("Gegner-Rüstung", "Enemy armor"), Lang.t("Haltbarkeit als Balken", "Durability bars"), "armor", () -> c.armorBars, () -> {
+            c.armorBars = !c.armorBars;
+            c.save();
+        }, ArmorBarsScreen::new));
         out.add(new Card(Lang.t("Kampf-Effekte", "Combat effects"), Lang.t("Schockwelle, Spuren, Tod", "Shockwave, trails, death"), "bang", () -> c.fxOn, () -> {
             c.fxOn = !c.fxOn;
             c.save();

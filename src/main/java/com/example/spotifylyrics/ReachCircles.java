@@ -70,6 +70,7 @@ public final class ReachCircles {
             Config c = Config.INSTANCE;
             MinecraftClient mc = MinecraftClient.getInstance();
             if (!c.rcOn || mc.player == null || mc.world == null) return;
+            if (c.rcWeapon && HitAssist.kindOf(mc.player.getMainHandStack()) < 0) return;
             float d = mc.getRenderTickCounter().getTickProgress(false);
             VertexConsumerProvider.Immediate consumers = mc.getBufferBuilders().getEntityVertexConsumers();
             VertexConsumer vc = consumers.getBuffer(RenderLayers.debugQuads());

@@ -73,6 +73,13 @@ public class Config {
     public boolean rcPing = true, rcFilled = false, rcLocalGreen = true, rcOtherGreen = true, rcOtherGreen2 = false, rcLod = true;
     public int rcSegments = 64, rcOpacity = 50, rcThick = 15, rcSmooth = 15, rcMaxDist = 100, rcLodStrength = 50;
     public float rcRadius = 3.0f;
+    /** Kreise nur zeigen, wenn du eine Waffe in der Hand hast. */
+    public boolean rcWeapon = false;
+    /** Rüstungs-Balken über der Rüstung von Gegnern: an, Position (0 = neben der Rüstung, 1 = über dem Kopf), max. Entfernung, nur mit Waffe, Prozent-Farben. */
+    public boolean armorBars = false;
+    public int abStyle = 0;
+    public int abDist = 32;
+    public boolean abWeapon = false;
     public int rcSelfCan = 0x00FF00, rcSelf = 0xFF0000, rcOtherCan = 0x00FF00, rcOther = 0xFF0000;
     /** Kampf-Effekte (eigene Partikel). */
     public boolean fxOn = false;

@@ -343,5 +343,305 @@
     "sounds": [
       "spotifylyrics:kill/coin"
     ]
+  },
+  "kill.tiefsee.k1": {
+    "sounds": [
+      "spotifylyrics:kill/tiefsee_k1"
+    ]
+  },
+  "kill.tiefsee.k2": {
+    "sounds": [
+      "spotifylyrics:kill/tiefsee_k2"
+    ]
+  },
+  "kill.tiefsee.k3": {
+    "sounds": [
+      "spotifylyrics:kill/tiefsee_k3"
+    ]
+  },
+  "kill.tiefsee.k4": {
+    "sounds": [
+      "spotifylyrics:kill/tiefsee_k4"
+    ]
+  },
+  "kill.tiefsee.k5": {
+    "sounds": [
+      "spotifylyrics:kill/tiefsee_k5"
+    ]
+  },
+  "kill.tiefsee.fin": {
+    "sounds": [
+      "spotifylyrics:kill/tiefsee_fin"
+    ]
+  },
+  "kill.kupferrost.k1": {
+    "sounds": [
+      "spotifylyrics:kill/kupferrost_k1"
+    ]
+  },
+  "kill.kupferrost.k2": {
+    "sounds": [
+      "spotifylyrics:kill/kupferrost_k2"
+    ]
+  },
+  "kill.kupferrost.k3": {
+    "sounds": [
+      "spotifylyrics:kill/kupferrost_k3"
+    ]
+  },
+  "kill.kupferrost.k4": {
+    "sounds": [
+      "spotifylyrics:kill/kupferrost_k4"
+    ]
+  },
+  "kill.kupferrost.k5": {
+    "sounds": [
+      "spotifylyrics:kill/kupferrost_k5"
+    ]
+  },
+  "kill.kupferrost.fin": {
+    "sounds": [
+      "spotifylyrics:kill/kupferrost_fin"
+    ]
+  },
+  "kill.wuestensand.k1": {
+    "sounds": [
+      "spotifylyrics:kill/wuestensand_k1"
+    ]
+  },
+  "kill.wuestensand.k2": {
+    "sounds": [
+      "spotifylyrics:kill/wuestensand_k2"
+    ]
+  },
+  "kill.wuestensand.k3": {
+    "sounds": [
+      "spotifylyrics:kill/wuestensand_k3"
+    ]
+  },
+  "kill.wuestensand.k4": {
+    "sounds": [
+      "spotifylyrics:kill/wuestensand_k4"
+    ]
+  },
+  "kill.wuestensand.k5": {
+    "sounds": [
+      "spotifylyrics:kill/wuestensand_k5"
+    ]
+  },
+  "kill.wuestensand.fin": {
+    "sounds": [
+      "spotifylyrics:kill/wuestensand_fin"
+    ]
+  },
+  "kill.kirschbluete.k1": {
+    "sounds": [
+      "spotifylyrics:kill/kirschbluete_k1"
+    ]
+  },
+  "kill.kirschbluete.k2": {
+    "sounds": [
+      "spotifylyrics:kill/kirschbluete_k2"
+    ]
+  },
+  "kill.kirschbluete.k3": {
+    "sounds": [
+      "spotifylyrics:kill/kirschbluete_k3"
+    ]
+  },
+  "kill.kirschbluete.k4": {
+    "sounds": [
+      "spotifylyrics:kill/kirschbluete_k4"
+    ]
+  },
+  "kill.kirschbluete.k5": {
+    "sounds": [
+      "spotifylyrics:kill/kirschbluete_k5"
+    ]
+  },
+  "kill.kirschbluete.fin": {
+    "sounds": [
+      "spotifylyrics:kill/kirschbluete_fin"
+    ]
+  },
+  "kill.polarlicht.k1": {
+    "sounds": [
+      "spotifylyrics:kill/polarlicht_k1"
+    ]
+  },
+  "kill.polarlicht.k2": {
+    "sounds": [
+      "spotifylyrics:kill/polarlicht_k2"
+    ]
+  },
+  "kill.polarlicht.k3": {
+    "sounds": [
+      "spotifylyrics:kill/polarlicht_k3"
+    ]
+  },
+  "kill.polarlicht.k4": {
+    "sounds": [
+      "spotifylyrics:kill/polarlicht_k4"
+    ]
+  },
+  "kill.polarlicht.k5": {
+    "sounds": [
+      "spotifylyrics:kill/polarlicht_k5"
+    ]
+  },
+  "kill.polarlicht.fin": {
+    "sounds": [
+      "spotifylyrics:kill/polarlicht_fin"
+    ]
+  },
+  "kill.schattenklinge.k1": {
+    "sounds": [
+      "spotifylyrics:kill/schattenklinge_k1"
+    ]
+  },
+  "kill.schattenklinge.k2": {
+    "sounds": [
+      "spotifylyrics:kill/schattenklinge_k2"
+    ]
+  },
+  "kill.schattenklinge.k3": {
+    "sounds": [
+      "spotifylyrics:kill/schattenklinge_k3"
+    ]
+  },
+  "kill.schattenklinge.k4": {
+    "sounds": [
+      "spotifylyrics:kill/schattenklinge_k4"
+    ]
+  },
+  "kill.schattenklinge.k5": {
+    "sounds": [
+      "spotifylyrics:kill/schattenklinge_k5"
+    ]
+  },
+  "kill.schattenklinge.fin": {
+    "sounds": [
+      "spotifylyrics:kill/schattenklinge_fin"
+    ]
+  },
+  "kill.kristallherz.k1": {
+    "sounds": [
+      "spotifylyrics:kill/kristallherz_k1"
+    ]
+  },
+  "kill.kristallherz.k2": {
+    "sounds": [
+      "spotifylyrics:kill/kristallherz_k2"
+    ]
+  },
+  "kill.kristallherz.k3": {
+    "sounds": [
+      "spotifylyrics:kill/kristallherz_k3"
+    ]
+  },
+  "kill.kristallherz.k4": {
+    "sounds": [
+      "spotifylyrics:kill/kristallherz_k4"
+    ]
+  },
+  "kill.kristallherz.k5": {
+    "sounds": [
+      "spotifylyrics:kill/kristallherz_k5"
+    ]
+  },
+  "kill.kristallherz.fin": {
+    "sounds": [
+      "spotifylyrics:kill/kristallherz_fin"
+    ]
+  },
+  "kill.drachenschuppe.k1": {
+    "sounds": [
+      "spotifylyrics:kill/drachenschuppe_k1"
+    ]
+  },
+  "kill.drachenschuppe.k2": {
+    "sounds": [
+      "spotifylyrics:kill/drachenschuppe_k2"
+    ]
+  },
+  "kill.drachenschuppe.k3": {
+    "sounds": [
+      "spotifylyrics:kill/drachenschuppe_k3"
+    ]
+  },
+  "kill.drachenschuppe.k4": {
+    "sounds": [
+      "spotifylyrics:kill/drachenschuppe_k4"
+    ]
+  },
+  "kill.drachenschuppe.k5": {
+    "sounds": [
+      "spotifylyrics:kill/drachenschuppe_k5"
+    ]
+  },
+  "kill.drachenschuppe.fin": {
+    "sounds": [
+      "spotifylyrics:kill/drachenschuppe_fin"
+    ]
+  },
+  "kill.finsternis.k1": {
+    "sounds": [
+      "spotifylyrics:kill/finsternis_k1"
+    ]
+  },
+  "kill.finsternis.k2": {
+    "sounds": [
+      "spotifylyrics:kill/finsternis_k2"
+    ]
+  },
+  "kill.finsternis.k3": {
+    "sounds": [
+      "spotifylyrics:kill/finsternis_k3"
+    ]
+  },
+  "kill.finsternis.k4": {
+    "sounds": [
+      "spotifylyrics:kill/finsternis_k4"
+    ]
+  },
+  "kill.finsternis.k5": {
+    "sounds": [
+      "spotifylyrics:kill/finsternis_k5"
+    ]
+  },
+  "kill.finsternis.fin": {
+    "sounds": [
+      "spotifylyrics:kill/finsternis_fin"
+    ]
+  },
+  "kill.himmelsthron.k1": {
+    "sounds": [
+      "spotifylyrics:kill/himmelsthron_k1"
+    ]
+  },
+  "kill.himmelsthron.k2": {
+    "sounds": [
+      "spotifylyrics:kill/himmelsthron_k2"
+    ]
+  },
+  "kill.himmelsthron.k3": {
+    "sounds": [
+      "spotifylyrics:kill/himmelsthron_k3"
+    ]
+  },
+  "kill.himmelsthron.k4": {
+    "sounds": [
+      "spotifylyrics:kill/himmelsthron_k4"
+    ]
+  },
+  "kill.himmelsthron.k5": {
+    "sounds": [
+      "spotifylyrics:kill/himmelsthron_k5"
+    ]
+  },
+  "kill.himmelsthron.fin": {
+    "sounds": [
+      "spotifylyrics:kill/himmelsthron_fin"
+    ]
   }
 }

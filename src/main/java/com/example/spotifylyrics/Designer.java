@@ -134,7 +134,24 @@ public final class Designer {
         Soundboard.playFx(Soundboard.folder().resolve(d.sound), Math.max(0, d.volume) / 100f);
     }
 
+    private static boolean bootChecked;
+
+    /** Beim ersten Betreten einer Welt: Skins bauen, falls die gewählte Kollektion noch nicht im Pack ist. */
+    private static void boot(MinecraftClient mc) {
+        if (bootChecked || mc.world == null) return;
+        bootChecked = true;
+        try {
+            Config c = Config.INSTANCE;
+            String want = c.wsOn && c.kfStyle < WeaponSkins.BUNDLES.length ? String.valueOf(c.kfStyle) : "none";
+            Path mark = mc.getResourcePackDir().resolve(PACK_DIR).resolve("skin_style.txt");
+            String have = Files.exists(mark) ? Files.readString(mark).trim() : "none";
+            if (!want.equals(have)) apply();
+        } catch (Throwable ignored) {
+        }
+    }
+
     private static void tick(MinecraftClient mc) {
+        boot(mc);
         if (mc.player == null || mc.world == null || Config.INSTANCE.designs.isEmpty()) {
             minePos = null;
             return;
@@ -188,6 +205,7 @@ public final class Designer {
                 "{\n  \"pack\": {\n    \"description\": \"Alpha Mod: eigene Bilder\",\n    \"min_format\": 69,\n    \"max_format\": 200\n  }\n}\n");
             ResourceManager rm = mc.getResourceManager();
             int done = 0;
+            int skins = WeaponSkins.writeInto(root, rm);
             for (Config.Design d : Config.INSTANCE.designs) {
                 if (d.image == null || d.image.isEmpty()) continue;
                 Path img = imageFolder().resolve(d.image);
@@ -204,13 +222,13 @@ public final class Designer {
             ResourcePackManager pm = mc.getResourcePackManager();
             pm.scanPacks();
             boolean on = pm.getEnabledIds().contains(PACK_ID);
-            if (!on && done > 0) {
+            if (!on && done + skins > 0) {
                 pm.enable(PACK_ID);
                 mc.options.refreshResourcePacks(pm);
             } else {
                 mc.reloadResources();
             }
-            SpotifyLyricsClient.chat(Text.literal("Item-Designer: " + done + " Textur(en) geladen."));
+            SpotifyLyricsClient.chat(Text.literal("Alpha Mod: " + done + " eigene Bilder, " + skins + " Waffen-Skins geladen."));
         } catch (Throwable e) {
             SpotifyLyricsClient.LOGGER.warn("Item-Designer: Pack konnte nicht gebaut werden", e);
             SpotifyLyricsClient.chat(Text.literal("Item-Designer: Fehler (" + e.getMessage() + ")"));

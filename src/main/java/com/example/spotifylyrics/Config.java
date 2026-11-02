@@ -247,6 +247,8 @@ public class Config {
     public int kfSize = 100;
     public boolean kfParticles = true;
     public boolean kfFlash = true;
+    /** Waffen-Skins passend zum Finisher. */
+    public boolean wsOn = true;
 
     /** Pack-Sets: bis zu 4 Plätze, je die Pack-IDs getrennt mit "|" (leer = frei). */
     public java.util.List<String> packSets = new java.util.ArrayList<>();

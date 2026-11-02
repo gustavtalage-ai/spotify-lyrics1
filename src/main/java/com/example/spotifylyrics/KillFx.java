@@ -110,7 +110,7 @@ public final class KillFx {
         f.h = Math.max(1f, le.getHeight());
         f.start = System.currentTimeMillis();
         f.seed = f.start ^ le.getId();
-        f.color = COLORS[Math.floorMod(c.kfColor, COLORS.length)];
+        f.color = -1;
         if (ACTIVE.size() > 6) ACTIVE.remove(0);
         ACTIVE.add(f);
         streak = Math.min(5, streak + 1);
@@ -135,7 +135,7 @@ public final class KillFx {
         f.h = 1.8f;
         f.start = System.currentTimeMillis();
         f.seed = f.start;
-        f.color = COLORS[Math.floorMod(c.kfColor, COLORS.length)];
+        f.color = -1;
         ACTIVE.add(f);
         streak = Math.min(5, streak + 1);
         lastKill = f.start;
@@ -704,7 +704,7 @@ public final class KillFx {
         if (el > 3000) return;
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.options.hudHidden) return;
-        int base = COLORS[Math.floorMod(c.kfColor, COLORS.length)];
+        int base = -1;
         int rgb = base == -1 ? PAL[bannerStyle][0] : base == 0 ? Ui.rainbowAt(el / 3000f) & 0xFFFFFF : base;
         int rgb2 = base == -1 ? PAL[bannerStyle][1] : mixRgb(rgb, 0xFFFFFF, 0.5f);
         int sw = ctx.getScaledWindowWidth(), sh = ctx.getScaledWindowHeight();

@@ -30,7 +30,7 @@ public class CodeScreen extends Screen {
     private void redeem() {
         if (field == null) return;
         if (Skins.redeem(field.getText())) {
-            msg = Lang.t("Admin freigeschaltet: alle Skins + unendlich Kisten!", "Admin unlocked: all skins + unlimited cases!");
+            msg = Lang.t("Admin an: unendlich Coins (an/aus in der Sammlung)", "Admin on: unlimited coins (toggle in collection)");
             msgColor = 0xFF4ADE80;
             try {
                 MinecraftClient.getInstance().getSoundManager().play(PositionedSoundInstance.ui(SoundEvent.of(Identifier.of("spotifylyrics", "pack.reveal")), 1f, 1f));

@@ -50,7 +50,18 @@ public class CollectionScreen extends Screen {
         MinecraftClient mc = MinecraftClient.getInstance();
         btn(px1 - 10 - 72, py0 + 5, 72, 18, () -> mc.setScreen(new PvpScreen()));
         btn(px1 - 10 - 72 - 6 - 56, py0 + 5, 56, 18, () -> mc.setScreen(new CodeScreen()));
-        btn(px1 - 10 - 130, py0 + HEAD + 8, 130, 26, () -> mc.setScreen(new PackScreen()));
+        if (Skins.admin()) btn(px1 - 10 - 72 - 6 - 56 - 6 - 74, py0 + 5, 74, 18, () -> {
+            Skins.toggleAdmin();
+            mc.setScreen(new CollectionScreen());
+        });
+        btn(px1 - 10 - 110, py0 + HEAD + 8, 110, 26, () -> mc.setScreen(new PackScreen()));
+        btn(px1 - 10 - 110 - 6 - 120, py0 + HEAD + 8, 120, 26, () -> {
+            int n = Skins.convert();
+            if (n > 0) try {
+                mc.getSoundManager().play(net.minecraft.client.sound.PositionedSoundInstance.ui(net.minecraft.sound.SoundEvent.of(net.minecraft.util.Identifier.of("spotifylyrics", "coin")), 1f, 1f));
+            } catch (Throwable ignored) {
+            }
+        });
         gx0 = px0 + 10;
         gy0 = py0 + HEAD + 44;
         cw = (pw - 20 - 2 * 8) / 3;
@@ -83,20 +94,27 @@ public class CollectionScreen extends Screen {
         TextRenderer tr = MinecraftClient.getInstance().textRenderer;
         Config c = Config.INSTANCE;
         Ui.txt(ctx, tr, Lang.t("Sammlung", "Collection"), px0 + 10, py0 + 6, Ui.TEXT);
-        Ui.txt(ctx, tr, Skins.totalOwned() + " / " + (Skins.bundles() * Skins.TYPES.length) + " Skins" + (Skins.admin() ? "  ·  §6ADMIN" : ""), px0 + 10, py0 + 17, 0xFF8B92A5);
+        Ui.txt(ctx, tr, Skins.totalOwned() + " / " + (Skins.bundles() * Skins.TYPES.length) + " Skins" + (Skins.adminOn() ? "  ·  §6ADMIN" : ""), px0 + 10, py0 + 17, 0xFF8B92A5);
         Ui.btn(ctx, tr, px1 - 144, py0 + 5, px1 - 88, py0 + 23, Lang.t("Code", "Code"), Ui.in(mouseX, mouseY, px1 - 144, py0 + 5, px1 - 88, py0 + 23), 0xFF1A1E27, 0xFF252B38, 0xFFFFC23D);
+        if (Skins.admin()) {
+            int ax1 = px1 - 150, ax0 = ax1 - 74;
+            Ui.btn(ctx, tr, ax0, py0 + 5, ax1, py0 + 23, Skins.adminOn() ? Lang.t("Admin: An", "Admin: On") : Lang.t("Admin: Aus", "Admin: Off"), Ui.in(mouseX, mouseY, ax0, py0 + 5, ax1, py0 + 23),
+                Skins.adminOn() ? 0xFF5A3A00 : 0xFF1A1E27, Skins.adminOn() ? 0xFF7A5200 : 0xFF252B38, Skins.adminOn() ? 0xFFFFD700 : 0xFF8B92A5);
+        }
         Ui.btn(ctx, tr, px1 - 10 - 72, py0 + 5, px1 - 10, py0 + 23, "‹ PvP", Ui.in(mouseX, mouseY, px1 - 82, py0 + 5, px1 - 10, py0 + 23), 0xFF1A1E27, 0xFF252B38, 0xFFD6D9E0);
 
-        // Pack-Leiste
+        // Coin-Leiste
         int by = py0 + HEAD + 8;
         Ui.card(ctx, px0 + 10, by, px1 - 10, by + 26, 0xFF3A2A10, 0xFF17140E);
-        int packs = Skins.packsAvailable();
-        Ui.txt(ctx, tr, Skins.CASE + Lang.t("n: ", "s: ") + Skins.packsText(), px0 + 18, by + 4, 0xFFFFC23D);
-        Ui.txt(ctx, tr, Skins.admin() ? Lang.t("Admin: unendlich Kisten", "Admin: unlimited cases") : Lang.t("Nächste Kiste in ", "Next case in ") + time(Skins.msToNext()) + Lang.t(" Spielzeit", " playtime"), px0 + 18, by + 15, 0xFF8B92A5);
-        boolean hov = Ui.in(mouseX, mouseY, px1 - 140, by, px1 - 10, by + 26);
-        int pulse = packs > 0 ? (int) (40 * (0.5 + 0.5 * Math.sin(System.currentTimeMillis() / 250.0))) : 0;
-        Ui.btn(ctx, tr, px1 - 140, by, px1 - 10, by + 26, packs > 0 ? Lang.t("▶ Kiste öffnen", "▶ Open case") : Lang.t("Keine Kisten", "No cases"), hov,
-            packs > 0 ? 0xFF8A5A00 + (pulse << 8) : 0xFF1A1E27, packs > 0 ? 0xFFB07A10 : 0xFF1A1E27, packs > 0 ? 0xFFFFFFFF : 0xFF6F7380);
+        int pend = Skins.pending();
+        Ui.txt(ctx, tr, Skins.coinsText() + " Coins", px0 + 18, by + 4, 0xFFFFC23D);
+        Ui.txt(ctx, tr, Skins.adminOn() ? Lang.t("Admin: unendlich", "Admin: unlimited")
+            : Lang.t("+1 Coin in ", "+1 coin in ") + time(Skins.msToNextCoin()), px0 + 18, by + 15, 0xFF8B92A5);
+        int cx1 = px1 - 10 - 110 - 6, cx0 = cx1 - 120;
+        Ui.btn(ctx, tr, cx0, by, cx1, by + 26, pend > 0 ? Lang.t("Umwandeln +", "Convert +") + pend : Lang.t("Nichts umzuwandeln", "Nothing to convert"),
+            Ui.in(mouseX, mouseY, cx0, by, cx1, by + 26), pend > 0 ? 0xFF15301F : 0xFF1A1E27, pend > 0 ? 0xFF1F4A2C : 0xFF1A1E27, pend > 0 ? 0xFF4ADE80 : 0xFF6F7380);
+        boolean hov = Ui.in(mouseX, mouseY, px1 - 120, by, px1 - 10, by + 26);
+        Ui.btn(ctx, tr, px1 - 120, by, px1 - 10, by + 26, Lang.t("▶ Kisten", "▶ Cases"), hov, 0xFF8A5A00, 0xFFB07A10, 0xFFFFFFFF);
 
         // Waffen-Karten
         for (int i = 0; i < Skins.TYPES.length; i++) {

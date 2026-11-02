@@ -112,7 +112,7 @@ public class WeaponSkinScreen extends Screen {
             m.scale(qs, qs);
             ctx.drawTextWithShadow(tr, "?", -tr.getWidth("?") / 2, -4, 0xFF8B92A5);
             m.popMatrix();
-            String l = Lang.t("Gesperrt – aus der ", "Locked – from the ") + Skins.CASE;
+            String l = Lang.t("Gesperrt – aus Kisten", "Locked – from cases");
             Ui.txt(ctx, tr, l, (lx0 + lx1 - tr.getWidth(l)) / 2, boxBot - 14, 0xFFFFC23D);
         }
         String nm = view >= 0 ? WeaponSkins.BUNDLES[view] + " " + Skins.TYPE_NAMES[type] : Lang.t("Standard", "Default");

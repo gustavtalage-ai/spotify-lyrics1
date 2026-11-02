@@ -37,7 +37,7 @@ public final class KillFx {
     private KillFx() {
     }
 
-    public static final String[] STYLES = {"Seelen-Strahl", "Kristall-Explosion", "Wirbelsturm", "Glitch-Würfel", "Lichtkrone", "Blutmond", "Rankenfluch", "Donnerschlag"};
+    public static final String[] STYLES = {"Seelen-Strahl", "Kristall-Explosion", "Wirbelsturm", "Glitch-Würfel", "Lichtkrone", "Blutmond", "Rankenfluch", "Donnerschlag", "Vulkanausbruch", "Sternschnuppe", "Seelenernte"};
     public static final String[] COLOR_NAMES = {"Stil-Farben", "Rot", "Türkis", "Lila", "Gold", "Grün", "Regenbogen"};
     /** -1 = eigene Farben je Animation, 0 = Regenbogen. */
     public static final int[] COLORS = {-1, 0xFF4655, 0x2EE6E6, 0xB14BFF, 0xFFC23D, 0x47F58A, 0};
@@ -157,7 +157,7 @@ public final class KillFx {
         }
     }
 
-    private static final String[] SND = {"sonnenfeuer", "frostkristall", "leere", "neonglitch", "koenigsglanz", "blutmond", "giftranke", "gewitter"};
+    private static final String[] SND = {"sonnenfeuer", "frostkristall", "leere", "neonglitch", "koenigsglanz", "blutmond", "giftranke", "gewitter", "magmakern", "sternenstaub", "geisterhauch"};
 
     /** Eigene Kill-Sounds: Kill 1 bis 5 werden immer höher (Serie), dazu der Finisher-Sound der Kollektion. */
     private static void sounds(int style) {
@@ -230,6 +230,9 @@ public final class KillFx {
                     case 5 -> bloodFx(f, t, ox, oy, oz);
                     case 6 -> vineFx(f, t, ox, oy, oz);
                     case 7 -> stormFx(f, t, ox, oy, oz);
+                    case 8 -> magmaFx(f, t, ox, oy, oz);
+                    case 9 -> starFx(f, t, ox, oy, oz);
+                    case 10 -> ghostFx(f, t, ox, oy, oz);
                     default -> crownFx(f, t, ox, oy, oz);
                 }
             }
@@ -353,7 +356,10 @@ public final class KillFx {
         {0xFF2D55, 0xFFC23D, 0xFFFFFF, 0xFF7A00},   // Krone: Rot/Gold
         {0xFF1E30, 0x8A0010, 0xFF7A6E, 0x2A0006},   // Blutmond
         {0x7CFF4F, 0x1F8A3A, 0xE8FFB0, 0x2EE6A0},   // Rankenfluch
-        {0x5AD1FF, 0xFFF35A, 0xFFFFFF, 0x3A5BFF}    // Donnerschlag
+        {0x5AD1FF, 0xFFF35A, 0xFFFFFF, 0x3A5BFF},   // Donnerschlag
+        {0xFF6A00, 0xFFD040, 0xFF2A00, 0xFFF4C0},   // Vulkanausbruch
+        {0xFFB8F0, 0xA8C8FF, 0xFFFFFF, 0x7A5CFF},   // Sternschnuppe
+        {0x7FFFE0, 0x2EC4B6, 0xE8FFFA, 0x1E5A5A}    // Seelenernte
     };
 
     /** Farbe an Stelle k (0..1) der Palette des Effekts. */
@@ -857,6 +863,9 @@ public final class KillFx {
                     case 5 -> mc.world.addParticleClient(i % 2 == 0 ? ParticleTypes.CRIMSON_SPORE : ParticleTypes.DAMAGE_INDICATOR, px, py, pz, vx, vy, vz);
                     case 6 -> mc.world.addParticleClient(i % 2 == 0 ? ParticleTypes.HAPPY_VILLAGER : ParticleTypes.SPORE_BLOSSOM_AIR, px, py, pz, vx, vy, vz);
                     case 7 -> mc.world.addParticleClient(i % 2 == 0 ? ParticleTypes.ELECTRIC_SPARK : ParticleTypes.END_ROD, px, py, pz, vx * 1.5, vy, vz * 1.5);
+                    case 8 -> mc.world.addParticleClient(i % 2 == 0 ? ParticleTypes.LAVA : ParticleTypes.FLAME, px, py, pz, vx, vy * 1.4, vz);
+                    case 9 -> mc.world.addParticleClient(i % 2 == 0 ? ParticleTypes.END_ROD : ParticleTypes.FIREWORK, px, py + 2, pz, vx * 0.5, -Math.abs(vy) * 0.4, vz * 0.5);
+                    case 10 -> mc.world.addParticleClient(i % 2 == 0 ? ParticleTypes.SOUL : ParticleTypes.SOUL_FIRE_FLAME, px, py, pz, vx * 0.4, vy * 0.8, vz * 0.4);
                     default -> mc.world.addParticleClient(i % 3 == 0 ? ParticleTypes.TOTEM_OF_UNDYING : ParticleTypes.END_ROD, px, py, pz, vx, vy * 1.5, vz);
                 }
             }
@@ -869,6 +878,135 @@ public final class KillFx {
             }
         } catch (Throwable ignored) {
         }
+    }
+
+    // ---------- 9: Vulkanausbruch ----------
+    private static void magmaFx(Fx f, float t, float x, float y, float z) {
+        float S = S(), a = fade(t, 0.04f, 0.25f);
+        Random r = new Random(f.seed);
+        // glühende Risse breiten sich aus
+        float crack = easeOut(Math.min(1, t / 0.25f));
+        for (int i = 0; i < 10; i++) {
+            double ang = Math.PI * 2 * i / 10 + r.nextFloat() * 0.4;
+            float px = x, pz = z, len = (3 + r.nextFloat() * 3) * S * crack;
+            for (int k = 1; k <= 5; k++) {
+                float d = len * k / 5, jit = (r.nextFloat() - 0.5f) * 0.7f * S;
+                float qx = x + (float) Math.cos(ang) * d - (float) Math.sin(ang) * jit, qz = z + (float) Math.sin(ang) * d + (float) Math.cos(ang) * jit;
+                glowLine(px, y + 0.05f, pz, qx, y + 0.05f, qz, 0.12f * S, k < 3 ? 0xFFD040 : 0xFF6A00, a);
+                px = qx;
+                pz = qz;
+            }
+        }
+        // Lava-Säule schießt hoch
+        float erupt = easeOut(Math.max(0, Math.min(1, (t - 0.12f) / 0.25f)));
+        float top = y + 11 * S * erupt;
+        pillar(x, y, top, z, 1.1f * S * (1 - t * 0.6f), 0xFF6A00, a * 0.8f, 0.1f);
+        pillar(x, y, top + 1.5f * S * erupt, z, 0.5f * S * (1 - t * 0.6f), 0xFFE070, a, 0.2f);
+        // Lavabrocken fliegen im Bogen
+        for (int i = 0; i < 36; i++) {
+            double ang = r.nextDouble() * Math.PI * 2;
+            float sp = (2 + r.nextFloat() * 5) * S, up = (6 + r.nextFloat() * 7) * S;
+            float k = Math.max(0, t - 0.15f - r.nextFloat() * 0.1f) * 1.6f;
+            if (k <= 0 || k > 1) continue;
+            float bx = x + (float) Math.cos(ang) * sp * k, bz = z + (float) Math.sin(ang) * sp * k;
+            float by = y + up * k * (1 - k) * 4 * 0.5f + 1;
+            glowCube(bx, Math.max(y + 0.2f, by), bz, (0.16f + r.nextFloat() * 0.14f) * S, k * 9 + i, k * 6, i % 3 == 0 ? 0xFFE070 : 0xFF6A00, a);
+        }
+        // Gesteinszacken
+        for (int i = 0; i < 12; i++) {
+            double ang = Math.PI * 2 * i / 12 + 0.2;
+            float k = Math.max(0, Math.min(1, (t - 0.1f - (i % 4) * 0.03f) * 5));
+            spike(x + (float) Math.cos(ang) * 3.2f * S, y, z + (float) Math.sin(ang) * 3.2f * S, 0.45f * S, (1.6f + (i % 3) * 0.8f) * S * k,
+                (float) Math.cos(ang) * 0.35f, (float) Math.sin(ang) * 0.35f, i % 2 == 0 ? 0x3A0E06 : 0xFF2A00, a);
+        }
+        // Druckwelle
+        float tk = (t - 0.15f) * 2.2f;
+        if (tk > 0 && tk < 1) ring(x, y + 0.08f, z, (1 + 9 * easeOut(tk)) * S, 0.6f * S * (1 - tk), 64, 0xFF6A00, 1 - tk);
+    }
+
+    // ---------- 10: Sternschnuppe ----------
+    private static void starFx(Fx f, float t, float x, float y, float z) {
+        float S = S(), a = fade(t, 0.04f, 0.3f);
+        Random r = new Random(f.seed);
+        // Sternschnuppen fallen schräg herab
+        for (int i = 0; i < 26; i++) {
+            float ox = (r.nextFloat() - 0.5f) * 12 * S, oz = (r.nextFloat() - 0.5f) * 12 * S;
+            float k = (t * 1.8f + r.nextFloat()) % 1f;
+            float sx = x + ox + 6 * S * (1 - k), sy = y + 14 * S * (1 - k) + 0.5f, sz = z + oz;
+            int c = i % 3 == 0 ? 0xFFB8F0 : i % 3 == 1 ? 0xA8C8FF : 0xFFFFFF;
+            glowLine(sx, sy, sz, sx + 1.6f * S, sy + 3.2f * S, sz, 0.07f * S, c, a * 0.8f);
+            glowCube(sx, sy, sz, 0.12f * S, k * 10, k * 7, 0xFFFFFF, a);
+        }
+        // großer Stern über dem Gegner (5 Zacken)
+        float pop = easeOut(Math.min(1, t / 0.3f));
+        float cy = y + f.h + 2.5f * S, R = 2.6f * S * pop, rr = R * 0.42f;
+        double rot = t * 1.5;
+        for (int i = 0; i < 10; i++) {
+            double a0 = rot + Math.PI * i / 5, a1 = rot + Math.PI * (i + 1) / 5;
+            float r0 = i % 2 == 0 ? R : rr, r1 = i % 2 == 0 ? rr : R;
+            glowLine(x + camRx * (float) Math.cos(a0) * r0, cy + (float) Math.sin(a0) * r0, z + camRz * (float) Math.cos(a0) * r0,
+                x + camRx * (float) Math.cos(a1) * r1, cy + (float) Math.sin(a1) * r1, z + camRz * (float) Math.cos(a1) * r1, 0.14f * S, 0xFFB8F0, a);
+        }
+        glowCube(x, cy, z, 0.35f * S * pop, t * 6, t * 4, 0xFFFFFF, a);
+        // Sternenstaub-Spirale
+        for (int i = 0; i < 60; i++) {
+            float k = i / 60f;
+            double ang = k * Math.PI * 6 + t * 4;
+            float rad = (0.6f + 3.5f * k) * S * pop;
+            cube(x + (float) Math.cos(ang) * rad, y + 0.3f + k * (f.h + 2 * S), z + (float) Math.sin(ang) * rad, 0.07f * S, ang, k * 3,
+                i % 2 == 0 ? 0xA8C8FF : 0xFFB8F0, a * (1 - k * 0.5f));
+        }
+        // Lichtringe
+        for (int k = 0; k < 3; k++) {
+            float tk = (t - k * 0.15f) * 2;
+            if (tk > 0 && tk < 1) ring(x, y + 0.06f, z, (0.5f + 7 * easeOut(tk)) * S, 0.35f * S * (1 - tk), 64, k == 1 ? 0xA8C8FF : 0xFFB8F0, 1 - tk);
+        }
+    }
+
+    // ---------- 11: Seelenernte ----------
+    private static void ghostFx(Fx f, float t, float x, float y, float z) {
+        float S = S(), a = fade(t, 0.05f, 0.3f);
+        Random r = new Random(f.seed);
+        float cy = y + f.h * 0.6f;
+        // Sense schwingt einmal um den Gegner
+        float swing = easeOut(Math.min(1, t / 0.35f));
+        double start = -Math.PI * 0.2, end = start + Math.PI * 2 * swing;
+        int segs = 40;
+        for (int i = 0; i < segs; i++) {
+            double a0 = start + (end - start) * i / segs, a1 = start + (end - start) * (i + 1) / segs;
+            float R = 3.2f * S, w = 0.9f * S * (float) Math.sin(Math.PI * i / segs);
+            quad(new float[] {x + (float) Math.cos(a0) * R, cy, z + (float) Math.sin(a0) * R},
+                new float[] {x + (float) Math.cos(a0) * (R + w), cy + 0.1f, z + (float) Math.sin(a0) * (R + w)},
+                new float[] {x + (float) Math.cos(a1) * (R + w), cy + 0.1f, z + (float) Math.sin(a1) * (R + w)},
+                new float[] {x + (float) Math.cos(a1) * R, cy, z + (float) Math.sin(a1) * R}, i % 2 == 0 ? 0x7FFFE0 : 0xE8FFFA, a * (0.3f + 0.7f * i / segs) * (1 - t));
+        }
+        // Seelen steigen in Spiralen auf
+        for (int s = 0; s < 6; s++) {
+            double off = Math.PI * 2 * s / 6;
+            float k0 = Math.max(0, t - 0.2f - s * 0.04f) * 1.5f;
+            if (k0 <= 0) continue;
+            float px = x, py = cy, pz = z;
+            for (int i = 1; i <= 16; i++) {
+                float k = Math.min(1, k0) * i / 16f;
+                double ang = off + k * Math.PI * 3;
+                float rad = (0.4f + 2.2f * k) * S;
+                float qx = x + (float) Math.cos(ang) * rad, qy = cy + k * 9 * S, qz = z + (float) Math.sin(ang) * rad;
+                glowLine(px, py, pz, qx, qy, qz, 0.1f * S * (1 - k * 0.5f), pc(f, k), a * (1 - k * 0.6f));
+                px = qx;
+                py = qy;
+                pz = qz;
+            }
+            glowCube(px, py, pz, 0.28f * S, t * 8 + s, t * 5, 0xE8FFFA, a);
+        }
+        // Geisternebel am Boden
+        for (int i = 0; i < 40; i++) {
+            double ang = r.nextDouble() * Math.PI * 2;
+            float d = (1 + r.nextFloat() * 5) * S, k = (t * 0.8f + r.nextFloat()) % 1f;
+            cube(x + (float) Math.cos(ang) * d, y + 0.2f + k * 2 * S, z + (float) Math.sin(ang) * d, 0.18f * S * (1 - k), ang, k, 0x2EC4B6, a * 0.35f * (1 - k));
+        }
+        pillar(x, y, y + 6 * S, z, 0.7f * S * (1 - t), 0x7FFFE0, a * 0.4f, 0f);
+        float tk = (t - 0.3f) * 2;
+        if (tk > 0 && tk < 1) ring(x, y + 0.06f, z, (0.5f + 6 * easeOut(tk)) * S, 0.45f * S * (1 - tk), 64, 0x7FFFE0, 1 - tk);
     }
 
     // ---------- Kill-Banner (HUD) ----------
@@ -984,6 +1122,35 @@ public final class KillFx {
                 ctx.fill(-1, -12, 4, -2, a | fl);
                 ctx.fill(-5, -3, 3, 1, a | fl);
                 ctx.fill(-4, 0, 1, 12, a | fl);
+            }
+            case 8 -> { // Vulkan: Berg mit Ausbruch
+                for (int i = 0; i < 12; i++) {
+                    int w = 2 + i * 2;
+                    ctx.fill(-w, -4 + i * 2, w, -2 + i * 2, a | (i < 3 ? rgb2 : 0x3A0E06));
+                }
+                int up = (int) ((el / 6) % 18);
+                for (int i = -1; i <= 1; i++) ctx.fill(i * 4 - 1, -8 - up, i * 4 + 1, -5 - up, (int) (alpha * (1 - up / 18f) * 255) << 24 | rgb);
+                ctx.fill(-2, -6, 2, -2, a | rgb);
+            }
+            case 9 -> { // Stern: fünf Zacken drehen sich
+                for (int i = 0; i < 5; i++) {
+                    m.pushMatrix();
+                    m.rotate((float) (i * Math.PI * 2 / 5 + spin * 0.8));
+                    ctx.fill(-3, -18, 3, -4, a | rgb);
+                    ctx.fill(-1, -21, 1, -18, a | 0xFFFFFF);
+                    m.popMatrix();
+                }
+                ctx.fill(-5, -5, 5, 5, a | rgb2);
+                ctx.fill(-2, -2, 2, 2, a | 0xFFFFFF);
+            }
+            case 10 -> { // Geist: schwebende Gestalt mit Augen
+                int bob = (int) (Math.sin(el / 160.0) * 2);
+                ctx.fill(-12, -16, 12, 14, soft | rgb2);
+                ctx.fill(-9, -14 + bob, 9, 8 + bob, a | rgb);
+                ctx.fill(-7, -16 + bob, 7, -14 + bob, a | rgb);
+                for (int i = 0; i < 3; i++) ctx.fill(-9 + i * 6, 8 + bob, -6 + i * 6, 12 + bob, a | rgb);
+                ctx.fill(-5, -8 + bob, -2, -3 + bob, a | 0x061A1A);
+                ctx.fill(2, -8 + bob, 5, -3 + bob, a | 0x061A1A);
             }
             default -> { // Krone: Raute mit drei Zacken und Juwel
                 m.pushMatrix();

@@ -15,14 +15,15 @@ import org.joml.Matrix3x2fStack;
 import java.util.List;
 import java.util.Random;
 
-/** Kiste öffnen wie in CS: Band mit Skins rollt durch, wird langsamer und bleibt unter dem Strich stehen. */
+/** Kisten-Shop: drei Kisten für Coins. Öffnen wie in CS: Band rollt durch, wird langsamer und bleibt unter dem Strich stehen. */
 public class PackScreen extends Screen {
     private static final int HEAD = 28;
     private static final long SPIN_MS = 6200;
     private static final long PAUSE_MS = 450;
     private static final int TILES = 56, WIN = 47, TW = 72, STEP = 78;
 
-    private static int[] result;      // {Kollektion, Typ, 0 neu / 1 doppelt / 2 admin}
+    private static int sel = 1;       // gewählte Kiste
+    private static int[] result;      // {Kollektion, Typ, 0 neu / 1 doppelt}
     private static int[][] strip;     // {Kollektion, Typ} je Feld
     private static float target;      // Ziel-Verschiebung in Pixeln
     private static long openStart;
@@ -30,10 +31,10 @@ public class PackScreen extends Screen {
     private static boolean revealPlayed;
     private int px0, px1, py0, py1;
 
-    private static final String[] SND = {"sonnenfeuer", "frostkristall", "leere", "neonglitch", "koenigsglanz", "blutmond", "giftranke", "gewitter"};
+    private static final String[] SND = {"sonnenfeuer", "frostkristall", "leere", "neonglitch", "koenigsglanz", "blutmond", "giftranke", "gewitter", "magmakern", "sternenstaub", "geisterhauch"};
 
     public PackScreen() {
-        super(Text.literal(Skins.CASE));
+        super(Text.literal("Kisten"));
     }
 
     private static void sound(String ns, String id, float pitch, float vol) {
@@ -55,20 +56,27 @@ public class PackScreen extends Screen {
         return result != null && System.currentTimeMillis() - openStart >= SPIN_MS + PAUSE_MS;
     }
 
-    /** Kiste öffnen und das Band mit dem Gewinn an Stelle WIN bauen. */
+    /** Gewählte Kiste kaufen und das Band mit dem Gewinn an Stelle WIN bauen. */
     private static void start() {
-        int[] r = Skins.openPack();
-        if (r == null) return;
+        int[] r = Skins.openCase(sel);
+        if (r == null) {
+            sound("minecraft", "entity.villager.no", 1f, 0.6f);
+            return;
+        }
         result = r;
         Random rnd = new Random();
         strip = new int[TILES][];
-        for (int i = 0; i < TILES; i++) strip[i] = new int[] {Skins.bundleOfTier(Skins.rollTier(rnd), rnd), rnd.nextInt(Skins.TYPES.length)};
+        for (int i = 0; i < TILES; i++) strip[i] = new int[] {Skins.bundleOfTier(Skins.rollTier(rnd, sel), rnd), rnd.nextInt(Skins.TYPES.length)};
         strip[WIN] = new int[] {r[0], r[1]};
         target = WIN * STEP + (rnd.nextFloat() - 0.5f) * (TW - 14);
         openStart = System.currentTimeMillis();
         lastIdx = 0;
         revealPlayed = false;
         sound("spotifylyrics", "pack.open", 1f, 0.8f);
+    }
+
+    private int cardW() {
+        return (px1 - px0 - 20 - 16) / 3;
     }
 
     @Override
@@ -86,18 +94,23 @@ public class PackScreen extends Screen {
         });
         int by = py1 - 32, bw = (pw - 20 - 8) / 3;
         if (result == null) {
-            btn((px0 + px1) / 2 - 75, by, 150, 22, () -> {
+            int cw = cardW(), cy0 = py0 + HEAD + 6;
+            for (int k = 0; k < Skins.CASES.length; k++) {
+                final int kk = k;
+                btn(px0 + 10 + k * (cw + 8), cy0, cw, 92, () -> sel = kk);
+            }
+            btn((px0 + px1) / 2 - 85, by, 170, 22, () -> {
                 start();
                 reopen();
             });
         } else {
             btn(px0 + 10, by, bw, 22, () -> {
-                if (revealed() && result[2] != 1) Skins.equip(result[1], result[0]);
+                if (revealed() && Skins.owns(result[0], result[1])) Skins.equip(result[1], result[0]);
             });
             btn(px0 + 14 + bw, by, bw, 22, () -> {
                 if (!revealed()) return;
                 result = null;
-                if (Skins.packsAvailable() > 0) start();
+                if (Skins.canOpen(sel)) start();
                 reopen();
             });
             btn(px0 + 18 + 2 * bw, by, bw, 22, () -> {
@@ -111,18 +124,15 @@ public class PackScreen extends Screen {
 
     // Absichtlich ohne @Override, wie in den anderen Menüs.
     public void renderBackground(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        Ui.panel(ctx, this.width, this.height, px0, py0, px1, py1, HEAD, Lang.t("Sammlung / ", "Collection / ") + Skins.CASE);
+        Ui.panel(ctx, this.width, this.height, px0, py0, px1, py1, HEAD, Lang.t("Sammlung / Kisten", "Collection / Cases"));
     }
 
     // Absichtlich ohne @Override, wie in den anderen Menüs.
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
         super.render(ctx, mouseX, mouseY, delta);
         TextRenderer tr = MinecraftClient.getInstance().textRenderer;
-        int packs = Skins.packsAvailable();
-        String ptxt = Skins.packsText();
-        Ui.txt(ctx, tr, Skins.CASE, px0 + 10, py0 + 6, 0xFFFFC23D);
-        Ui.txt(ctx, tr, Skins.admin() ? Lang.t("Admin · unendlich Kisten", "Admin · unlimited cases")
-            : ptxt + Lang.t(" Kisten · nächste in ", " cases · next in ") + CollectionScreen.time(Skins.msToNext()), px0 + 10, py0 + 17, 0xFF8B92A5);
+        Ui.txt(ctx, tr, result == null ? Lang.t("Kisten", "Cases") : Skins.CASES[sel], px0 + 10, py0 + 6, result == null ? Ui.TEXT : Skins.CASE_COL[sel]);
+        Ui.txt(ctx, tr, Skins.coinsText() + " Coins" + (Skins.adminOn() ? "  ·  §6ADMIN" : ""), px0 + 10, py0 + 17, 0xFFFFC23D);
         boolean spinning = result != null && !revealed();
         Ui.btn(ctx, tr, px1 - 96, py0 + 5, px1 - 10, py0 + 23, Lang.t("‹ Sammlung", "‹ Collection"), Ui.in(mouseX, mouseY, px1 - 96, py0 + 5, px1 - 10, py0 + 23),
             0xFF1A1E27, 0xFF252B38, spinning ? 0xFF6F7380 : 0xFFD6D9E0);
@@ -133,10 +143,12 @@ public class PackScreen extends Screen {
         int by = py1 - 32, bw = (px1 - px0 - 20 - 8) / 3;
 
         if (result == null) {
-            idle(ctx, tr, m, cx, now, mouseX, mouseY);
-            boolean hov = Ui.in(mouseX, mouseY, cx - 75, by, cx + 75, by + 22);
-            Ui.btn(ctx, tr, cx - 75, by, cx + 75, by + 22, packs > 0 ? Lang.t("Kiste öffnen", "Open case") + " (" + ptxt + ")" : Lang.t("Keine Kisten", "No cases"), hov,
-                packs > 0 ? 0xFF8A5A00 : 0xFF1A1E27, packs > 0 ? 0xFFB07A10 : 0xFF1A1E27, packs > 0 ? 0xFFFFFFFF : 0xFF6F7380);
+            shop(ctx, tr, m, cx, now, mouseX, mouseY);
+            boolean can = Skins.canOpen(sel);
+            boolean hov = Ui.in(mouseX, mouseY, cx - 85, by, cx + 85, by + 22);
+            String l = can ? Lang.t("Öffnen · ", "Open · ") + (Skins.adminOn() ? Lang.t("gratis", "free") : Skins.CASE_PRICE[sel] + " Coins")
+                : Lang.t("Zu wenig Coins (", "Not enough coins (") + Skins.CASE_PRICE[sel] + ")";
+            Ui.btn(ctx, tr, cx - 85, by, cx + 85, by + 22, l, hov, can ? 0xFF8A5A00 : 0xFF1A1E27, can ? 0xFFB07A10 : 0xFF1A1E27, can ? 0xFFFFFFFF : 0xFF6F7380);
             return;
         }
 
@@ -151,77 +163,89 @@ public class PackScreen extends Screen {
 
         int b = result[0], t = result[1];
         boolean eq = Skins.equipped(t) == b;
-        boolean canEq = result[2] != 1 || Skins.owns(b, t);
+        boolean canEq = Skins.owns(b, t);
+        boolean again = Skins.canOpen(sel);
         Ui.btn(ctx, tr, px0 + 10, by, px0 + 10 + bw, by + 22, eq ? Lang.t("✔ Ausgerüstet", "✔ Equipped") : Lang.t("Ausrüsten", "Equip"),
             Ui.in(mouseX, mouseY, px0 + 10, by, px0 + 10 + bw, by + 22), eq ? 0xFF15301F : canEq ? Ui.ACCENT_DIM : 0xFF1A1E27, eq ? 0xFF15301F : canEq ? Ui.ACCENT_DIM_HOV : 0xFF1A1E27, 0xFFFFFFFF);
-        Ui.btn(ctx, tr, px0 + 14 + bw, by, px0 + 14 + 2 * bw, by + 22, packs > 0 ? Lang.t("Noch eine (", "Another (") + ptxt + ")" : Lang.t("Fertig", "Done"),
+        Ui.btn(ctx, tr, px0 + 14 + bw, by, px0 + 14 + 2 * bw, by + 22,
+            again ? Lang.t("Noch eine · ", "Another · ") + (Skins.adminOn() ? Lang.t("gratis", "free") : String.valueOf(Skins.CASE_PRICE[sel])) : Lang.t("Fertig", "Done"),
             Ui.in(mouseX, mouseY, px0 + 14 + bw, by, px0 + 14 + 2 * bw, by + 22), 0xFF8A5A00, 0xFFB07A10, 0xFFFFFFFF);
         Ui.btn(ctx, tr, px0 + 18 + 2 * bw, by, px1 - 10, by + 22, Lang.t("Ansehen ›", "View ›"),
             Ui.in(mouseX, mouseY, px0 + 18 + 2 * bw, by, px1 - 10, by + 22), 0xFF1A1E27, 0xFF252B38, 0xFFD6D9E0);
     }
 
-    /** Ruhende Kiste mit Inhalt (alles noch als „?“). */
-    private void idle(DrawContext ctx, TextRenderer tr, Matrix3x2fStack m, int cx, long now, int mx, int my) {
-        int cy = py0 + HEAD + 62;
-        float pulse = 0.5f + 0.5f * (float) Math.sin(now / 300.0);
-        int w = 70, h = 36;
-        float bob = (float) Math.sin(now / 700.0) * 2;
+    /** Kleine Kiste in der Farbe der Kiste. */
+    private static void crate(DrawContext ctx, Matrix3x2fStack m, float x, float y, float sc, int col, int dark) {
         m.pushMatrix();
-        m.translate(cx, cy + bob);
-        // Leuchten
-        ctx.fill(-w - 8, -h - 8, w + 8, h + 8, (int) ((0.12f + 0.12f * pulse) * 255) << 24 | 0xFFC23D);
-        // Kiste
-        ctx.fill(-w, -h, w, h, 0xFF2A2210);
-        ctx.fill(-w, -h, w, -h + 14, 0xFF3A2E12);          // Deckel
-        ctx.fill(-w, -h + 14, w, -h + 17, 0xFFFFC23D);      // Deckelkante
-        ctx.fill(-w, -h, w, -h + 2, 0xFFFFC23D);
-        ctx.fill(-w, h - 2, w, h, 0xFFFFC23D);
-        ctx.fill(-w, -h, -w + 2, h, 0xFFFFC23D);
-        ctx.fill(w - 2, -h, w, h, 0xFFFFC23D);
-        ctx.fill(-w + 10, -h + 2, -w + 16, h - 2, 0xFF8A5A00); // Beschläge
-        ctx.fill(w - 16, -h + 2, w - 10, h - 2, 0xFF8A5A00);
-        ctx.fill(-14, -h - 6, 14, -h, 0xFF8A5A00);          // Griff
-        ctx.fill(-10, -h - 4, 10, -h, 0xFF2A2210);
-        ctx.fill(-9, -h + 12, 9, -h + 24, 0xFFFFC23D);      // Schloss
-        ctx.fill(-3, -h + 16, 3, -h + 22, 0xFF2A2210);
-        m.scale(1.4f, 1.4f);
-        String n = Skins.CASE.toUpperCase(java.util.Locale.ROOT);
-        ctx.drawTextWithShadow(tr, n, -tr.getWidth(n) / 2, 6, 0xFFFFE08A);
+        m.translate(x, y);
+        m.scale(sc, sc);
+        int w = 30, h = 16;
+        ctx.fill(-w, -h, w, h, dark);
+        ctx.fill(-w, -h, w, -h + 7, Ui.mix(dark, col, 0.25f));
+        ctx.fill(-w, -h + 7, w, -h + 9, col);
+        ctx.fill(-w, -h, w, -h + 1, col);
+        ctx.fill(-w, h - 1, w, h, col);
+        ctx.fill(-w, -h, -w + 1, h, col);
+        ctx.fill(w - 1, -h, w, h, col);
+        ctx.fill(-w + 5, -h + 1, -w + 8, h - 1, Ui.mix(dark, col, 0.5f));
+        ctx.fill(w - 8, -h + 1, w - 5, h - 1, Ui.mix(dark, col, 0.5f));
+        ctx.fill(-6, -h - 3, 6, -h, Ui.mix(dark, col, 0.5f));
+        ctx.fill(-4, -h + 5, 4, -h + 12, col);
+        ctx.fill(-1, -h + 7, 1, -h + 11, dark);
         m.popMatrix();
+    }
 
-        // Inhalt
-        String l = Lang.t("Enthält einen Skin aus diesen Kollektionen:", "Contains one skin from these collections:");
-        int iy = cy + h + 16;
+    /** Drei Kisten zur Auswahl, darunter Inhalt und Chancen der gewählten. */
+    private void shop(DrawContext ctx, TextRenderer tr, Matrix3x2fStack m, int cx, long now, int mx, int my) {
+        int cw = cardW(), cy0 = py0 + HEAD + 6;
+        for (int k = 0; k < Skins.CASES.length; k++) {
+            int x = px0 + 10 + k * (cw + 8);
+            boolean s = sel == k, h = Ui.in(mx, my, x, cy0, x + cw, cy0 + 92);
+            int col = Skins.CASE_COL[k];
+            Ui.card(ctx, x, cy0, x + cw, cy0 + 92, s ? col : (h ? 0xFF3A4152 : Ui.BORDER), s ? Ui.CARD_HOV : Ui.CARD);
+            if (s) ctx.fillGradient(x + 1, cy0 + 1, x + cw - 1, cy0 + 91, 0x05000000, (0x40 << 24) | (col & 0xFFFFFF));
+            float bob = s ? (float) Math.sin(now / 400.0) * 2 : 0;
+            crate(ctx, m, x + cw / 2f, cy0 + 32 + bob, 1.1f, col, 0xFF1B1408);
+            String n = Skins.CASES[k];
+            Ui.txt(ctx, tr, n, x + (cw - tr.getWidth(n)) / 2, cy0 + 58, col);
+            String p = Skins.adminOn() ? Lang.t("gratis", "free") : Skins.CASE_PRICE[k] + " Coins";
+            Ui.txt(ctx, tr, p, x + (cw - tr.getWidth(p)) / 2, cy0 + 72, Skins.canOpen(k) ? 0xFFFFC23D : 0xFF6F7380);
+        }
+
+        // Inhalt der gewählten Kiste
+        int iy = cy0 + 100;
+        String l = Lang.t("Inhalt: ein Skin aus diesen Kollektionen", "Contains one skin from these collections");
         Ui.txt(ctx, tr, l, cx - tr.getWidth(l) / 2, iy, 0xFF8B92A5);
-        int n8 = Skins.bundles(), tw = Math.min(46, (px1 - px0 - 20 - (n8 - 1) * 4) / n8), tot = n8 * tw + (n8 - 1) * 4;
-        int x0 = cx - tot / 2, ty = iy + 14;
+        int n8 = Skins.bundles(), tw = Math.min(34, (px1 - px0 - 20 - (n8 - 1) * 4) / n8), tot = n8 * tw + (n8 - 1) * 4;
+        int x0 = cx - tot / 2, ty = iy + 12;
         String tip = null;
+        int[] w = Skins.CASE_W[sel];
         for (int j = 0; j < n8; j++) {
             int i = Skins.ORDER[j];
             int x = x0 + j * (tw + 4);
             int col = Skins.tierCol(i);
             Ui.card(ctx, x, ty, x + tw, ty + tw, col, 0xFF07080B);
             ctx.fillGradient(x + 1, ty + 1, x + tw - 1, ty + tw - 1, 0x05000000, (0x50 << 24) | (col & 0xFFFFFF));
-            ctx.fill(x + 1, ty + tw - 4, x + tw - 1, ty + tw - 1, col);
+            ctx.fill(x + 1, ty + tw - 3, x + tw - 1, ty + tw - 1, col);
             m.pushMatrix();
-            m.translate(x + tw / 2f, ty + tw / 2f - 2);
-            m.scale(2f, 2f);
+            m.translate(x + tw / 2f, ty + tw / 2f - 1);
+            m.scale(1.6f, 1.6f);
             ctx.drawTextWithShadow(tr, "?", -tr.getWidth("?") / 2, -4, 0xFF8B92A5);
             m.popMatrix();
             if (Ui.in(mx, my, x, ty, x + tw, ty + tw)) {
-                int tr0 = Skins.tier(i), same = 0;
-                for (int q = 0; q < n8; q++) if (Skins.tier(q) == tr0) same++;
-                tip = WeaponSkins.BUNDLES[i] + " · " + Skins.TIER_NAMES[tr0] + " · " + String.format(java.util.Locale.ROOT, "%.1f%%", Skins.TIER_W[tr0] / (float) same);
+                int t0 = Skins.tier(i), same = 0;
+                for (int q = 0; q < n8; q++) if (Skins.tier(q) == t0) same++;
+                tip = WeaponSkins.BUNDLES[i] + " · " + Skins.TIER_NAMES[t0] + " · " + String.format(java.util.Locale.ROOT, "%.1f%%", w[t0] / 10f / same);
             }
         }
         // Chancen
         int lx = 0;
-        for (int q = 0; q < Skins.TIER_NAMES.length; q++) lx += tr.getWidth(Skins.TIER_NAMES[q] + " " + Skins.TIER_W[q] + "%") + (q > 0 ? 10 : 0);
-        int lxx = cx - lx / 2, ly = ty + tw + 8;
+        for (int q = 0; q < Skins.TIER_NAMES.length; q++) lx += tr.getWidth(Skins.TIER_NAMES[q] + " " + Skins.pct(w[q])) + (q > 0 ? 8 : 0);
+        int lxx = cx - lx / 2, ly = ty + tw + 6;
         for (int q = 0; q < Skins.TIER_NAMES.length; q++) {
-            String s = Skins.TIER_NAMES[q] + " " + Skins.TIER_W[q] + "%";
+            String s = Skins.TIER_NAMES[q] + " " + Skins.pct(w[q]);
             Ui.txt(ctx, tr, s, lxx, ly, Skins.TIER_COL[q]);
-            lxx += tr.getWidth(s) + 10;
+            lxx += tr.getWidth(s) + 8;
         }
         if (tip != null) ctx.drawTooltip(tr, List.of(Text.literal(tip)), mx, my);
     }

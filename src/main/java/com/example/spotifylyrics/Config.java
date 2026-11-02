@@ -259,6 +259,11 @@ public class Config {
     public boolean admin = false;
     /** Stand der Skin-Daten (für einmalige Umstellungen). */
     public int skinsRev = 0;
+    /** Admin-Modus an/aus (nur mit Code). */
+    public boolean adminOn = true;
+    /** Coins aus Spielzeit und wie viel Spielzeit schon umgewandelt ist. */
+    public int coins = 0;
+    public long convertedMs = 0;
 
     /** Pack-Sets: bis zu 4 Plätze, je die Pack-IDs getrennt mit "|" (leer = frei). */
     public java.util.List<String> packSets = new java.util.ArrayList<>();

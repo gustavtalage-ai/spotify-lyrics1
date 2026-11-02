@@ -22,7 +22,10 @@ final class SkinGen {
         {0x3A0010, 0xB3122E, 0xFFC23D, 0xFFF6DC, 0x26140A, 0xFFD45A},   // Königsglanz
         {0x140003, 0x7A0012, 0xFF2A3D, 0xFFB0A0, 0x0E0608, 0xC4102F},   // Blutmond
         {0x04200E, 0x1F8A3A, 0x7CFF4F, 0xE8FFB0, 0x1A1408, 0x9BE15A},   // Giftranke
-        {0x0B1424, 0x2A4A8C, 0x5AD1FF, 0xFFF35A, 0x14161E, 0x5AD1FF}    // Gewittersturm
+        {0x0B1424, 0x2A4A8C, 0x5AD1FF, 0xFFF35A, 0x14161E, 0x5AD1FF},   // Gewittersturm
+        {0x0E0302, 0x3A0E06, 0xFF6A00, 0xFFE070, 0x1A0C08, 0xFF8A20},   // Magmakern
+        {0x0A0E2A, 0x3A3590, 0xFFB8F0, 0xFFFFFF, 0x141630, 0xA8C8FF},   // Sternenstaub
+        {0x061A1A, 0x1E5A5A, 0x7FFFE0, 0xE8FFFA, 0x0C1414, 0x7FFFE0}    // Geisterhauch
     };
 
     static BufferedImage make(BufferedImage src, int style, int seed) {
@@ -164,6 +167,30 @@ final class SkinGen {
                     if (Math.abs(x - zig) <= (fi % 5 == 0 ? 1 : 0)) col = mix(P[3], 0xFFFFFF, 0.4f);
                     else if (Math.abs(x - zig) == 2) col = mix(col, P[2], 0.6f);
                 }
+            }
+            case 8 -> { // Magmakern: schwarzes Gestein, glühende Risse pulsieren
+                col = mix(P[0], P[1], (float) Math.pow(l, 0.9));
+                float n = fbm(x * 0.25f, y * 0.25f, seed + 13, Math.max(1, h / 4));
+                float vein = clamp(1 - Math.abs(n - 0.5f) * 14);
+                float pulse = 0.55f + 0.45f * (float) Math.sin((ft + diag) * Math.PI * 2);
+                if (vein > 0) col = mix(col, vein > 0.6f ? P[3] : P[2], vein * pulse);
+                if (hash(seed, x * 9 + y * 13, 31) % 37 == 0) col = mix(col, P[2], 0.4f + 0.6f * pulse);
+            }
+            case 9 -> { // Sternenstaub: Nachthimmel, rosa Schimmer-Welle, funkelnde Sterne
+                col = mix(P[0], P[1], clamp(l * 0.7f + diag * 0.4f));
+                float wave = (float) Math.sin((diag * 3 - ft * 2) * Math.PI * 2);
+                if (wave > 0.8f) col = mix(col, P[2], (wave - 0.8f) / 0.2f * 0.55f);
+                int hs = hash(seed, x * 23 + y * 7, 17);
+                if (hs % 11 == 0) {
+                    float tw = (float) Math.max(0, Math.sin((ft * 2 + (hash(seed, x, y) % 100) / 100f) * Math.PI * 2));
+                    col = mix(col, hs % 2 == 0 ? 0xFFFFFF : P[5], 0.15f + 0.85f * tw * tw);
+                }
+            }
+            case 10 -> { // Geisterhauch: blasser Nebel steigt auf
+                col = mix(P[0], P[1], (float) Math.pow(l, 0.85));
+                float yy = (y + (1 - ft) * h) % h;
+                float n = fbm(x * 0.25f, yy * 0.25f, seed + 21, Math.max(1, h / 4));
+                col = mix(col, n > 0.62f ? P[3] : P[2], clamp((n - 0.46f) * 2.5f) * 0.75f);
             }
             default -> { // Königsglanz: roter Kern, goldene Kanten, Juwel-Funkeln
                 col = mix(P[0], P[1], (float) Math.pow(l, 0.8));

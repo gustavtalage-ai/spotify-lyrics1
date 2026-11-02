@@ -149,6 +149,24 @@ public final class KillFx {
         if (c.kfSound && style >= 0) sounds(style);
     }
 
+    private static void play(Object sound, float pitch, float vol) {
+        try {
+            SoundEvent se = sound instanceof SoundEvent s ? s : sound instanceof RegistryEntry<?> r && r.value() instanceof SoundEvent s2 ? s2 : null;
+            if (se != null) MinecraftClient.getInstance().getSoundManager().play(PositionedSoundInstance.ui(se, pitch, vol));
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private static final String[] SND = {"sonnenfeuer", "frostkristall", "leere", "neonglitch", "koenigsglanz", "blutmond", "giftranke", "gewitter"};
+
+    /** Eigene Kill-Sounds: Kill 1 bis 5 werden immer höher (Serie), dazu der Finisher-Sound der Kollektion. */
+    private static void sounds(int style) {
+        String b = SND[Math.floorMod(style, SND.length)];
+        int k = Math.max(1, Math.min(5, streak));
+        play(SoundEvent.of(net.minecraft.util.Identifier.of("spotifylyrics", "kill." + b + ".k" + k)), 1f, 1f);
+        play(SoundEvent.of(net.minecraft.util.Identifier.of("spotifylyrics", "kill." + b + ".fin")), 1f, 0.9f);
+    }
+
     /** Vorschau eines Finishers vor dir. */
     static void preview(int style) {
         MinecraftClient mc = MinecraftClient.getInstance();

@@ -1,11 +1,18 @@
 package com.example.spotifylyrics;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.component.DataComponentTypes;
 import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
 import net.minecraft.registry.Registries;
 import net.minecraft.resource.InputSupplier;
 import net.minecraft.resource.ResourceManager;
 import net.minecraft.resource.ResourceType;
+import net.minecraft.util.HeldItemContext;
 import net.minecraft.util.Identifier;
 
 import javax.imageio.ImageIO;
@@ -13,14 +20,18 @@ import java.awt.image.BufferedImage;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
-import java.util.Random;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Stream;
 
 /**
- * Waffen-Skins passend zum Finisher (wie Skin-Kollektionen): Schwerter, Äxte, Speere und der Streitkolben
- * bekommen die Farben der Kollektion und einen animierten Glanz, der über die Klinge läuft.
- * Die Texturen werden aus den Original-Texturen erzeugt und landen im Pack "AlphaMod Designer".
+ * Waffen-Skins passend zum Finisher (wie Skin-Kollektionen).
+ * Die Skins liegen als eigene Modelle im Pack ("spotifylyrics:skin/sN/<waffe>") und ersetzen die Original-Texturen NICHT.
+ * Nur Waffen, die DU hältst (Hand, Inventar, deine Figur), bekommen den Skin – Gegner sehen bei dir normale Waffen,
+ * und deine Gegner haben bei dir ihre normalen Waffen.
  */
 public final class WeaponSkins {
     private WeaponSkins() {
@@ -28,117 +39,182 @@ public final class WeaponSkins {
 
     /** Name der Kollektion je Finisher (gleiche Reihenfolge wie KillFx.STYLES). */
     public static final String[] BUNDLES = {"Sonnenfeuer", "Frostkristall", "Leere", "Neon-Glitch", "Königsglanz"};
+    static final String VERSION = "v2";
+    private static final String NS = "spotifylyrics";
 
-    /** Farbverlauf je Kollektion: dunkel, Hauptfarbe, hell, Glanz. */
-    private static final int[][] GRAD = {
-        {0x3A0A00, 0xFF6A00, 0xFFD54A, 0xFFF6C8},
-        {0x08204A, 0x2E8BFF, 0x7DF9FF, 0xF0FFFF},
-        {0x12002A, 0x5B2BFF, 0xB14BFF, 0xFF9CF2},
-        {0x0B0B18, 0xFF00E6, 0x00F0FF, 0x39FF14},
-        {0x2A0008, 0xC4102F, 0xFFC23D, 0xFFF3D6}
-    };
-    private static final int FRAMES = 12;
+    /** Waffen (Pfad), für die Skins im Pack liegen. */
+    private static volatile Set<String> available = new HashSet<>();
 
     static boolean isWeapon(Item it) {
-        String p = Registries.ITEM.getId(it).getPath();
+        Identifier id = Registries.ITEM.getId(it);
+        if (!id.getNamespace().equals("minecraft")) return false;
+        String p = id.getPath();
         return p.endsWith("_sword") || p.endsWith("_axe") || p.endsWith("_spear") || p.equals("mace");
     }
 
-    /** Schreibt die Skins ins Pack; gibt die Anzahl der Texturen zurück. */
-    static int writeInto(Path root, ResourceManager rm) {
-        Config c = Config.INSTANCE;
-        boolean on = c.wsOn && c.kfStyle >= 0 && c.kfStyle < GRAD.length;
+    /** Für die Vorschau: Waffe im Skin einer Kollektion. */
+    static ItemStack preview(Item item, int style) {
+        ItemStack s = new ItemStack(item);
+        String p = Registries.ITEM.getId(item).getPath();
+        if (available.contains(p)) s.set(DataComponentTypes.ITEM_MODEL, Identifier.of(NS, "skin/s" + style + "/" + p));
+        return s;
+    }
+
+    /** Vom Mixin gerufen: Skin nur für Waffen, die der eigene Spieler hält. */
+    public static ItemStack skinned(ItemStack stack, HeldItemContext held) {
         try {
-            Files.createDirectories(root);
-            Files.writeString(root.resolve("skin_style.txt"), on ? String.valueOf(c.kfStyle) : "none");
+            Config c = Config.INSTANCE;
+            if (!c.wsOn || c.kfStyle < 0 || c.kfStyle >= BUNDLES.length || stack == null || stack.isEmpty() || held == null) return stack;
+            MinecraftClient mc = MinecraftClient.getInstance();
+            if (mc.player == null || held.getEntity() != mc.player) return stack;
+            Identifier cur = stack.get(DataComponentTypes.ITEM_MODEL);
+            if (cur != null && cur.getNamespace().equals(NS)) return stack;
+            Identifier id = Registries.ITEM.getId(stack.getItem());
+            if (!id.getNamespace().equals("minecraft") || !available.contains(id.getPath())) return stack;
+            ItemStack s = stack.copy();
+            s.set(DataComponentTypes.ITEM_MODEL, Identifier.of(NS, "skin/s" + c.kfStyle + "/" + id.getPath()));
+            return s;
+        } catch (Throwable e) {
+            return stack;
+        }
+    }
+
+    /** Liest, welche Skins im Pack schon da sind. */
+    static void scan(Path root) {
+        Set<String> s = new HashSet<>();
+        Path dir = root.resolve("assets").resolve(NS).resolve("items").resolve("skin").resolve("s0");
+        try (Stream<Path> st = Files.list(dir)) {
+            st.forEach(p -> {
+                String n = p.getFileName().toString();
+                if (n.endsWith(".json")) s.add(n.substring(0, n.length() - 5));
+            });
         } catch (Exception ignored) {
         }
-        if (!on) return 0;
-        int[] g = GRAD[c.kfStyle];
-        boolean glitch = c.kfStyle == 3;
-        Set<Identifier> done = new LinkedHashSet<>();
-        int n = 0;
+        available = s;
+    }
+
+    /** Schreibt alle 5 Kollektionen als eigene Modelle ins Pack; gibt die Anzahl der Waffen zurück. */
+    static int writeInto(Path root, ResourceManager rm) {
         MinecraftClient mc = MinecraftClient.getInstance();
+        Map<String, BufferedImage> srcCache = new HashMap<>();
+        Set<String> made = new LinkedHashSet<>();
         for (Item it : Registries.ITEM) {
             if (!isWeapon(it)) continue;
-            String id = Registries.ITEM.getId(it).toString();
-            if (Designer.find(id) != null) continue; // eigenes Bild hat Vorrang
-            for (Identifier t : Designer.textures(rm, id)) {
-                if (!done.add(t)) continue;
-                try {
-                    InputSupplier<InputStream> sup = mc.getDefaultResourcePack().open(ResourceType.CLIENT_RESOURCES,
-                        Identifier.of(t.getNamespace(), "textures/" + t.getPath() + ".png"));
-                    if (sup == null) continue;
-                    BufferedImage src;
-                    try (InputStream in = sup.get()) {
-                        src = ImageIO.read(in);
+            String path = Registries.ITEM.getId(it).getPath();
+            JsonElement def = Designer.json(rm, Identifier.of("minecraft", "items/" + path + ".json"));
+            if (def == null) continue;
+            Set<Identifier> models = new LinkedHashSet<>();
+            collectModels(def, models);
+            if (models.isEmpty()) continue;
+            boolean any = false;
+            for (int k = 0; k < BUNDLES.length; k++) {
+                Map<String, String> map = new HashMap<>();
+                int idx = 0;
+                for (Identifier m : models) {
+                    JsonElement mj = Designer.json(rm, Identifier.of(m.getNamespace(), "models/" + m.getPath() + ".json"));
+                    if (mj == null || !mj.isJsonObject() || !mj.getAsJsonObject().has("textures")) continue;
+                    JsonObject tex = mj.getAsJsonObject().getAsJsonObject("textures");
+                    JsonObject nt = new JsonObject();
+                    for (var en : tex.entrySet()) {
+                        if (!en.getValue().isJsonPrimitive()) continue;
+                        String v = en.getValue().getAsString();
+                        if (v.startsWith("#") || en.getKey().equals("particle")) continue;
+                        Identifier t = Identifier.of(v);
+                        String skinTex = "item/skin/s" + k + "/" + t.getNamespace() + "/" + t.getPath();
+                        if (writeTexture(mc, root, t, skinTex, k, srcCache)) nt.addProperty(en.getKey(), NS + ":" + skinTex);
                     }
-                    if (src == null) continue;
-                    BufferedImage out = SkinGen.make(src, c.kfStyle, t.hashCode());
-                    Path png = root.resolve("assets").resolve(t.getNamespace()).resolve("textures").resolve(t.getPath() + ".png");
-                    Files.createDirectories(png.getParent());
-                    ImageIO.write(out, "png", png.toFile());
-                    Files.writeString(png.resolveSibling(png.getFileName() + ".mcmeta"),
-                        "{\"animation\":{\"frametime\":2,\"interpolate\":true}}");
-                    n++;
-                } catch (Throwable e) {
-                    SpotifyLyricsClient.LOGGER.debug("Skin für " + t + " ging nicht", e);
+                    if (nt.size() == 0) continue;
+                    String modelPath = "item/skin/s" + k + "/" + path + "_" + idx++;
+                    JsonObject model = new JsonObject();
+                    model.addProperty("parent", m.toString());
+                    model.add("textures", nt);
+                    if (!write(root, "models/" + modelPath + ".json", model.toString())) continue;
+                    map.put(m.toString(), NS + ":" + modelPath);
+                }
+                if (map.isEmpty()) continue;
+                JsonElement copy = def.deepCopy();
+                replaceModels(copy, map);
+                if (write(root, "items/skin/s" + k + "/" + path + ".json", copy.toString())) any = true;
+            }
+            if (any) made.add(path);
+        }
+        write(root, "../../skin_style.txt", VERSION);
+        available = made;
+        return made.size();
+    }
+
+    private static boolean writeTexture(MinecraftClient mc, Path root, Identifier t, String skinTex, int style, Map<String, BufferedImage> cache) {
+        try {
+            Path png = root.resolve("assets").resolve(NS).resolve("textures").resolve(skinTex + ".png");
+            if (Files.exists(png)) return true;
+            BufferedImage src = cache.get(t.toString());
+            if (src == null) {
+                InputSupplier<InputStream> sup = mc.getDefaultResourcePack().open(ResourceType.CLIENT_RESOURCES,
+                    Identifier.of(t.getNamespace(), "textures/" + t.getPath() + ".png"));
+                if (sup == null) return false;
+                try (InputStream in = sup.get()) {
+                    src = ImageIO.read(in);
+                }
+                if (src == null) return false;
+                if (src.getHeight() > src.getWidth()) src = src.getSubimage(0, 0, src.getWidth(), src.getWidth()); // schon animiert: erstes Bild
+                cache.put(t.toString(), src);
+            }
+            BufferedImage out = SkinGen.make(src, style, t.hashCode());
+            Files.createDirectories(png.getParent());
+            ImageIO.write(out, "png", png.toFile());
+            Files.writeString(png.resolveSibling(png.getFileName() + ".mcmeta"), "{\"animation\":{\"frametime\":2,\"interpolate\":true}}");
+            return true;
+        } catch (Throwable e) {
+            SpotifyLyricsClient.LOGGER.debug("Skin-Textur " + t + " ging nicht", e);
+            return false;
+        }
+    }
+
+    private static boolean write(Path root, String rel, String content) {
+        try {
+            Path p = rel.startsWith("../../") ? root.resolve(rel.substring(6)) : root.resolve("assets").resolve(NS).resolve(rel);
+            Files.createDirectories(p.getParent());
+            Files.writeString(p, content);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private static void collectModels(JsonElement e, Set<Identifier> out) {
+        if (e == null) return;
+        if (e.isJsonObject()) {
+            for (var en : e.getAsJsonObject().entrySet()) {
+                if (en.getKey().equals("model") && en.getValue().isJsonPrimitive()) {
+                    try {
+                        out.add(Identifier.of(en.getValue().getAsString()));
+                    } catch (Exception ignored) {
+                    }
+                } else {
+                    collectModels(en.getValue(), out);
                 }
             }
+        } else if (e.isJsonArray()) {
+            for (JsonElement v : e.getAsJsonArray()) collectModels(v, out);
         }
-        return n;
     }
 
-    /** Färbt die Textur nach Helligkeit um und baut 12 Bilder mit wanderndem Glanz. */
-    private static BufferedImage skin(BufferedImage src, int[] g, boolean glitch, int seed) {
-        int w = src.getWidth(), h = src.getHeight();
-        BufferedImage out = new BufferedImage(w, h * FRAMES, BufferedImage.TYPE_INT_ARGB);
-        Random r = new Random(seed);
-        for (int f = 0; f < FRAMES; f++) {
-            float c = -0.3f + 1.6f * f / FRAMES;
-            int shiftRow = glitch && f % 3 == 0 ? r.nextInt(h) : -1;
-            for (int y = 0; y < h; y++) {
-                int dx = (glitch && Math.abs(y - shiftRow) <= 1) ? (r.nextBoolean() ? 1 : -1) * Math.max(1, w / 16) : 0;
-                for (int x = 0; x < w; x++) {
-                    int sx = Math.floorMod(x - dx, w);
-                    int argb = src.getRGB(sx, y);
-                    int a = argb >>> 24;
-                    if (a == 0) {
-                        out.setRGB(x, f * h + y, 0);
-                        continue;
-                    }
-                    int rr = argb >> 16 & 0xFF, gg = argb >> 8 & 0xFF, bb = argb & 0xFF;
-                    float lum = (0.299f * rr + 0.587f * gg + 0.114f * bb) / 255f;
-                    lum = (float) Math.pow(lum, 0.85);
-                    int col = grad(g, lum);
-                    // Glanz-Streifen läuft schräg über die Waffe
-                    float p = (x + (h - 1 - y)) / (float) (w + h);
-                    float band = Math.max(0, 1 - Math.abs(p - c) * 7);
-                    col = mix(col, g[3], band * 0.75f);
-                    // leichtes Pulsieren der hellen Stellen
-                    float pulse = 0.12f * (float) Math.sin((f / (float) FRAMES) * Math.PI * 2);
-                    if (lum > 0.6f) col = mix(col, 0xFFFFFF, Math.max(0, pulse));
-                    out.setRGB(x, f * h + y, a << 24 | col);
+    private static void replaceModels(JsonElement e, Map<String, String> map) {
+        if (e == null) return;
+        if (e.isJsonObject()) {
+            JsonObject o = e.getAsJsonObject();
+            for (var en : o.entrySet()) {
+                if (en.getKey().equals("model") && en.getValue().isJsonPrimitive()) {
+                    String v = en.getValue().getAsString();
+                    String full = v.contains(":") ? v : "minecraft:" + v;
+                    if (map.containsKey(full)) en.setValue(new JsonPrimitive(map.get(full)));
+                } else {
+                    replaceModels(en.getValue(), map);
                 }
             }
+        } else if (e.isJsonArray()) {
+            JsonArray a = e.getAsJsonArray();
+            for (JsonElement v : a) replaceModels(v, map);
         }
-        return out;
-    }
-
-    private static int grad(int[] g, float k) {
-        k = Math.max(0, Math.min(1, k));
-        float[] stops = {0f, 0.42f, 0.78f, 1f};
-        for (int i = 0; i < 3; i++) {
-            if (k <= stops[i + 1]) return mix(g[i], g[i + 1], (k - stops[i]) / (stops[i + 1] - stops[i]));
-        }
-        return g[3];
-    }
-
-    private static int mix(int a, int b, float t) {
-        t = Math.max(0, Math.min(1, t));
-        int r = (int) ((a >> 16 & 0xFF) * (1 - t) + (b >> 16 & 0xFF) * t);
-        int g = (int) ((a >> 8 & 0xFF) * (1 - t) + (b >> 8 & 0xFF) * t);
-        int bl = (int) ((a & 0xFF) * (1 - t) + (b & 0xFF) * t);
-        return r << 16 | g << 8 | bl;
     }
 }

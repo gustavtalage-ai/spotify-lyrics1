@@ -142,10 +142,11 @@ public final class Designer {
         bootChecked = true;
         try {
             Config c = Config.INSTANCE;
-            String want = c.wsOn && c.kfStyle < WeaponSkins.BUNDLES.length ? String.valueOf(c.kfStyle) : "none";
-            Path mark = mc.getResourcePackDir().resolve(PACK_DIR).resolve("skin_style.txt");
+            Path root = mc.getResourcePackDir().resolve(PACK_DIR);
+            Path mark = root.resolve("skin_style.txt");
             String have = Files.exists(mark) ? Files.readString(mark).trim() : "none";
-            if (!want.equals(have)) apply();
+            if (!WeaponSkins.VERSION.equals(have)) apply();
+            else WeaponSkins.scan(root);
         } catch (Throwable ignored) {
         }
     }
@@ -324,7 +325,7 @@ public final class Designer {
         }
     }
 
-    private static JsonElement json(ResourceManager rm, Identifier file) {
+    static JsonElement json(ResourceManager rm, Identifier file) {
         try {
             Optional<Resource> r = rm.getResource(file);
             if (r.isEmpty()) return null;

@@ -46,41 +46,50 @@ public class KillFxScreen extends ItemScreen {
         {0xFFC4102F, 0xFFFFC23D, 0xFFFFF3D6}
     };
 
+    private static final net.minecraft.item.Item[] SHOW_ITEMS = {net.minecraft.item.Items.NETHERITE_SWORD, net.minecraft.item.Items.DIAMOND_AXE,
+        net.minecraft.item.Items.MACE, net.minecraft.item.Items.IRON_SWORD};
+    /** Zeile -> Kollektion (für die Waffen-Vorschau). */
+    private final java.util.Map<Integer, Integer> previewRows = new java.util.HashMap<>();
+    private int bigRow = -1;
+
     private void bundle(int i) {
         Config c = Config.INSTANCE;
         boolean sel = c.kfStyle == i;
-        String label = WeaponSkins.BUNDLES[i] + "  ·  " + Lang.t("Finisher: ", "Finisher: ") + KillFx.STYLES[i];
+        String label = (sel ? "✔ " : "") + WeaponSkins.BUNDLES[i] + "  ·  " + KillFx.STYLES[i];
         Runnable pick = () -> {
-            if (c.kfStyle == i) return;
             c.kfStyle = i;
             c.save();
-            if (c.wsOn) Designer.apply();
             again();
         };
-        row(sel ? S("✔ " + label).w(7) : G(label, pick).w(7),
-            Sw(SHOW[i][0], "", false, pick), Sw(SHOW[i][1], "", false, pick), Sw(SHOW[i][2], "", false, pick));
+        row(sel ? S(label).w(6) : G(label, pick).w(6), sel ? S("").w(5) : C("", 0xFF12151B, 0xFF1A1E27, 0, pick).w(5));
+        previewRows.put(lastRow(), i);
     }
 
     @Override
     protected void build() {
+        previewRows.clear();
+        bigRow = -1;
         Config c = Config.INSTANCE;
         row(t(Lang.t("Finisher an", "Finisher on"), c.kfOn, () -> c.kfOn = !c.kfOn),
-            t(Lang.t("Waffen-Skins an", "Weapon skins on"), c.wsOn, () -> {
-                c.wsOn = !c.wsOn;
-                c.save();
-                Designer.apply();
-            }));
+            t(Lang.t("Waffen-Skins an", "Weapon skins on"), c.wsOn, () -> c.wsOn = !c.wsOn));
         gap(4);
+        Config cc = Config.INSTANCE;
+        if (cc.kfStyle < KillFx.STYLES.length) {
+            sec(Lang.t("Ausgerüstet: ", "Equipped: ") + WeaponSkins.BUNDLES[cc.kfStyle]);
+            row(X("").w(1));
+            bigRow = lastRow();
+            gap(18);
+        }
         sec(Lang.t("Kollektion (Skin + Finisher)", "Collection (skin + finisher)"));
         for (int i = 0; i < KillFx.STYLES.length; i++) bundle(i);
         row(c.kfStyle >= KillFx.STYLES.length ? S("✔ " + Lang.t("Zufälliger Finisher (ohne Skin)", "Random finisher (no skin)"))
             : G(Lang.t("Zufälliger Finisher (ohne Skin)", "Random finisher (no skin)"), () -> {
                 c.kfStyle = KillFx.STYLES.length;
                 c.save();
-                if (c.wsOn) Designer.apply();
                 again();
             }));
-        text(Lang.t("Skins gelten für alle Schwerter, Äxte, Speere und den Streitkolben.", "Skins apply to all swords, axes, spears and the mace."), 0xFF8A93A6);
+        text(Lang.t("Skins für alle Schwerter, Äxte, Speere und den Streitkolben –", "Skins for all swords, axes, spears and the mace –"), 0xFF8A93A6);
+        text(Lang.t("nur deine Waffen, Gegner sehen bei dir normale Waffen.", "only your weapons, enemies look normal to you."), 0xFF8A93A6);
         gap(4);
         sec(Lang.t("Extras", "Extras"));
         row(t(Lang.t("Kill-Banner (Serie 1–5)", "Kill banner (streak 1–5)"), c.kfBanner, () -> c.kfBanner = !c.kfBanner),
@@ -102,5 +111,39 @@ public class KillFxScreen extends ItemScreen {
             MinecraftClient.getInstance().setScreen(null);
             KillFx.preview();
         }));
+    }
+
+    // Absichtlich ohne @Override, wie in den anderen Menüs.
+    public void render(net.minecraft.client.gui.DrawContext ctx, int mouseX, int mouseY, float delta) {
+        super.render(ctx, mouseX, mouseY, delta);
+        try {
+            for (var en : previewRows.entrySet()) {
+                int[] r = rect(en.getKey(), 1);
+                if (r[1] < py0 + HEAD || r[1] > py1 - 20) continue;
+                int n = SHOW_ITEMS.length, step = Math.min(20, r[2] / n);
+                int x0 = r[0] + (r[2] - step * n) / 2;
+                for (int k = 0; k < n; k++) ctx.drawItem(WeaponSkins.preview(SHOW_ITEMS[k], en.getValue()), x0 + k * step + (step - 16) / 2, r[1] + 2);
+            }
+            Config c = Config.INSTANCE;
+            if (bigRow >= 0 && c.kfStyle < KillFx.STYLES.length) {
+                int[] r = rect(bigRow, 0);
+                if (r[1] >= py0 + HEAD && r[1] < py1 - 40) {
+                    int n = SHOW_ITEMS.length, size = 36, gapX = 10;
+                    int total = n * size + (n - 1) * gapX, x0 = r[0] + (r[2] - total) / 2;
+                    for (int k = 0; k < n; k++) {
+                        int x = x0 + k * (size + gapX), y = r[1] - 2;
+                        ctx.fill(x, y, x + size, y + size, 0xFF0B0D12);
+                        Ui.round(ctx, x, y, x + size, y + size, 0xFF1A1E27);
+                        org.joml.Matrix3x2fStack m = ctx.getMatrices();
+                        m.pushMatrix();
+                        m.translate(x + 2, y + 2);
+                        m.scale(2f, 2f);
+                        ctx.drawItem(WeaponSkins.preview(SHOW_ITEMS[k], c.kfStyle), 0, 0);
+                        m.popMatrix();
+                    }
+                }
+            }
+        } catch (Throwable ignored) {
+        }
     }
 }

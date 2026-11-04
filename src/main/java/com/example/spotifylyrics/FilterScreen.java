@@ -31,6 +31,14 @@ public class FilterScreen extends Screen {
     private static String selected = "";
     private static long mask = 0L;
 
+    /** Von der Regel-Übersicht aus ein Item zum Bearbeiten öffnen. */
+    static void edit(String id) {
+        selected = id;
+        Long m = Config.INSTANCE.filterRules.get(id);
+        mask = m == null ? 0L : m;
+        search = "";
+    }
+
     private int px0, px1, py0, py1, cx, cw, gx, gy, rowsY, infoY, botY, bot2Y, qx, qw, searchY;
     private List<Item> found = List.of();
 
@@ -119,6 +127,7 @@ public class FilterScreen extends Screen {
 
         // Zurück
         invisible(px1 - 10 - 64, py0 + 5, 64, 18, () -> MinecraftClient.getInstance().setScreen(new ToolsScreen()));
+        invisible(px1 - 10 - 64 - 6 - 60, py0 + 5, 60, 18, () -> MinecraftClient.getInstance().setScreen(new FilterRulesScreen()));
 
         TextFieldWidget f = new TextFieldWidget(this.textRenderer, cx, searchY, cw, 18, Text.literal("Item suchen"));
         f.setMaxLength(40);
@@ -243,6 +252,8 @@ public class FilterScreen extends Screen {
         } else {
             Ui.txt(ctx, tr, cfg.filterRules.size() + " Regeln · " + cfg.filterBlocked.size() + " gesperrt · Filter " + (cfg.filterOn ? "an" : "aus"), px0 + 10, py0 + 17, 0xFF8B92A5);
         }
+        int rx = px1 - 10 - 64 - 6 - 60;
+        Ui.btn(ctx, tr, rx, py0 + 5, rx + 60, py0 + 23, "Regeln", Ui.in(mouseX, mouseY, rx, py0 + 5, rx + 60, py0 + 23), 0xFF123A55, 0xFF1A4E73, 0xFFFFFFFF);
         Ui.btn(ctx, tr, px1 - 10 - 64, py0 + 5, px1 - 10, py0 + 23, "Zurück", Ui.in(mouseX, mouseY, px1 - 10 - 64, py0 + 5, px1 - 10, py0 + 23), 0xFF1A1E27, 0xFF252B38, 0xFFD6D9E0);
 
         if (search.isEmpty()) Ui.txt(ctx, tr, "Item suchen (z.B. Schwert, Brot) …", cx + 5, searchY + 5, 0xFF6F7380);

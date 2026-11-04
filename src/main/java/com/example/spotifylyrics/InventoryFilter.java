@@ -22,7 +22,7 @@ public class InventoryFilter {
     public static void tick(MinecraftClient mc) {
         try {
             Config cfg = Config.INSTANCE;
-            if (!cfg.filterOn || cfg.filterRules.isEmpty()) return;
+            if (!cfg.filterOn || (cfg.filterRules.isEmpty() && cfg.filterBlocked.isEmpty())) return;
             if (mc.player == null || mc.world == null || mc.interactionManager == null) return;
             if (mc.currentScreen != null || mc.player.isCreative() || mc.player.isSpectator()) return;
             if (--cooldown > 0) return;
@@ -30,6 +30,16 @@ public class InventoryFilter {
             if (mc.player.currentScreenHandler.syncId != 0) return;
             if (!mc.player.currentScreenHandler.getCursorStack().isEmpty()) return;
             PlayerInventory inv = mc.player.getInventory();
+            // Gesperrte Items: sofort wieder wegwerfen (ganzer Stapel)
+            if (!cfg.filterBlocked.isEmpty()) {
+                for (int i = 0; i < 36; i++) {
+                    ItemStack s = inv.getStack(i);
+                    if (s.isEmpty() || !cfg.filterBlocked.contains(idOf(s))) continue;
+                    mc.interactionManager.clickSlot(0, slotId(i), 1, SlotActionType.THROW, mc.player);
+                    return;
+                }
+            }
+            if (cfg.filterRules.isEmpty()) return;
             if (cfg.filterStrict) {
                 // Nur Items mit Regel behalten: alles andere wegwerfen
                 for (int i = 0; i < 36; i++) {

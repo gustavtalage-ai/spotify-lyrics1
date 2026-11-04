@@ -107,6 +107,8 @@ public class Config {
     /** Streng: Alles ohne Regel wird sofort weggeworfen (nur Filter-Items bleiben im Inventar). */
     public boolean filterStrict = false;
     public java.util.Map<String, Long> filterRules = new java.util.LinkedHashMap<>();
+    /** Gesperrte Items: werden sofort wieder weggeworfen. */
+    public java.util.List<String> filterBlocked = new java.util.ArrayList<>();
     /** Hit-Assistent: nur schlagen, wenn die Leiste voll ist. Waffen als Bits: 0 Schwert, 1 Axt, 2 Mace, 3 Speer, 4 Dreizack. */
     public boolean hitAssist = false;
     public int hitAssistMin = 100;
@@ -292,6 +294,8 @@ public class Config {
                     if (c.macros == null) c.macros = new java.util.ArrayList<>();
                     if (c.designs == null) c.designs = new java.util.ArrayList<>();
                     if (c.supportMsgs == null) c.supportMsgs = new java.util.ArrayList<>();
+                    if (c.filterBlocked == null) c.filterBlocked = new java.util.ArrayList<>();
+                    if (c.filterRules == null) c.filterRules = new java.util.LinkedHashMap<>();
                     if (c.skinsOwned == null) c.skinsOwned = new java.util.ArrayList<>();
                     if (c.skinsEquipped == null) c.skinsEquipped = new java.util.HashMap<>();
                     if (c.crossPix == null || c.crossPix.length != 225) c.crossPix = crossDefault();

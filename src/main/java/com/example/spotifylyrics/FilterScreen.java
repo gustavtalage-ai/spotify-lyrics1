@@ -178,17 +178,34 @@ public class FilterScreen extends Screen {
             reopen();
         });
 
-        int hw = (cw - 4) / 2;
-        invisible(cx, botY, hw, 20, () -> {
+        int hw = (cw - 4) / 2, tw = (cw - 8) / 3;
+        invisible(cx + tw + 4, botY, tw, 20, () -> {
+            if (!selected.isEmpty()) {
+                Config c = Config.INSTANCE;
+                if (c.filterBlocked.contains(selected)) c.filterBlocked.remove(selected);
+                else {
+                    c.filterBlocked.add(selected);
+                    c.filterRules.remove(selected);
+                    mask = 0L;
+                }
+                c.save();
+            }
+            reopen();
+        });
+        invisible(cx, botY, tw, 20, () -> {
             if (!selected.isEmpty()) {
                 if (mask == 0L) Config.INSTANCE.filterRules.remove(selected);
-                else Config.INSTANCE.filterRules.put(selected, mask);
+                else {
+                    Config.INSTANCE.filterRules.put(selected, mask);
+                    Config.INSTANCE.filterBlocked.remove(selected);
+                }
                 Config.INSTANCE.save();
             }
             reopen();
         });
-        invisible(cx + hw + 4, botY, hw, 20, () -> {
+        invisible(cx + 2 * (tw + 4), botY, cw - 2 * (tw + 4), 20, () -> {
             if (!selected.isEmpty()) {
+                Config.INSTANCE.filterBlocked.remove(selected);
                 Config.INSTANCE.filterRules.remove(selected);
                 Config.INSTANCE.save();
                 mask = 0L;
@@ -224,7 +241,7 @@ public class FilterScreen extends Screen {
         if (cfg.filterStrict) {
             Ui.txt(ctx, tr, "Nur-diese-Modus: Rest wird weggeworfen!", px0 + 10, py0 + 17, 0xFFFF6A6A);
         } else {
-            Ui.txt(ctx, tr, cfg.filterRules.size() + " Regeln · Filter " + (cfg.filterOn ? "an" : "aus"), px0 + 10, py0 + 17, 0xFF8B92A5);
+            Ui.txt(ctx, tr, cfg.filterRules.size() + " Regeln · " + cfg.filterBlocked.size() + " gesperrt · Filter " + (cfg.filterOn ? "an" : "aus"), px0 + 10, py0 + 17, 0xFF8B92A5);
         }
         Ui.btn(ctx, tr, px1 - 10 - 64, py0 + 5, px1 - 10, py0 + 23, "Zurück", Ui.in(mouseX, mouseY, px1 - 10 - 64, py0 + 5, px1 - 10, py0 + 23), 0xFF1A1E27, 0xFF252B38, 0xFFD6D9E0);
 
@@ -240,7 +257,12 @@ public class FilterScreen extends Screen {
             Ui.round2(ctx, cx, ry, cx + cw, ry + 18, isSel ? 0xFF15301F : (hov ? 0xFF222733 : 0xFF161A22));
             if (isSel) ctx.fill(cx, ry + 4, cx + 2, ry + 14, GREEN);
             ctx.drawItem(new ItemStack(it), cx + 5, ry + 1);
-            Ui.txt(ctx, tr, tr.trimToWidth(it.getName().getString(), cw - 34), cx + 26, ry + 5, isSel ? 0xFFFFFFFF : 0xFFE4E7EE);
+            boolean blk = cfg.filterBlocked.contains(Registries.ITEM.getId(it).toString());
+            Ui.txt(ctx, tr, tr.trimToWidth(it.getName().getString(), cw - 34 - (blk ? 54 : 0)), cx + 26, ry + 5, isSel ? 0xFFFFFFFF : 0xFFE4E7EE);
+            if (blk) {
+                ctx.fill(cx + 5, ry + 1, cx + 21, ry + 17, 0x88FF2A3A);
+                Ui.txt(ctx, tr, "gesperrt", cx + cw - 6 - tr.getWidth("gesperrt"), ry + 5, 0xFFFF6A6A);
+            }
         }
         if (found.isEmpty()) {
             Ui.txt(ctx, tr, "Tippe oben ein Item ein.", cx + 4, rowsY + 6, 0xFF9AA0AE);
@@ -248,7 +270,9 @@ public class FilterScreen extends Screen {
 
         // Gewähltes Item
         Item chosen = selected.isEmpty() ? null : itemOf(selected);
-        if (chosen != null) {
+        if (chosen != null && cfg.filterBlocked.contains(selected)) {
+            Ui.txt(ctx, tr, tr.trimToWidth("Gesperrt: " + chosen.getName().getString() + " · wird sofort weggeworfen", cw), cx, infoY + 4, 0xFFFF6A6A);
+        } else if (chosen != null) {
             Ui.txt(ctx, tr, tr.trimToWidth("Gewählt: " + chosen.getName().getString() + " · grüne Slots = hier darf es liegen", cw), cx, infoY + 4, 0xFF4ADE80);
         } else {
             Ui.txt(ctx, tr, "Wähle oben ein Item, dann die Slots anklicken.", cx, infoY + 4, 0xFFFFAA00);
@@ -284,9 +308,14 @@ public class FilterScreen extends Screen {
         }
 
         // Unten
-        int hw = (cw - 4) / 2;
-        Ui.btn(ctx, tr, cx, botY, cx + hw, botY + 20, "Speichern", Ui.in(mouseX, mouseY, cx, botY, cx + hw, botY + 20), 0xFF123A55, 0xFF1A4E73, 0xFFFFFFFF);
-        Ui.btn(ctx, tr, cx + hw + 4, botY, cx + cw, botY + 20, "Regel löschen", Ui.in(mouseX, mouseY, cx + hw + 4, botY, cx + cw, botY + 20), 0xFF2A141B, 0xFF3D1C26, 0xFFFF9FB0);
+        int hw = (cw - 4) / 2, tw = (cw - 8) / 3;
+        boolean blkSel = !selected.isEmpty() && cfg.filterBlocked.contains(selected);
+        Ui.btn(ctx, tr, cx, botY, cx + tw, botY + 20, "Speichern", Ui.in(mouseX, mouseY, cx, botY, cx + tw, botY + 20), 0xFF123A55, 0xFF1A4E73, 0xFFFFFFFF);
+        int bx = cx + tw + 4;
+        Ui.btn(ctx, tr, bx, botY, bx + tw, botY + 20, blkSel ? "Entsperren" : "Sperren", Ui.in(mouseX, mouseY, bx, botY, bx + tw, botY + 20),
+            blkSel ? 0xFF1A1E27 : 0xFF4A1018, blkSel ? 0xFF252B38 : 0xFF6A1822, blkSel ? 0xFFD6D9E0 : 0xFFFF9FB0);
+        int dx = cx + 2 * (tw + 4);
+        Ui.btn(ctx, tr, dx, botY, cx + cw, botY + 20, "Regel löschen", Ui.in(mouseX, mouseY, dx, botY, cx + cw, botY + 20), 0xFF2A141B, 0xFF3D1C26, 0xFFFF9FB0);
         Ui.toggle(ctx, tr, cx, bot2Y, cx + hw, bot2Y + 20, "Filter an", cfg.filterOn, Ui.in(mouseX, mouseY, cx, bot2Y, cx + hw, bot2Y + 20));
         Ui.toggle(ctx, tr, cx + hw + 4, bot2Y, cx + cw, bot2Y + 20, "Nur diese behalten", cfg.filterStrict, Ui.in(mouseX, mouseY, cx + hw + 4, bot2Y, cx + cw, bot2Y + 20));
     }
